@@ -8,18 +8,22 @@ use App\Support\ServiceProvider as BaseServiceProvider;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
+use App\Modules\Iva\Calc\LibroIvaCalculator;
 use App\Modules\Iva\Repositories\IvaClienteRepository;
 use App\Modules\Iva\Repositories\IvaProveedorRepository;
 use App\Modules\Iva\Repositories\VentaRepository;
 use App\Modules\Iva\Repositories\CompraRepository;
+use App\Modules\Iva\Repositories\LibroIvaRepository;
 use App\Modules\Iva\Services\IvaClienteService;
 use App\Modules\Iva\Services\IvaProveedorService;
 use App\Modules\Iva\Services\VentaService;
 use App\Modules\Iva\Services\CompraService;
+use App\Modules\Iva\Services\LibroIvaService;
 use App\Modules\Iva\Controllers\IvaClienteController;
 use App\Modules\Iva\Controllers\IvaProveedorController;
 use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
+use App\Modules\Iva\Controllers\LibroIvaController;
 
 /**
  * Wiring del módulo Iva. Reusa EmpresaRepository del módulo Compartido para
@@ -77,5 +81,16 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(DB::class),
         ));
         $c->singleton(CompraController::class, fn () => new CompraController($c->get(CompraService::class)));
+
+        // Libro IVA: totales del período derivados (motor + agregación SQL por signo).
+        $c->singleton(LibroIvaCalculator::class, fn () => new LibroIvaCalculator());
+        $c->singleton(LibroIvaRepository::class, fn () => new LibroIvaRepository($c->get(PDO::class)));
+        $c->singleton(LibroIvaService::class, fn () => new LibroIvaService(
+            $c->get(LibroIvaRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+            $c->get(LibroIvaCalculator::class),
+        ));
+        $c->singleton(LibroIvaController::class, fn () => new LibroIvaController($c->get(LibroIvaService::class)));
     }
 }
