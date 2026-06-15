@@ -70,6 +70,51 @@ class LibroIvaRepository
         );
     }
 
+    /**
+     * Detalle de ventas por condición IVA, alícuota y signo (para libro/DDJJ).
+     * Cada fila: condicion_iva_id, alicuota, signo, neto_gravado, iva.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function ventasDetallePorAlicuota(int $periodoId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT v.condicion_iva_id, vd.iva_alicuota AS alicuota, COALESCE(tc.signo, 1) AS signo,
+                    SUM(vd.neto_gravado) AS neto_gravado, SUM(vd.iva_importe) AS iva
+               FROM venta_discriminaciones vd
+               JOIN ventas v ON vd.venta_id = v.id
+               LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
+              WHERE v.periodo_id = ?
+              GROUP BY v.condicion_iva_id, vd.iva_alicuota, COALESCE(tc.signo, 1)'
+        );
+        $stmt->execute([$periodoId]);
+
+        return $this->mapDetalle((array) $stmt->fetchAll(PDO::FETCH_ASSOC), false);
+    }
+
+    /**
+     * Detalle de compras por condición IVA, alícuota y signo (incluye cf_computable).
+     * Cada fila: condicion_iva_id, alicuota, signo, neto_gravado, iva, cf_computable.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function comprasDetallePorAlicuota(int $periodoId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT c.condicion_iva_id, cd.iva_alicuota AS alicuota, COALESCE(tc.signo, 1) AS signo,
+                    SUM(cd.neto_gravado) AS neto_gravado, SUM(cd.iva_importe) AS iva,
+                    SUM(cd.cf_computable) AS cf_computable
+               FROM compra_discriminaciones cd
+               JOIN compras c ON cd.compra_id = c.id
+               LEFT JOIN tipos_comprobante tc ON c.tipo_comprobante_id = tc.id
+              WHERE c.periodo_id = ?
+              GROUP BY c.condicion_iva_id, cd.iva_alicuota, COALESCE(tc.signo, 1)'
+        );
+        $stmt->execute([$periodoId]);
+
+        return $this->mapDetalle((array) $stmt->fetchAll(PDO::FETCH_ASSOC), true);
+    }
+
     /** @return list<array{signo: int, importe: string}> */
     private function run(string $sql, int $periodoId): array
     {
@@ -82,6 +127,30 @@ class LibroIvaRepository
                 'signo'   => (int) $row['signo'],
                 'importe' => (string) ($row['importe'] ?? '0'),
             ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<array<string, mixed>> $raw
+     * @return list<array<string, mixed>>
+     */
+    private function mapDetalle(array $raw, bool $conCf): array
+    {
+        $rows = [];
+        foreach ($raw as $row) {
+            $item = [
+                'condicion_iva_id' => $row['condicion_iva_id'] !== null ? (int) $row['condicion_iva_id'] : null,
+                'alicuota'         => $row['alicuota'] !== null ? (string) $row['alicuota'] : null,
+                'signo'            => (int) $row['signo'],
+                'neto_gravado'     => (string) ($row['neto_gravado'] ?? '0'),
+                'iva'              => (string) ($row['iva'] ?? '0'),
+            ];
+            if ($conCf) {
+                $item['cf_computable'] = (string) ($row['cf_computable'] ?? '0');
+            }
+            $rows[] = $item;
         }
 
         return $rows;

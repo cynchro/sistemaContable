@@ -38,6 +38,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->put('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'update']);
     $router->delete('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'delete']);
 
-    // Libro IVA: totales del período (derivados)
+    // Libro IVA: totales del período (derivados) y detalle por alícuota/condición
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/totales', [LibroIvaController::class, 'totales']);
+    $router->get('/empresas/{empresaId}/periodos/{periodoId}/libro-iva', [LibroIvaController::class, 'detalle']);
 });

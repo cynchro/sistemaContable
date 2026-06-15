@@ -9,6 +9,7 @@ use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
 use App\Modules\Iva\Calc\LibroIvaCalculator;
+use App\Modules\Iva\Calc\LibroIvaDetalleCalculator;
 use App\Modules\Iva\Repositories\IvaClienteRepository;
 use App\Modules\Iva\Repositories\IvaProveedorRepository;
 use App\Modules\Iva\Repositories\VentaRepository;
@@ -84,12 +85,14 @@ class ServiceProvider extends BaseServiceProvider
 
         // Libro IVA: totales del período derivados (motor + agregación SQL por signo).
         $c->singleton(LibroIvaCalculator::class, fn () => new LibroIvaCalculator());
+        $c->singleton(LibroIvaDetalleCalculator::class, fn () => new LibroIvaDetalleCalculator());
         $c->singleton(LibroIvaRepository::class, fn () => new LibroIvaRepository($c->get(PDO::class)));
         $c->singleton(LibroIvaService::class, fn () => new LibroIvaService(
             $c->get(LibroIvaRepository::class),
             $c->get(EmpresaRepository::class),
             $c->get(PeriodoRepository::class),
             $c->get(LibroIvaCalculator::class),
+            $c->get(LibroIvaDetalleCalculator::class),
         ));
         $c->singleton(LibroIvaController::class, fn () => new LibroIvaController($c->get(LibroIvaService::class)));
     }

@@ -21,4 +21,14 @@ class LibroIvaController
             (string) $request->tenantId(),
         ));
     }
+
+    /** Libro IVA detallado: subtotales por condición y alícuota (ventas y compras). */
+    public function detalle(Request $request): Response
+    {
+        return Response::success($this->service->detalle(
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (string) $request->tenantId(),
+        ));
+    }
 }

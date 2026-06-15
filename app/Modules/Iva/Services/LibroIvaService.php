@@ -5,6 +5,7 @@ namespace App\Modules\Iva\Services;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Calc\LibroIvaCalculator;
+use App\Modules\Iva\Calc\LibroIvaDetalleCalculator;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
 
 /**
@@ -19,6 +20,7 @@ class LibroIvaService
         private EmpresaRepository $empresas,
         private PeriodoRepository $periodos,
         private LibroIvaCalculator $calculator,
+        private LibroIvaDetalleCalculator $detalleCalculator,
     ) {
     }
 
@@ -39,5 +41,28 @@ class LibroIvaService
             $this->libro->comprasTotalPorSigno($periodoId),
             $this->libro->comprasIvaPorSigno($periodoId),
         );
+    }
+
+    /**
+     * Libro IVA detallado: subtotales por (condición IVA, alícuota) de ventas y
+     * compras, ponderados por signo. Base de las DDJJ.
+     *
+     * @return array{ventas: list<array<string, mixed>>, compras: list<array<string, mixed>>}
+     */
+    public function detalle(int $empresaId, int $periodoId, string $tenantId): array
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $this->periodos->findById($periodoId, $empresaId);
+
+        return [
+            'ventas' => $this->detalleCalculator->agruparPorAlicuota(
+                $this->libro->ventasDetallePorAlicuota($periodoId),
+                ['neto_gravado', 'iva'],
+            ),
+            'compras' => $this->detalleCalculator->agruparPorAlicuota(
+                $this->libro->comprasDetallePorAlicuota($periodoId),
+                ['neto_gravado', 'iva', 'cf_computable'],
+            ),
+        ];
     }
 }
