@@ -16,16 +16,19 @@ use App\Modules\Iva\Repositories\IvaProveedorRepository;
 use App\Modules\Iva\Repositories\VentaRepository;
 use App\Modules\Iva\Repositories\CompraRepository;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
+use App\Modules\Iva\Repositories\ReporteIvaRepository;
 use App\Modules\Iva\Services\IvaClienteService;
 use App\Modules\Iva\Services\IvaProveedorService;
 use App\Modules\Iva\Services\VentaService;
 use App\Modules\Iva\Services\CompraService;
 use App\Modules\Iva\Services\LibroIvaService;
+use App\Modules\Iva\Services\ReporteIvaService;
 use App\Modules\Iva\Controllers\IvaClienteController;
 use App\Modules\Iva\Controllers\IvaProveedorController;
 use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
+use App\Modules\Iva\Controllers\ReporteIvaController;
 
 /**
  * Wiring del módulo Iva. Reusa EmpresaRepository del módulo Compartido para
@@ -98,5 +101,17 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(DeclaracionIvaCalculator::class),
         ));
         $c->singleton(LibroIvaController::class, fn () => new LibroIvaController($c->get(LibroIvaService::class)));
+
+        // Reportes (subdiario / libro IVA): listado de comprobantes enriquecido + totales.
+        $c->singleton(ReporteIvaRepository::class, fn () => new ReporteIvaRepository($c->get(PDO::class)));
+        $c->singleton(ReporteIvaService::class, fn () => new ReporteIvaService(
+            $c->get(ReporteIvaRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+        ));
+        $c->singleton(
+            ReporteIvaController::class,
+            fn () => new ReporteIvaController($c->get(ReporteIvaService::class)),
+        );
     }
 }

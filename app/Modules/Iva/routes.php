@@ -5,6 +5,7 @@ use App\Modules\Iva\Controllers\IvaProveedorController;
 use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
+use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -42,4 +43,14 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/totales', [LibroIvaController::class, 'totales']);
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/libro-iva', [LibroIvaController::class, 'detalle']);
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/ddjj', [LibroIvaController::class, 'ddjj']);
+
+    // Reportes: subdiario / libro IVA (listado de comprobantes + totales)
+    $router->get(
+        '/empresas/{empresaId}/periodos/{periodoId}/reportes/ventas',
+        [ReporteIvaController::class, 'ventas'],
+    );
+    $router->get(
+        '/empresas/{empresaId}/periodos/{periodoId}/reportes/compras',
+        [ReporteIvaController::class, 'compras'],
+    );
 });
