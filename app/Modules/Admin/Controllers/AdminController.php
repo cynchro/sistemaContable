@@ -11,7 +11,7 @@ use App\Modules\Admin\Requests\UpdatePermisoRequest;
 use App\Modules\Admin\Services\RolService;
 use App\Modules\Admin\Services\PermisosService;
 use App\Modules\Auth\Services\AuthService;
-use App\Modules\Usuario\Services\UsuariosService;
+use App\Modules\Admin\Services\UsuariosService;
 
 class AdminController
 {
