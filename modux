@@ -1,0 +1,981 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Modux — CLI
+ *
+ * Usage:
+ *   php modux <command> [argument] [--flags]
+ */
+
+define('BASE_PATH', __DIR__);
+
+$command = $argv[1] ?? null;
+$arg     = null;
+$flags   = [];
+
+foreach (array_slice($argv, 2) as $a) {
+    if (str_starts_with($a, '--')) {
+        $flags[] = $a;
+    } elseif ($arg === null) {
+        $arg = $a;
+    }
+}
+
+match ($command) {
+    'make:module'      => makeModule($arg, $flags),
+    'make:migration'   => makeMigration($arg),
+    'make:test'        => makeTest($arg),
+    'migrate'          => runMigrations(),
+    'migrate:rollback' => rollbackMigration(),
+    'migrate:fresh'    => freshMigrations(),
+    'routes'           => showRoutes(),
+    'queue:work'       => queueWork($flags),
+    'queue:failed'     => queueFailed(),
+    'queue:retry'      => queueRetry($arg),
+    'queue:flush'      => queueFlush(),
+    'entitlements:roll-periods' => rollEntitlementPeriods(),
+    default            => help(),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeModule(?string $name, array $flags = []): void
+{
+    if (!$name) {
+        error('Usage: php modux make:module <Name> [--with-tenant]');
+    }
+
+    $name       = ucfirst($name);
+    $withTenant = in_array('--with-tenant', $flags, true);
+    $base       = BASE_PATH . "/app/Modules/{$name}";
+
+    if (is_dir($base)) {
+        error("Module [{$name}] already exists at app/Modules/{$name}/");
+    }
+
+    foreach ([$base, "{$base}/Controllers", "{$base}/Repositories", "{$base}/Requests", "{$base}/Services"] as $dir) {
+        mkdir($dir, 0755, true);
+    }
+
+    $files = [
+        "{$base}/Controllers/{$name}Controller.php"   => tpl_controller($name),
+        "{$base}/Repositories/{$name}Repository.php"  => $withTenant
+            ? tpl_repository_tenant($name)
+            : tpl_repository($name),
+        "{$base}/Services/{$name}Service.php"         => tpl_service($name),
+        "{$base}/Requests/Create{$name}Request.php"   => tpl_request($name, 'Create'),
+        "{$base}/Requests/Update{$name}Request.php"   => tpl_request($name, 'Update'),
+        "{$base}/routes.php"                          => $withTenant
+            ? tpl_routes_tenant($name)
+            : tpl_routes($name),
+    ];
+
+    foreach ($files as $path => $content) {
+        file_put_contents($path, $content);
+        line('  <green>created</green>  ' . str_replace(BASE_PATH . '/', '', $path));
+    }
+
+    echo PHP_EOL;
+    line('<yellow>Next steps:</yellow>');
+    line('  1. Add your columns to the repository create() and update() methods.');
+    line('  2. Add validation rules to Create/Update requests.');
+    line('  3. Run: php modux make:migration create_' . strtolower($name) . 's_table');
+    if ($withTenant) {
+        line('  4. Add tenant_id column to your migration table.');
+    }
+    echo PHP_EOL;
+}
+
+function makeTest(?string $name): void
+{
+    if (!$name) {
+        error('Usage: php modux make:test <ModuleName>');
+    }
+
+    $name = ucfirst($name);
+    $dir  = BASE_PATH . "/tests/Unit/Modules/{$name}";
+
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+
+    $path = "{$dir}/{$name}ServiceTest.php";
+
+    if (file_exists($path)) {
+        error("Test [{$name}ServiceTest] already exists.");
+    }
+
+    file_put_contents($path, tpl_test($name));
+    line('  <green>created</green>  ' . str_replace(BASE_PATH . '/', '', $path));
+    echo PHP_EOL;
+}
+
+function makeMigration(?string $name): void
+{
+    if (!$name) {
+        error('Usage: php modux make:migration <name>');
+    }
+
+    $slug      = strtolower(preg_replace('/\s+/', '_', trim($name)));
+    $files     = glob(BASE_PATH . '/migrations/[0-9]*.php') ?: [];
+    $next      = str_pad((string) (count($files) + 1), 4, '0', STR_PAD_LEFT);
+    $filename  = "{$next}_{$slug}.php";
+    $path      = BASE_PATH . "/migrations/{$filename}";
+
+    file_put_contents($path, tpl_migration($slug));
+    line('  <green>created</green>  migrations/' . $filename);
+    echo PHP_EOL;
+}
+
+function runMigrations(): void
+{
+    $pdo = buildPdo();
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS migrations (
+            id        INT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            migration VARCHAR(255) NOT NULL UNIQUE,
+            batch     INT          NOT NULL DEFAULT 1,
+            ran_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    // Add batch column to existing installations that pre-date this feature
+    try {
+        $pdo->exec('ALTER TABLE migrations ADD COLUMN batch INT NOT NULL DEFAULT 1');
+    } catch (\PDOException) {
+        // Column already exists — safe to ignore
+    }
+
+    $ran   = $pdo->query('SELECT migration FROM migrations')->fetchAll(\PDO::FETCH_COLUMN);
+    $files = glob(BASE_PATH . '/migrations/[0-9]*.php') ?: [];
+    sort($files);
+
+    $batchRow = $pdo->query('SELECT MAX(batch) FROM migrations')->fetchColumn();
+    $batch    = ($batchRow === null || $batchRow === false) ? 1 : (int) $batchRow + 1;
+
+    $count = 0;
+    foreach ($files as $file) {
+        $filename = basename($file);
+
+        if (in_array($filename, $ran, true)) {
+            line("  <gray>skipped</gray>   {$filename}");
+            continue;
+        }
+
+        $migration = require $file;
+        $migration->up($pdo);
+
+        $pdo->prepare('INSERT INTO migrations (migration, batch) VALUES (?, ?)')
+            ->execute([$filename, $batch]);
+        line("  <green>migrated</green>  {$filename}");
+        $count++;
+    }
+
+    echo PHP_EOL;
+    line($count > 0 ? "<green>{$count} migration(s) ran.</green>" : 'Nothing to migrate.');
+    echo PHP_EOL;
+}
+
+function rollbackMigration(): void
+{
+    $pdo = buildPdo();
+
+    $row = $pdo->query(
+        'SELECT migration, batch FROM migrations ORDER BY id DESC LIMIT 1'
+    )->fetch(\PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        line('Nothing to roll back.');
+        echo PHP_EOL;
+        return;
+    }
+
+    $batch = (int) $row['batch'];
+    $inBatch = $pdo->prepare('SELECT migration FROM migrations WHERE batch = ? ORDER BY id DESC');
+    $inBatch->execute([$batch]);
+    $toRollback = $inBatch->fetchAll(\PDO::FETCH_COLUMN);
+
+    foreach ($toRollback as $filename) {
+        $file = BASE_PATH . '/migrations/' . $filename;
+
+        if (!file_exists($file)) {
+            line("  <gray>missing</gray>   {$filename} (file not found — skipped)");
+            continue;
+        }
+
+        $migration = require $file;
+        $migration->down($pdo);
+
+        $pdo->prepare('DELETE FROM migrations WHERE migration = ?')->execute([$filename]);
+        line("  <green>rolled back</green>  {$filename}");
+    }
+
+    echo PHP_EOL;
+    line('<green>Batch ' . $batch . ' rolled back.</green>');
+    echo PHP_EOL;
+}
+
+function freshMigrations(): void
+{
+    $pdo   = buildPdo();
+    $files = glob(BASE_PATH . '/migrations/[0-9]*.php') ?: [];
+    sort($files);
+    $reversed = array_reverse($files);
+
+    line('<yellow>Rolling back all migrations...</yellow>');
+    echo PHP_EOL;
+
+    foreach ($reversed as $file) {
+        $filename  = basename($file);
+        $migration = require $file;
+        $migration->down($pdo);
+        line("  <green>rolled back</green>  {$filename}");
+    }
+
+    try {
+        $pdo->exec('DROP TABLE IF EXISTS migrations');
+    } catch (\PDOException) {
+    }
+
+    echo PHP_EOL;
+    line('<yellow>Re-running all migrations...</yellow>');
+    echo PHP_EOL;
+
+    runMigrations();
+}
+
+// ── Queue commands ────────────────────────────────────────────────────────────
+
+function queueWork(array $flags): void
+{
+    $queue  = flagValue($flags, '--queue', 'default');
+    $sleep  = (int) flagValue($flags, '--sleep', '3');
+    $once   = in_array('--once', $flags, true);
+    $timeout = (int) flagValue($flags, '--timeout', '10');
+
+    $app        = buildApp();
+    $pdo        = $app->get(\PDO::class);
+    $dispatcher = $app->get(\App\Support\JobDispatcher::class);
+
+    // Release jobs stuck in "running" from previous crashed workers
+    $stuck = $dispatcher->releaseStuck($timeout);
+    if ($stuck > 0) {
+        line("<yellow>Released {$stuck} stuck job(s).</yellow>");
+    }
+
+    line("Worker started on queue <yellow>[{$queue}]</yellow>.");
+    echo PHP_EOL;
+
+    // Graceful shutdown on SIGINT / SIGTERM
+    $running = true;
+    if (function_exists('pcntl_signal')) {
+        pcntl_signal(SIGINT,  function () use (&$running) { $running = false; });
+        pcntl_signal(SIGTERM, function () use (&$running) { $running = false; });
+    }
+
+    do {
+        if (function_exists('pcntl_signal_dispatch')) {
+            pcntl_signal_dispatch();
+        }
+
+        $jobRow = $dispatcher->claim($queue);
+
+        if ($jobRow === null) {
+            if ($once) {
+                break;
+            }
+            sleep($sleep);
+            continue;
+        }
+
+        $payload = json_decode((string) $jobRow['payload'], true);
+        $class   = $payload['class'] ?? '';
+        $data    = $payload['data']  ?? [];
+
+        if (!class_exists($class)) {
+            $dispatcher->fail($jobRow, new \RuntimeException("Job class [{$class}] not found."));
+            line("  <gray>failed</gray>  #{$jobRow['id']} class not found: {$class}");
+            if ($once) break;
+            continue;
+        }
+
+        $start = microtime(true);
+        line("  <yellow>running</yellow>  #{$jobRow['id']} {$class}");
+
+        try {
+            /** @var \App\Support\Job $job */
+            $job = $app->get($class);
+
+            foreach ($data as $prop => $value) {
+                $job->$prop = $value;
+            }
+
+            $job->handle($app);
+            $dispatcher->complete((int) $jobRow['id']);
+
+            $ms = round((microtime(true) - $start) * 1000);
+            line("  <green>done</green>     #{$jobRow['id']} {$class} [{$ms}ms]");
+        } catch (\Throwable $e) {
+            $dispatcher->fail($jobRow, $e);
+            $ms      = round((microtime(true) - $start) * 1000);
+            $attempt = (int) $jobRow['attempts'];
+            $max     = (int) $jobRow['max_attempts'];
+            line("  <gray>failed</gray>   #{$jobRow['id']} {$class} [{$ms}ms] attempt {$attempt}/{$max}: {$e->getMessage()}");
+        }
+
+    } while (!$once && $running);
+
+    echo PHP_EOL;
+    line('Worker stopped.');
+    echo PHP_EOL;
+}
+
+function queueFailed(): void
+{
+    $app        = buildApp();
+    $dispatcher = $app->get(\App\Support\JobDispatcher::class);
+    $jobs       = $dispatcher->failedJobs(50);
+
+    if (empty($jobs)) {
+        line('No failed jobs.');
+        echo PHP_EOL;
+        return;
+    }
+
+    echo PHP_EOL;
+    printf("  %-6s %-12s %-40s %-20s %s\n", 'ID', 'QUEUE', 'CLASS', 'FAILED AT', 'ATTEMPTS');
+    echo '  ' . str_repeat('─', 100) . PHP_EOL;
+
+    foreach ($jobs as $job) {
+        $payload = json_decode((string) $job['payload'], true);
+        $class   = class_basename($payload['class'] ?? '?');
+        printf(
+            "  \033[31m%-6s\033[0m %-12s \033[33m%-40s\033[0m %-20s %s\n",
+            $job['id'],
+            $job['queue'],
+            $class,
+            $job['failed_at'],
+            $job['attempts']
+        );
+    }
+
+    echo PHP_EOL;
+    line('Run <yellow>php modux queue:retry <id></yellow> to retry a job.');
+    echo PHP_EOL;
+}
+
+function queueRetry(?string $id): void
+{
+    if (!$id || !ctype_digit($id)) {
+        error('Usage: php modux queue:retry <job-id>');
+    }
+
+    $app        = buildApp();
+    $dispatcher = $app->get(\App\Support\JobDispatcher::class);
+    $success    = $dispatcher->retry((int) $id);
+
+    if ($success) {
+        line("<green>Job #{$id} queued for retry.</green>");
+    } else {
+        line("<gray>Job #{$id} not found or is not in failed status.</gray>");
+    }
+    echo PHP_EOL;
+}
+
+function queueFlush(): void
+{
+    $pdo = buildPdo();
+    $stmt = $pdo->prepare('DELETE FROM jobs WHERE status = "failed"');
+    $stmt->execute();
+    $count = $stmt->rowCount();
+    line("<green>Deleted {$count} failed job(s).</green>");
+    echo PHP_EOL;
+}
+
+// ── Entitlements ──────────────────────────────────────────────────────────────
+
+/**
+ * Red de seguridad: avanza los ciclos de quota vencidos (period_end < now) por
+ * su propia duración hasta cubrir el presente. En operación normal billing
+ * mantiene period_start/period_end vía webhooks; este comando es idempotente y
+ * cubre los huecos. Mover la ventana "resetea" la cuota sin borrar usage_events.
+ */
+function rollEntitlementPeriods(): void
+{
+    $pdo = buildPdo();
+    $now = time();
+
+    $rows = $pdo->query(
+        "SELECT id, period_start, period_end FROM tenant_entitlements
+         WHERE type = 'quota' AND period_start IS NOT NULL AND period_end IS NOT NULL
+           AND period_end < NOW()"
+    )->fetchAll(\PDO::FETCH_ASSOC);
+
+    $update = $pdo->prepare(
+        'UPDATE tenant_entitlements SET period_start = ?, period_end = ? WHERE id = ?'
+    );
+
+    $rolled = 0;
+    foreach ($rows as $row) {
+        $start = strtotime((string) $row['period_start']);
+        $end   = strtotime((string) $row['period_end']);
+        $span  = $end - $start;
+
+        if ($span <= 0) {
+            continue; // datos inconsistentes — no tocar
+        }
+
+        while ($end < $now) {
+            $start = $end;
+            $end  += $span;
+        }
+
+        $update->execute([
+            date('Y-m-d H:i:s', $start),
+            date('Y-m-d H:i:s', $end),
+            $row['id'],
+        ]);
+        $rolled++;
+    }
+
+    line("<green>Rolled {$rolled} entitlement period(s).</green>");
+    echo PHP_EOL;
+}
+
+function showRoutes(): void
+{
+    require_once BASE_PATH . '/vendor/autoload.php';
+
+    $dotenv = Dotenv\Dotenv::createImmutable(BASE_PATH);
+    $dotenv->safeLoad();
+
+    App\Support\Config::setPath(BASE_PATH . '/config');
+
+    $container = new App\Support\Container();
+    $router    = new App\Support\Router($container);
+    $container->instance(App\Support\Router::class, $router);
+
+    foreach (glob(BASE_PATH . '/app/Modules/*/routes.php') as $file) {
+        require $file;
+    }
+
+    $routes = $router->getRegisteredRoutes();
+
+    if (empty($routes)) {
+        line('No routes registered.');
+        return;
+    }
+
+    $mw = 18;
+    $uw = 38;
+    $hw = 40;
+
+    echo PHP_EOL;
+    printf("  %-{$mw}s %-{$uw}s %-{$hw}s %s\n", 'METHOD', 'URI', 'HANDLER', 'MIDDLEWARES');
+    echo '  ' . str_repeat('─', $mw + $uw + $hw + 30) . PHP_EOL;
+
+    foreach ($routes as $route) {
+        [$controller, $method] = $route['action'];
+        $handler     = class_basename($controller) . '@' . $method;
+        $middlewares = implode(', ', array_map('class_basename', $route['middlewares']));
+
+        printf(
+            "  \033[33m%-{$mw}s\033[0m %-{$uw}s \033[32m%-{$hw}s\033[0m %s\n",
+            $route['method'],
+            $route['uri'],
+            $handler,
+            $middlewares
+        );
+    }
+
+    echo PHP_EOL;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function buildApp(): \App\Support\Container
+{
+    return require BASE_PATH . '/bootstrap/app.php';
+}
+
+function flagValue(array $flags, string $flag, string $default): string
+{
+    foreach ($flags as $f) {
+        if (str_starts_with($f, $flag . '=')) {
+            return substr($f, strlen($flag) + 1);
+        }
+    }
+    return $default;
+}
+
+function buildPdo(): \PDO
+{
+    require_once BASE_PATH . '/vendor/autoload.php';
+
+    $dotenv = Dotenv\Dotenv::createImmutable(BASE_PATH);
+    $dotenv->safeLoad();
+    $dotenv->required(['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASS']);
+
+    return new \PDO(
+        sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            $_ENV['DB_HOST'], $_ENV['DB_PORT'] ?? 3306, $_ENV['DB_NAME']),
+        $_ENV['DB_USER'],
+        $_ENV['DB_PASS'],
+        [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]
+    );
+}
+
+function class_basename(string $class): string
+{
+    return basename(str_replace('\\', '/', $class));
+}
+
+function help(): void
+{
+    echo PHP_EOL;
+    echo '  Modux CLI' . PHP_EOL;
+    echo PHP_EOL;
+    echo '  Available commands:' . PHP_EOL;
+    echo '    make:module <Name> [--with-tenant]            Scaffold a complete module' . PHP_EOL;
+    echo '    make:migration <name>                         Create a new versioned migration file' . PHP_EOL;
+    echo '    make:test <Name>                              Generate a unit test stub' . PHP_EOL;
+    echo '    migrate                                       Run pending migrations' . PHP_EOL;
+    echo '    migrate:rollback                              Roll back the last migration batch' . PHP_EOL;
+    echo '    migrate:fresh                                 Roll back all and re-run' . PHP_EOL;
+    echo '    routes                                        List all registered routes' . PHP_EOL;
+    echo '    queue:work [--queue=default] [--sleep=3]      Process jobs from a queue' . PHP_EOL;
+    echo '               [--once] [--timeout=10]' . PHP_EOL;
+    echo '    queue:failed                                  List failed jobs' . PHP_EOL;
+    echo '    queue:retry <id>                              Retry a failed job' . PHP_EOL;
+    echo '    queue:flush                                   Delete all failed jobs' . PHP_EOL;
+    echo '    entitlements:roll-periods                     Advance expired quota cycles (safety net)' . PHP_EOL;
+    echo PHP_EOL;
+    echo '  Examples:' . PHP_EOL;
+    echo '    php modux make:module Cliente' . PHP_EOL;
+    echo '    php modux make:module Factura --with-tenant' . PHP_EOL;
+    echo '    php modux make:migration create_clientes_table' . PHP_EOL;
+    echo '    php modux migrate' . PHP_EOL;
+    echo '    php modux queue:work --queue=emails --sleep=5' . PHP_EOL;
+    echo '    php modux queue:work --once' . PHP_EOL;
+    echo '    php modux queue:failed' . PHP_EOL;
+    echo '    php modux queue:retry 42' . PHP_EOL;
+    echo PHP_EOL;
+}
+
+function error(string $msg): never
+{
+    echo "  ERROR: {$msg}" . PHP_EOL;
+    exit(1);
+}
+
+function line(string $msg): void
+{
+    $msg = preg_replace('/<green>(.*?)<\/green>/',  "\033[32m$1\033[0m", $msg);
+    $msg = preg_replace('/<yellow>(.*?)<\/yellow>/', "\033[33m$1\033[0m", $msg);
+    $msg = preg_replace('/<gray>(.*?)<\/gray>/',    "\033[90m$1\033[0m", $msg);
+    echo "  {$msg}" . PHP_EOL;
+}
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+
+function tpl_test(string $name): string
+{
+    return <<<PHP
+    <?php
+
+    namespace Tests\Unit\Modules\\{$name};
+
+    use App\Modules\\{$name}\Services\\{$name}Service;
+    use App\Modules\\{$name}\Repositories\\{$name}Repository;
+    use App\Exceptions\NotFoundException;
+    use Tests\Unit\UnitTestCase;
+
+    class {$name}ServiceTest extends UnitTestCase
+    {
+        private {$name}Service    \$service;
+        private {$name}Repository \$repository;
+
+        protected function setUp(): void
+        {
+            \$this->repository = \$this->createMock({$name}Repository::class);
+            \$this->service    = new {$name}Service(\$this->repository);
+        }
+
+        public function test_get_all_returns_list(): void
+        {
+            \$this->repository
+                ->method('findAll')
+                ->willReturn([['id' => 1], ['id' => 2]]);
+
+            \$result = \$this->service->getAll();
+
+            \$this->assertCount(2, \$result);
+        }
+
+        public function test_get_throws_not_found_for_missing_id(): void
+        {
+            \$this->repository
+                ->method('findById')
+                ->willThrowException(new NotFoundException('{$name}', 99));
+
+            \$this->expectException(NotFoundException::class);
+            \$this->service->get(99);
+        }
+
+        public function test_delete_returns_true_on_success(): void
+        {
+            \$this->repository
+                ->method('delete')
+                ->willReturn(true);
+
+            \$this->assertTrue(\$this->service->delete(1));
+        }
+    }
+    PHP;
+}
+
+function tpl_migration(string $slug): string
+{
+    $label = ucwords(str_replace('_', ' ', $slug));
+    return <<<PHP
+    <?php
+
+    // Migration: {$label}
+
+    return new class {
+        public function up(\PDO \$pdo): void
+        {
+            \$pdo->exec("
+                CREATE TABLE IF NOT EXISTS {$slug} (
+                    id         INT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        public function down(\PDO \$pdo): void
+        {
+            \$pdo->exec('DROP TABLE IF EXISTS {$slug}');
+        }
+    };
+    PHP;
+}
+
+function tpl_controller(string $name): string
+{
+    return <<<PHP
+    <?php
+
+    namespace App\Modules\\{$name}\Controllers;
+
+    use App\Support\Request;
+    use App\Support\Response;
+    use App\Modules\\{$name}\Services\\{$name}Service;
+    use App\Modules\\{$name}\Requests\Create{$name}Request;
+    use App\Modules\\{$name}\Requests\Update{$name}Request;
+
+    class {$name}Controller
+    {
+        public function __construct(private {$name}Service \$service)
+        {
+        }
+
+        public function index(Request \$request): Response
+        {
+            return Response::success(\$this->service->getAll());
+        }
+
+        public function show(Request \$request): Response
+        {
+            \$id = (int) \$request->route('id');
+            return Response::success(\$this->service->get(\$id));
+        }
+
+        public function create(Create{$name}Request \$request): Response
+        {
+            \$result = \$this->service->create(\$request->validated());
+            return Response::success(\$result, 201);
+        }
+
+        public function update(Update{$name}Request \$request): Response
+        {
+            // route params are merged into FormRequest data by the router
+            \$id     = (int) \$request->input('id');
+            \$result = \$this->service->update(\$id, \$request->validated());
+            return Response::success(['updated' => \$result]);
+        }
+
+        public function delete(Request \$request): Response
+        {
+            \$id = (int) \$request->route('id');
+            \$this->service->delete(\$id);
+            return Response::success(['message' => '{$name} deleted.']);
+        }
+    }
+    PHP;
+}
+
+function tpl_repository(string $name): string
+{
+    $table = strtolower($name) . 's';
+    return <<<PHP
+    <?php
+
+    namespace App\Modules\\{$name}\Repositories;
+
+    use PDO;
+    use App\Exceptions\NotFoundException;
+
+    class {$name}Repository
+    {
+        public function __construct(private PDO \$pdo)
+        {
+        }
+
+        /** @return list<array<string, mixed>> */
+        public function findAll(): array
+        {
+            \$stmt = \$this->pdo->query('SELECT * FROM {$table}');
+            return (array) \$stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        /** @return array<string, mixed> */
+        public function findById(int \$id): array
+        {
+            \$stmt = \$this->pdo->prepare('SELECT * FROM {$table} WHERE id = ?');
+            \$stmt->execute([\$id]);
+            \$row = \$stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!\$row) {
+                throw new NotFoundException('{$name}', \$id);
+            }
+
+            return \$row;
+        }
+
+        /**
+         * @param  array<string, mixed> \$data
+         * @return array<string, mixed>
+         *
+         * TODO: replace with your actual columns:
+         *   \$stmt = \$this->pdo->prepare('INSERT INTO {$table} (col1, col2) VALUES (?, ?)');
+         *   \$stmt->execute([\$data['col1'], \$data['col2']]);
+         *   return \$this->findById((int) \$this->pdo->lastInsertId());
+         */
+        public function create(array \$data): array
+        {
+            throw new \RuntimeException('create() not implemented yet.');
+        }
+
+        /**
+         * @param array<string, mixed> \$data
+         *
+         * TODO: replace with your actual columns:
+         *   \$stmt = \$this->pdo->prepare('UPDATE {$table} SET col1 = ? WHERE id = ?');
+         *   \$stmt->execute([\$data['col1'], \$id]);
+         *   return \$stmt->rowCount() > 0;
+         */
+        public function update(int \$id, array \$data): bool
+        {
+            throw new \RuntimeException('update() not implemented yet.');
+        }
+
+        public function delete(int \$id): bool
+        {
+            \$stmt = \$this->pdo->prepare('DELETE FROM {$table} WHERE id = ?');
+            \$stmt->execute([\$id]);
+            return \$stmt->rowCount() > 0;
+        }
+    }
+    PHP;
+}
+
+function tpl_repository_tenant(string $name): string
+{
+    $table = strtolower($name) . 's';
+    return <<<PHP
+    <?php
+
+    namespace App\Modules\\{$name}\Repositories;
+
+    use PDO;
+    use App\Exceptions\NotFoundException;
+
+    class {$name}Repository
+    {
+        public function __construct(private PDO \$pdo)
+        {
+        }
+
+        /** @return list<array<string, mixed>> */
+        public function findAll(string \$tenantId): array
+        {
+            \$stmt = \$this->pdo->prepare('SELECT * FROM {$table} WHERE tenant_id = ?');
+            \$stmt->execute([\$tenantId]);
+            return (array) \$stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+
+        /** @return array<string, mixed> */
+        public function findById(int \$id, string \$tenantId): array
+        {
+            \$stmt = \$this->pdo->prepare('SELECT * FROM {$table} WHERE id = ? AND tenant_id = ?');
+            \$stmt->execute([\$id, \$tenantId]);
+            \$row = \$stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!\$row) {
+                throw new NotFoundException('{$name}', \$id);
+            }
+
+            return \$row;
+        }
+
+        /**
+         * @param  array<string, mixed> \$data
+         * @return array<string, mixed>
+         *
+         * TODO: replace with your actual columns (include tenant_id):
+         *   \$stmt = \$this->pdo->prepare('INSERT INTO {$table} (col1, tenant_id) VALUES (?, ?)');
+         *   \$stmt->execute([\$data['col1'], \$data['tenant_id']]);
+         *   return \$this->findById((int) \$this->pdo->lastInsertId(), \$data['tenant_id']);
+         */
+        public function create(array \$data): array
+        {
+            throw new \RuntimeException('create() not implemented yet.');
+        }
+
+        /**
+         * @param array<string, mixed> \$data
+         *
+         * TODO: replace with your actual columns:
+         *   \$stmt = \$this->pdo->prepare('UPDATE {$table} SET col1 = ? WHERE id = ? AND tenant_id = ?');
+         *   \$stmt->execute([\$data['col1'], \$id, \$tenantId]);
+         *   return \$stmt->rowCount() > 0;
+         */
+        public function update(int \$id, string \$tenantId, array \$data): bool
+        {
+            throw new \RuntimeException('update() not implemented yet.');
+        }
+
+        public function delete(int \$id, string \$tenantId): bool
+        {
+            \$stmt = \$this->pdo->prepare('DELETE FROM {$table} WHERE id = ? AND tenant_id = ?');
+            \$stmt->execute([\$id, \$tenantId]);
+            return \$stmt->rowCount() > 0;
+        }
+    }
+    PHP;
+}
+
+function tpl_service(string $name): string
+{
+    return <<<PHP
+    <?php
+
+    namespace App\Modules\\{$name}\Services;
+
+    use App\Modules\\{$name}\Repositories\\{$name}Repository;
+
+    class {$name}Service
+    {
+        public function __construct(private {$name}Repository \$repository)
+        {
+        }
+
+        /** @return list<array<string, mixed>> */
+        public function getAll(): array
+        {
+            return \$this->repository->findAll();
+        }
+
+        /** @return array<string, mixed> */
+        public function get(int \$id): array
+        {
+            return \$this->repository->findById(\$id);
+        }
+
+        /**
+         * @param  array<string, mixed> \$data
+         * @return array<string, mixed>
+         */
+        public function create(array \$data): array
+        {
+            return \$this->repository->create(\$data);
+        }
+
+        /** @param array<string, mixed> \$data */
+        public function update(int \$id, array \$data): bool
+        {
+            return \$this->repository->update(\$id, \$data);
+        }
+
+        public function delete(int \$id): bool
+        {
+            return \$this->repository->delete(\$id);
+        }
+    }
+    PHP;
+}
+
+function tpl_request(string $name, string $prefix): string
+{
+    return <<<PHP
+    <?php
+
+    namespace App\Modules\\{$name}\Requests;
+
+    use App\Support\FormRequest;
+
+    class {$prefix}{$name}Request extends FormRequest
+    {
+        /** @return array<string, string> */
+        protected function rules(): array
+        {
+            return [
+                // 'campo' => 'required|min:2|max:255',
+            ];
+        }
+    }
+    PHP;
+}
+
+
+function tpl_routes(string $name): string
+{
+    $lower = strtolower($name) . 's';
+    return <<<PHP
+    <?php
+
+    use App\Modules\\{$name}\Controllers\\{$name}Controller;
+    use App\Http\Middleware\AuthMiddleware;
+
+    \$router->group([AuthMiddleware::class], function (\$router) {
+        \$router->get('/{$lower}',         [{$name}Controller::class, 'index']);
+        \$router->get('/{$lower}/{id}',    [{$name}Controller::class, 'show']);
+        \$router->post('/{$lower}',        [{$name}Controller::class, 'create']);
+        \$router->put('/{$lower}/{id}',    [{$name}Controller::class, 'update']);
+        \$router->delete('/{$lower}/{id}', [{$name}Controller::class, 'delete']);
+    });
+    PHP;
+}
+
+function tpl_routes_tenant(string $name): string
+{
+    $lower = strtolower($name) . 's';
+    return <<<PHP
+    <?php
+
+    use App\Modules\\{$name}\Controllers\\{$name}Controller;
+    use App\Http\Middleware\AuthMiddleware;
+    use App\Http\Middleware\TenantMiddleware;
+
+    \$router->group([AuthMiddleware::class, TenantMiddleware::class], function (\$router) {
+        \$router->get('/{$lower}',         [{$name}Controller::class, 'index']);
+        \$router->get('/{$lower}/{id}',    [{$name}Controller::class, 'show']);
+        \$router->post('/{$lower}',        [{$name}Controller::class, 'create']);
+        \$router->put('/{$lower}/{id}',    [{$name}Controller::class, 'update']);
+        \$router->delete('/{$lower}/{id}', [{$name}Controller::class, 'delete']);
+    });
+    PHP;
+}

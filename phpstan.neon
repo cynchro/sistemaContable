@@ -1,0 +1,18 @@
+parameters:
+    level: 6
+    paths:
+        - app/
+        - bootstrap/
+        - config/
+
+    excludePaths:
+        - app/Modules/*/Views/**
+
+    # Decisión deliberada (D21): no exigimos tipar el valor de los arrays
+    # (`array<string, mixed>` vs `array`). Las filas de DB son `mixed` por
+    # diseño (F2: PDO crudo, sin ORM), así que el generic no aporta seguridad
+    # real y sólo añade ruido. El resto del nivel 6 sigue activo, por lo que
+    # variables sin definir, comparaciones muertas o errores de tipo SÍ se
+    # detectan. Permite mantener el baseline vacío.
+    ignoreErrors:
+        - identifier: missingType.iterableValue

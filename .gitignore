@@ -1,0 +1,9 @@
+/vendor/
+/.env
+/storage/logs/*.log
+/.phpunit.result.cache
+/phpunit.xml.bak
+CLAUDE.md
+COMPONENTS.md
+/memory/
+/site/

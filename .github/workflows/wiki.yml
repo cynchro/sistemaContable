@@ -1,0 +1,33 @@
+name: Wiki
+
+# Publica la wiki de GitHub (espejo de README + docs/) cuando cambia la doc en main.
+# La wiki debe existir antes (crear su primera página por la UI una sola vez).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'scripts/build-wiki.sh'
+      - '.github/workflows/wiki.yml'
+
+# Necesario para que GITHUB_TOKEN pueda pushear a la wiki del repo.
+permissions:
+  contents: write
+
+# Evita corridas solapadas si llegan varios pushes seguidos.
+concurrency:
+  group: wiki-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publicar wiki
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Regenerar y publicar la wiki
+        env:
+          MODUX_WIKI_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
+        run: bash scripts/build-wiki.sh

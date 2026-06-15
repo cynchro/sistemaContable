@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Lint · Static analysis · Tests (unit + integration)
+    runs-on: ubuntu-latest
+
+    # MySQL real para los Feature/integration tests (tests/Feature/*). Debe
+    # coincidir con las env DB_* de phpunit.xml (monolito_test, root, sin clave).
+    # FeatureTestCase crea el esquema (drop-all + migraciones) en el primer test.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+          MYSQL_DATABASE: monolito_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, gd, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate composer.json
+        run: composer validate --no-check-publish --strict
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Security audit (dependencias)
+        run: composer audit
+
+      - name: PHPCS (lint)
+        run: composer lint
+
+      - name: PHPStan (static analysis)
+        run: composer analyse
+
+      - name: PHPUnit (tests)
+        run: composer test
+
+  docker-build:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Garantiza que el Dockerfile + composer install dentro del contenedor
+      # siguen funcionando (la base se distribuye y se levanta vía docker compose).
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t modux-backend:ci .

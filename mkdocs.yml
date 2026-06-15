@@ -1,0 +1,128 @@
+site_name: Modux
+site_description: A lightweight, dependency-injection-first PHP modular-monolith framework.
+site_url: https://cynchro.github.io/modux/
+repo_url: https://github.com/cynchro/modux
+repo_name: cynchro/modux
+edit_uri: edit/main/docs/
+copyright: >
+  Modux v2.1.0 · hecho por <a href="https://cynchrolabs.com.ar/" target="_blank" rel="noopener">CynchroLabs</a> · MIT
+
+docs_dir: docs
+
+# El sitio se arma solo desde la doc de usuario; lo interno queda fuera.
+exclude_docs: |
+  memory/
+  adr/
+
+# Sitio bilingüe (español por defecto, inglés alterno). Estructura por sufijo:
+#   page.md     → español (idioma por defecto)
+#   page.en.md  → inglés
+plugins:
+  - search:
+      lang: [es, en]
+  - i18n:
+      docs_structure: suffix
+      languages:
+        - locale: es
+          default: true
+          name: 🇪🇸 Español
+          build: true
+        - locale: en
+          name: 🇬🇧 English
+          build: true
+          site_description: A lightweight, dependency-injection-first PHP modular-monolith framework.
+          copyright: >
+            Modux v2.1.0 · made by <a href="https://cynchrolabs.com.ar/" target="_blank" rel="noopener">CynchroLabs</a> · MIT
+          theme:
+            palette:
+              - media: "(prefers-color-scheme: light)"
+                scheme: default
+                primary: custom
+                accent: custom
+                toggle:
+                  icon: material/weather-night
+                  name: Switch to dark mode
+              - media: "(prefers-color-scheme: dark)"
+                scheme: slate
+                primary: custom
+                accent: custom
+                toggle:
+                  icon: material/weather-sunny
+                  name: Switch to light mode
+          nav_translations:
+            Inicio: Home
+            Módulos y ruteo: Modules & Routing
+            Auth y multi-tenancy: Auth & Multi-tenancy
+            Infraestructura: Infrastructure
+            Plataforma: Platform
+            Módulos opcionales: Optional Modules
+
+theme:
+  name: material
+  custom_dir: overrides
+  language: es
+  logo: assets/logo.png
+  favicon: assets/isologo.png
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Modo oscuro
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Modo claro
+  features:
+    - navigation.tracking
+    - navigation.top
+    - navigation.sections
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.details
+
+extra_css:
+  - assets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/solid/globe
+      link: https://cynchrolabs.com.ar/
+      name: CynchroLabs
+    - icon: fontawesome/brands/github
+      link: https://github.com/cynchro/modux
+      name: Modux en GitHub
+
+nav:
+  - Inicio: index.md
+  - CLI: cli.md
+  - Módulos y ruteo: modules.md
+  - HTTP: http.md
+  - Auth y multi-tenancy: auth-and-tenancy.md
+  - Infraestructura: infrastructure.md
+  - Plataforma: platform.md
+  - Módulos opcionales: optional-modules.md

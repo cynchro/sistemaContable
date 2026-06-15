@@ -1,0 +1,108 @@
+/* ============================================================================
+   Modux · branding del sitio de documentación (marca azul-teal de CynchroLabs)
+   Para cambiar el color de marca, editá SOLO estas variables.
+   ============================================================================ */
+:root {
+  --brand:           #24486c; /* navy principal        */
+  --brand-teal:      #3f8f86; /* teal acento / hover   */
+  --brand-teal-soft: #6cc0b4; /* teal claro (dark mode)*/
+  --brand-dark:      #183c54; /* navy oscuro (header)  */
+}
+
+/* Aplica la marca al primary/accent de Material (palette: custom). */
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color:        var(--brand);
+  --md-primary-fg-color--light: var(--brand-teal);
+  --md-primary-fg-color--dark:  var(--brand-dark);
+}
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--brand-teal);
+}
+
+/* Header con degradé de marca (navy → teal). */
+.md-header,
+.md-tabs {
+  background: linear-gradient(95deg, var(--brand-dark) 0%, var(--brand) 55%, #2f7d80 115%);
+}
+
+/* El logo (wordmark oscuro) va en blanco para leer sobre el header de marca. */
+.md-header__button.md-logo img {
+  height: 1.8rem;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+/* El wordmark ya dice "MODUX FRAMEWORK" → ocultamos el site_name redundante. */
+.md-header__title {
+  display: none;
+}
+
+/* Links: navy legible en claro, teal claro en oscuro; hover teal. */
+.md-typeset a {
+  color: var(--brand);
+  text-decoration-color: color-mix(in srgb, var(--brand) 30%, transparent);
+}
+.md-typeset a:hover {
+  color: var(--brand-teal);
+  text-decoration-color: currentColor;
+}
+[data-md-color-scheme="slate"] .md-typeset a {
+  color: var(--brand-teal-soft);
+}
+
+/* Esquinas redondeadas y aire en código y admoniciones. */
+.md-typeset pre > code,
+.md-typeset .admonition,
+.md-typeset details { border-radius: 10px; }
+.md-typeset code { border-radius: 5px; }
+
+/* Títulos un poco más marcados. */
+.md-typeset h1,
+.md-typeset h2 { font-weight: 700; letter-spacing: -0.01em; }
+
+.md-nav__link--active { font-weight: 600; }
+
+/* ============================================================================
+   Toggle de idioma "ES | EN" (reemplaza el icono de traducción de Material).
+   Se ubica en el extremo derecho del header, con recuadro propio, para que se
+   distinga del logo, la búsqueda y el botón de GitHub y se entienda que sirve
+   para cambiar de idioma.
+   ============================================================================ */
+.md-header__option {        /* contenedor que envuelve el selector de idioma */
+  order: 100;               /* lo manda al final → extremo derecho del header */
+  margin-left: 0.5rem;
+}
+.md-lang-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  user-select: none;
+  /* Recuadro tipo "pill" para que se lea como un control, no como texto suelto. */
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+}
+.md-lang-toggle__item {
+  color: #fff;
+  opacity: 0.55;
+  text-decoration: none;
+  padding: 0.05rem 0.2rem;
+  border-radius: 4px;
+  transition: opacity 0.15s, background 0.15s;
+}
+.md-lang-toggle__item:hover {
+  opacity: 1;
+  color: #fff;
+}
+.md-lang-toggle__item--active {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: default;
+}
+.md-lang-toggle__sep {
+  color: #fff;
+  opacity: 0.4;
+}

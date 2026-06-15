@@ -1,0 +1,38 @@
+#!/bin/sh
+#
+# Pre-push guard para el framework Modux.
+# Bloquea el push si la base no pasa al 100%: deps, lint, análisis estático y tests.
+#
+# Activación (una sola vez por clon):
+#   git config core.hooksPath .githooks
+#
+# Saltar en una emergencia puntual:
+#   git push --no-verify
+
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "▶ pre-push: validando la base del framework antes de subir…"
+
+if [ ! -f vendor/autoload.php ]; then
+    echo "  · instalando dependencias (vendor ausente)…"
+    composer install --no-interaction --no-progress
+fi
+
+echo "▶ composer validate…"
+composer validate --no-check-publish --strict
+
+echo "▶ composer audit (vulnerabilidades en deps)…"
+composer audit
+
+echo "▶ PHPCS (lint)…"
+composer lint
+
+echo "▶ PHPStan (análisis estático)…"
+composer analyse
+
+echo "▶ PHPUnit (tests)…"
+composer test
+
+echo "✓ Todo OK — push permitido."

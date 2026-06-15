@@ -1,0 +1,46 @@
+# Ejecutar desde la raíz del proyecto: docker compose up --build
+#
+# Creá `.env` desde `.env.example` y usá DB_HOST=moduxdb para el servicio MySQL de abajo.
+
+services:
+  modux-backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: moduxbackend
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html
+    environment:
+      DB_HOST: moduxdb
+      DB_PORT: '3306'
+      DB_NAME: modux
+      DB_USER: modux
+      DB_PASS: modux
+    networks:
+      - app-network
+    depends_on:
+      - moduxdb
+
+  moduxdb:
+    image: mysql:8.0
+    container_name: moduxdb
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: modux
+      MYSQL_USER: modux
+      MYSQL_PASSWORD: modux
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:

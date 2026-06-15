@@ -1,0 +1,19 @@
+{#-
+  Toggle de idioma en texto plano: "ES | EN" en lugar del icono de traducción
+  de Material (que los usuarios no entendían). El idioma activo queda resaltado.
+  El plugin i18n llena config.extra.alternate con {name, link, lang} por idioma.
+-#}
+{% if config.extra.alternate %}
+  <nav class="md-lang-toggle" aria-label="Idioma / Language">
+    {%- for alt in config.extra.alternate -%}
+      {%- set current = (alt.lang == config.theme.language) -%}
+      <a
+        class="md-lang-toggle__item{% if current %} md-lang-toggle__item--active{% endif %}"
+        href="{{ alt.link | url }}"
+        hreflang="{{ alt.lang }}"
+        {% if current %}aria-current="page"{% endif %}
+      >{{ alt.lang | upper }}</a>
+      {%- if not loop.last %}<span class="md-lang-toggle__sep" aria-hidden="true">|</span>{%- endif -%}
+    {%- endfor -%}
+  </nav>
+{% endif %}
