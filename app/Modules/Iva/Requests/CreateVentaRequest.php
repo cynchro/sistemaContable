@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Modules\Iva\Requests;
+
+use App\Support\FormRequest;
+
+/**
+ * Valida la cabecera de la venta. Las líneas de discriminación (y sus retenciones)
+ * se validan en profundidad en VentaService (el Validator no hace reglas anidadas).
+ */
+class CreateVentaRequest extends FormRequest
+{
+    /** @return array<string, string> */
+    protected function rules(): array
+    {
+        return [
+            'fecha'                   => 'required|date:Y-m-d',
+            'tipo_comprobante_id'     => 'nullable|integer',
+            'tipo_documento_id'       => 'nullable|integer',
+            'condicion_iva_id'        => 'nullable|integer',
+            'provincia_id'            => 'nullable|integer',
+            'rubro_id'                => 'nullable|integer',
+            'tipo_operacion_venta_id' => 'nullable|integer',
+            'tipo_moneda_id'          => 'nullable|integer',
+            'cliente_id'              => 'nullable|integer',
+            'cliente_nombre'          => 'nullable|string|max:100',
+            'cuit'                    => 'nullable|string|max:13',
+            'letra'                   => 'nullable|string|max:1',
+            'punto_venta'             => 'nullable|string|max:5',
+            'numero'                  => 'nullable|string|max:8',
+            'numero_fin'              => 'nullable|string|max:8',
+            'neto_no_grav'            => 'nullable|numeric',
+            'exento'                  => 'nullable|numeric',
+            'imp_interno'             => 'nullable|numeric',
+            'tipo_cambio'             => 'nullable|numeric',
+            'concepto'                => 'nullable|integer',
+            'cai'                     => 'nullable|string|max:15',
+            'fecha_cai'               => 'nullable|date:Y-m-d',
+            'discriminaciones'        => 'nullable|array',
+        ];
+    }
+}
