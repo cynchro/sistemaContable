@@ -115,6 +115,56 @@ class LibroIvaRepository
         return $this->mapDetalle((array) $stmt->fetchAll(PDO::FETCH_ASSOC), true);
     }
 
+    /**
+     * Conceptos firmados de ventas del período (no gravado, exento, imp. interno, total).
+     *
+     * @return array{no_gravado: string, exento: string, imp_interno: string, total: string}
+     */
+    public function ventasConceptos(int $periodoId): array
+    {
+        return $this->conceptos('ventas', $periodoId);
+    }
+
+    /**
+     * Conceptos firmados de compras del período.
+     *
+     * @return array{no_gravado: string, exento: string, imp_interno: string, total: string}
+     */
+    public function comprasConceptos(int $periodoId): array
+    {
+        return $this->conceptos('compras', $periodoId);
+    }
+
+    /**
+     * Sumas firmadas de los conceptos de cabecera para una tabla de comprobantes.
+     *
+     * @param  'ventas'|'compras' $tabla
+     * @return array{no_gravado: string, exento: string, imp_interno: string, total: string}
+     */
+    private function conceptos(string $tabla, int $periodoId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT
+                COALESCE(SUM(t.neto_no_grav * COALESCE(tc.signo, 1)), 0) AS no_gravado,
+                COALESCE(SUM(t.exento      * COALESCE(tc.signo, 1)), 0) AS exento,
+                COALESCE(SUM(t.imp_interno * COALESCE(tc.signo, 1)), 0) AS imp_interno,
+                COALESCE(SUM(t.total       * COALESCE(tc.signo, 1)), 0) AS total
+               FROM {$tabla} t
+               LEFT JOIN tipos_comprobante tc ON t.tipo_comprobante_id = tc.id
+              WHERE t.periodo_id = ?"
+        );
+        $stmt->execute([$periodoId]);
+        /** @var array<string, mixed> $row */
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'no_gravado'  => (string) ($row['no_gravado'] ?? '0'),
+            'exento'      => (string) ($row['exento'] ?? '0'),
+            'imp_interno' => (string) ($row['imp_interno'] ?? '0'),
+            'total'       => (string) ($row['total'] ?? '0'),
+        ];
+    }
+
     /** @return list<array{signo: int, importe: string}> */
     private function run(string $sql, int $periodoId): array
     {

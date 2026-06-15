@@ -31,4 +31,14 @@ class LibroIvaController
             (string) $request->tenantId(),
         ));
     }
+
+    /** Declaración jurada de IVA del período (F2002): débito, crédito y saldo. */
+    public function ddjj(Request $request): Response
+    {
+        return Response::success($this->service->declaracion(
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (string) $request->tenantId(),
+        ));
+    }
 }

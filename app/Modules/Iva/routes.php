@@ -41,4 +41,5 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     // Libro IVA: totales del período (derivados) y detalle por alícuota/condición
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/totales', [LibroIvaController::class, 'totales']);
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/libro-iva', [LibroIvaController::class, 'detalle']);
+    $router->get('/empresas/{empresaId}/periodos/{periodoId}/ddjj', [LibroIvaController::class, 'ddjj']);
 });
