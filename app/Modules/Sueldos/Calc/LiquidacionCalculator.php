@@ -27,9 +27,9 @@ final class LiquidacionCalculator implements Calculator
     }
 
     /**
-     * @param  array{basico?: mixed, antiguedad?: mixed} $empleado
-     * @param  list<array{id:int,codigo:string,descripcion?:string,formula?:?string,tipo?:int}> $conceptos
-     * @param  array<int, array{cantidad?: mixed, importe?: mixed}> $novedades  concepto_id => novedad
+     * @param  array<string, mixed>       $empleado   con basico, antiguedad
+     * @param  list<array<string, mixed>> $conceptos  ordenados (id, codigo, formula, tipo, ...)
+     * @param  array<int, array<string, mixed>> $novedades  concepto_id => {cantidad, importe}
      * @return array{
      *   lineas: list<array<string, mixed>>,
      *   total_haberes: string, total_descuentos: string, neto: string
@@ -67,7 +67,7 @@ final class LiquidacionCalculator implements Calculator
                 ->evaluar((string) ($concepto['formula'] ?? ''), $variables, $resultados)
                 ->round(2);
 
-            $codigo = $concepto['codigo'];
+            $codigo = (string) $concepto['codigo'];
             $tipo   = (int) ($concepto['tipo'] ?? 1);
 
             $resultados[$codigo] = $importe->value(2);
