@@ -6,7 +6,7 @@ final class Response
 {
     private int $status  = 200;
     private array $headers = ['Content-Type' => 'application/json; charset=utf-8'];
-    private ?array $body    = null;
+    private array|string|null $body = null;
 
     public function withStatus(int $status): static
     {
@@ -46,6 +46,22 @@ final class Response
         ], $status);
     }
 
+    /**
+     * Respuesta de descarga de archivo (body crudo, no JSON). Útil para exports
+     * (CSV/TXT) y, a futuro, PDFs.
+     */
+    public static function download(
+        string $content,
+        string $filename,
+        string $contentType = 'text/csv; charset=utf-8',
+    ): static {
+        $clone                                = new static();
+        $clone->body                          = $content;
+        $clone->headers['Content-Type']       = $contentType;
+        $clone->headers['Content-Disposition'] = 'attachment; filename="' . $filename . '"';
+        return $clone;
+    }
+
     public static function redirect(string $url, int $status = 302): static
     {
         $clone                      = new static();
@@ -66,8 +82,8 @@ final class Response
         return $this->headers;
     }
 
-    /** @return array<string, mixed>|null */
-    public function getBody(): ?array
+    /** @return array<string, mixed>|string|null */
+    public function getBody(): array|string|null
     {
         return $this->body;
     }
@@ -80,11 +96,18 @@ final class Response
             header("{$name}: {$value}");
         }
 
-        if ($this->body !== null) {
-            $encoded = json_encode($this->body, JSON_UNESCAPED_UNICODE);
-            echo $encoded !== false
-                ? $encoded
-                : '{"success":false,"message":"Response encoding error."}';
+        if ($this->body === null) {
+            return;
         }
+
+        if (is_string($this->body)) {
+            echo $this->body;
+            return;
+        }
+
+        $encoded = json_encode($this->body, JSON_UNESCAPED_UNICODE);
+        echo $encoded !== false
+            ? $encoded
+            : '{"success":false,"message":"Response encoding error."}';
     }
 }

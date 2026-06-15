@@ -160,6 +160,14 @@ abstract class FeatureTestCase extends TestCase
         $_SERVER['REQUEST_URI']    = $uri;
         $_SERVER['CONTENT_TYPE']   = 'application/json';
 
+        // Parsear el query string de la URI a $_GET (como lo haría PHP en runtime).
+        $query = parse_url($uri, PHP_URL_QUERY);
+        $parsed = [];
+        if (is_string($query)) {
+            parse_str($query, $parsed);
+        }
+        $_GET = $parsed;
+
         foreach ($headers as $key => $value) {
             $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $key))] = $value;
         }
@@ -180,6 +188,7 @@ abstract class FeatureTestCase extends TestCase
             return [
                 'status'  => $response->getStatus(),
                 'json'    => json_decode($output, true) ?? [],
+                'raw'     => $output,
                 'headers' => $response->getHeaders(),
             ];
         } catch (AppException $e) {

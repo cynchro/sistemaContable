@@ -3,6 +3,7 @@
 namespace App\Modules\Iva\Services;
 
 use App\Support\Calc\Decimal;
+use App\Support\Csv\CsvWriter;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Repositories\ReporteIvaRepository;
@@ -25,6 +26,41 @@ class ReporteIvaService
     private const COLS_COMPRAS = [
         'neto_gravado', 'iva', 'iva_inc', 'cf_computable', 'retencion',
         'neto_no_grav', 'exento', 'imp_interno', 'total',
+    ];
+
+    /** @var array<string, string> Columnas (clave => encabezado) del export de ventas. */
+    private const EXPORT_VENTAS = [
+        'fecha'                  => 'Fecha',
+        'comprobante'            => 'Comprobante',
+        'tipo_comprobante_nombre' => 'Tipo',
+        'cliente_nombre'         => 'Cliente',
+        'cuit'                   => 'CUIT',
+        'condicion_nombre'       => 'Condicion IVA',
+        'neto_gravado'           => 'Neto Gravado',
+        'iva'                    => 'IVA',
+        'neto_no_grav'           => 'No Gravado',
+        'exento'                 => 'Exento',
+        'imp_interno'            => 'Imp. Interno',
+        'retencion'              => 'Retenciones',
+        'total'                  => 'Total',
+    ];
+
+    /** @var array<string, string> Columnas (clave => encabezado) del export de compras. */
+    private const EXPORT_COMPRAS = [
+        'fecha'                  => 'Fecha',
+        'comprobante'            => 'Comprobante',
+        'tipo_comprobante_nombre' => 'Tipo',
+        'proveedor_nombre'       => 'Proveedor',
+        'cuit'                   => 'CUIT',
+        'condicion_nombre'       => 'Condicion IVA',
+        'neto_gravado'           => 'Neto Gravado',
+        'iva'                    => 'IVA',
+        'cf_computable'          => 'Cred. Fiscal Comp.',
+        'neto_no_grav'           => 'No Gravado',
+        'exento'                 => 'Exento',
+        'imp_interno'            => 'Imp. Interno',
+        'retencion'              => 'Retenciones',
+        'total'                  => 'Total',
     ];
 
     public function __construct(
@@ -50,6 +86,22 @@ class ReporteIvaService
         $rows = $this->reportes->compras($periodoId);
 
         return ['comprobantes' => $rows, 'totales' => $this->totalizar($rows, self::COLS_COMPRAS)];
+    }
+
+    /** Exporta el subdiario de ventas a CSV/TXT delimitado. */
+    public function exportarVentas(int $empresaId, int $periodoId, string $tenantId, string $delimitador): string
+    {
+        $this->assertPeriodo($empresaId, $periodoId, $tenantId);
+
+        return CsvWriter::generar(self::EXPORT_VENTAS, $this->reportes->ventas($periodoId), $delimitador);
+    }
+
+    /** Exporta el subdiario de compras a CSV/TXT delimitado. */
+    public function exportarCompras(int $empresaId, int $periodoId, string $tenantId, string $delimitador): string
+    {
+        $this->assertPeriodo($empresaId, $periodoId, $tenantId);
+
+        return CsvWriter::generar(self::EXPORT_COMPRAS, $this->reportes->compras($periodoId), $delimitador);
     }
 
     private function assertPeriodo(int $empresaId, int $periodoId, string $tenantId): void

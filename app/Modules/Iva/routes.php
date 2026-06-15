@@ -53,4 +53,14 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
         '/empresas/{empresaId}/periodos/{periodoId}/reportes/compras',
         [ReporteIvaController::class, 'compras'],
     );
+
+    // Exportaciones: descarga del subdiario como CSV/TXT (?formato=csv|txt)
+    $router->get(
+        '/empresas/{empresaId}/periodos/{periodoId}/exportar/ventas',
+        [ReporteIvaController::class, 'exportarVentas'],
+    );
+    $router->get(
+        '/empresas/{empresaId}/periodos/{periodoId}/exportar/compras',
+        [ReporteIvaController::class, 'exportarCompras'],
+    );
 });
