@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Sueldos\Controllers\EmpleadoController;
+use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -12,4 +13,11 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'show']);
     $router->put('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'update']);
     $router->delete('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'delete']);
+
+    // Conceptos de liquidación (con fórmula, anidados bajo empresa)
+    $router->get('/empresas/{empresaId}/conceptos', [ConceptoController::class, 'index']);
+    $router->post('/empresas/{empresaId}/conceptos', [ConceptoController::class, 'create']);
+    $router->get('/empresas/{empresaId}/conceptos/{id}', [ConceptoController::class, 'show']);
+    $router->put('/empresas/{empresaId}/conceptos/{id}', [ConceptoController::class, 'update']);
+    $router->delete('/empresas/{empresaId}/conceptos/{id}', [ConceptoController::class, 'delete']);
 });
