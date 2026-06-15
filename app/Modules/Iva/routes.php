@@ -3,6 +3,7 @@
 use App\Modules\Iva\Controllers\IvaClienteController;
 use App\Modules\Iva\Controllers\IvaProveedorController;
 use App\Modules\Iva\Controllers\VentaController;
+use App\Modules\Iva\Controllers\CompraController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -28,4 +29,11 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}', [VentaController::class, 'show']);
     $router->put('/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}', [VentaController::class, 'update']);
     $router->delete('/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}', [VentaController::class, 'delete']);
+
+    // Compras (agregado bajo período: cabecera + discriminación + retenciones)
+    $router->get('/empresas/{empresaId}/periodos/{periodoId}/compras', [CompraController::class, 'index']);
+    $router->post('/empresas/{empresaId}/periodos/{periodoId}/compras', [CompraController::class, 'create']);
+    $router->get('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'show']);
+    $router->put('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'update']);
+    $router->delete('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'delete']);
 });

@@ -11,12 +11,15 @@ use App\Modules\Iva\Calc\IvaComprobanteCalculator;
 use App\Modules\Iva\Repositories\IvaClienteRepository;
 use App\Modules\Iva\Repositories\IvaProveedorRepository;
 use App\Modules\Iva\Repositories\VentaRepository;
+use App\Modules\Iva\Repositories\CompraRepository;
 use App\Modules\Iva\Services\IvaClienteService;
 use App\Modules\Iva\Services\IvaProveedorService;
 use App\Modules\Iva\Services\VentaService;
+use App\Modules\Iva\Services\CompraService;
 use App\Modules\Iva\Controllers\IvaClienteController;
 use App\Modules\Iva\Controllers\IvaProveedorController;
 use App\Modules\Iva\Controllers\VentaController;
+use App\Modules\Iva\Controllers\CompraController;
 
 /**
  * Wiring del módulo Iva. Reusa EmpresaRepository del módulo Compartido para
@@ -63,5 +66,16 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(DB::class),
         ));
         $c->singleton(VentaController::class, fn () => new VentaController($c->get(VentaService::class)));
+
+        // Comprobantes de compra (agregado transaccional; reusa la calculadora).
+        $c->singleton(CompraRepository::class, fn () => new CompraRepository($c->get(PDO::class)));
+        $c->singleton(CompraService::class, fn () => new CompraService(
+            $c->get(CompraRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+            $c->get(IvaComprobanteCalculator::class),
+            $c->get(DB::class),
+        ));
+        $c->singleton(CompraController::class, fn () => new CompraController($c->get(CompraService::class)));
     }
 }
