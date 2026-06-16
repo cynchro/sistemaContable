@@ -3,6 +3,7 @@
 use App\Modules\Sueldos\Controllers\EmpleadoController;
 use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Modules\Sueldos\Controllers\LiquidacionController;
+use App\Modules\Sueldos\Controllers\ContribucionController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -44,5 +45,22 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get(
         '/empresas/{empresaId}/liquidaciones/{id}/empleados/{empleadoId}/recibo',
         [LiquidacionController::class, 'recibo'],
+    );
+
+    // Contribuciones patronales: definiciones por empresa
+    $router->get('/empresas/{empresaId}/contribuciones', [ContribucionController::class, 'index']);
+    $router->post('/empresas/{empresaId}/contribuciones', [ContribucionController::class, 'create']);
+    $router->get('/empresas/{empresaId}/contribuciones/{id}', [ContribucionController::class, 'show']);
+    $router->put('/empresas/{empresaId}/contribuciones/{id}', [ContribucionController::class, 'update']);
+    $router->delete('/empresas/{empresaId}/contribuciones/{id}', [ContribucionController::class, 'delete']);
+
+    // Contribuciones liquidadas por empleado dentro de la liquidación
+    $router->post(
+        '/empresas/{empresaId}/liquidaciones/{id}/empleados/{empleadoId}/contribuciones',
+        [ContribucionController::class, 'calcular'],
+    );
+    $router->get(
+        '/empresas/{empresaId}/liquidaciones/{id}/empleados/{empleadoId}/contribuciones',
+        [ContribucionController::class, 'liquidadas'],
     );
 });
