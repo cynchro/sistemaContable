@@ -28,6 +28,12 @@ return [
         'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
     ],
 
+    // Endpoints WSFEv1 (factura electrónica) por ambiente.
+    'wsfe' => [
+        'homologacion' => 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL',
+        'produccion'   => 'https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL',
+    ],
+
     // Margen (segundos) antes de la expiración del TA para considerarlo vencido.
     'ta_margin' => (int) ($_ENV['AFIP_TA_MARGIN'] ?? 600),
 ];

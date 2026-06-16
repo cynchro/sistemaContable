@@ -3,8 +3,9 @@
 > Fuente: https://www.afip.gob.ar/ws/ (documentación SOAP de ARCA, ex AFIP).
 > Objetivo: medir la brecha entre nuestro módulo `Iva` actual y lo que exigen los
 > web services para **emitir factura electrónica** (CAE) y **consultar padrón**.
-> Estado: análisis + **escalones 1 (WSAA) y 2 (padrón) IMPLEMENTADOS** (ver §8). El resto
-> sigue siendo el plan para "AFIP / factura electrónica" diferido en `app/Modules/Iva/pendientes.md`.
+> Estado: análisis + **escalones 1 (WSAA), 2 (padrón) y 3 (WSFEv1: numeración + CAE)
+> IMPLEMENTADOS** (ver §8–§10). El SOAP está validado en vivo (FEDummy → OK contra
+> homologación). Resto del plan en `app/Modules/Iva/pendientes.md`.
 
 ## 1. Catálogo de web services relevantes
 
@@ -134,7 +135,32 @@ Pendiente (cuando se valide en vivo): **enganchar el autocompletar** en el alta 
 `iva_clientes`/`iva_proveedores` (hoy el endpoint devuelve los datos; falta el "usar estos
 datos" desde el form de alta).
 
-Siguiente escalón sugerido: **numeración por punto de venta + `FECAESolicitar`** (emisión de CAE).
+## 10. Estado de implementación — escalón 3: WSFEv1 numeración + CAE (HECHO)
+Emisión de factura electrónica, en `app/Modules/Iva/Afip/Wsfe/`:
+- **Resolvers puros** (tabla oficial AFIP, lanzan si no la conocen): `CbteTipoResolver`
+  (tipo legacy + letra → CbteTipo), `AlicuotaIvaResolver` (% → Id alícuota),
+  `CondicionReceptorResolver` (condición → CondicionIVAReceptorId, RG 5616).
+- **`WsfeComprobanteMapper`**: arma el `FeCAEReq` (FeCabReq + FeDetReq) desde el agregado
+  Venta (totales, array Iva, fechas de servicio para conceptos 2/3).
+- **`ComprobanteCae`**: parsea el resultado (A/R/P, CAE, vto, observaciones, errores).
+- **`WsfeClient`** (interfaz) + **`AfipWsfeClient`**: `FEDummy`, `FECompUltimoAutorizado`,
+  `FECAESolicitar`; inyecta Auth{Token,Sign,Cuit} con el TA del WSAA (servicio 'wsfe').
+- **`WsfeCatalogoRepository`**: resuelve los códigos AFIP de los FKs de la venta en una query.
+- **`Services/FacturaElectronicaService`**: valida empresa/período, chequea que no tenga CAE,
+  resuelve CbteTipo, pide `FECompUltimoAutorizado`+1 (numeración por punto de venta), arma y
+  manda `FECAESolicitar`, persiste CAE/vto/número/estado (o 409 con el detalle si AFIP rechaza).
+- **Migración 0029**: `puntos_venta` + columnas en `ventas` (cae, cae_vto, afip_resultado,
+  afip_obs, fch_serv_*). Endpoint **`POST /empresas/{id}/periodos/{pid}/ventas/{vid}/cae`**.
+- Config `afip.wsfe` (homo/prod). CLI: **`php modux afip:wsfe-dummy`** (healthcheck).
+- **Validado en vivo**: `afip:wsfe-dummy` → appserver/dbserver/authserver **OK** contra
+  homologación (la capa SOAP anda; falta solo el certificado para las llamadas con Auth).
+- Tests: 13 (resolvers, parseo CAE aprobado/rechazado, mapper FeCAEReq, y feature end-to-end
+  con WsfeClient sustituido: autoriza+persiste, no reautoriza si ya tiene CAE, rechazo→409).
+  444 verdes.
+
+Pendiente (documentado en `app/Modules/Iva/pendientes.md`): `CbtesAsoc` (NC/ND asociadas),
+array `Tributos` (percepciones), ABM de `puntos_venta`, enganchar autocompletar de padrón,
+y control de concurrencia en la numeración. Para emitir de verdad: certificado de homologación.
 
 ## Fuentes
 - Portal WS: https://www.afip.gob.ar/ws/

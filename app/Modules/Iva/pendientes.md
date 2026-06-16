@@ -55,10 +55,29 @@
 - [ ] `EXPORECE` (retenciones export).
 
 ## E) Facturación electrónica AFIP (Fase 4) — integración WS
-- [ ] **WSAA / WSFE**: emisión de comprobantes electrónicos. Tablas/campos del legacy
-      diferidos: `ventas_cache_ws`, y en `empresas` los `certificado`, `clave_privada`,
-      `token`/`sign` y vencimientos. Campos `ELECTRO_*` de `ventas` (tipo, estado,
-      fechas de otorgamiento/servicio).
+- [x] **WSAA** (autenticación con certificado): `app/Modules/Iva/Afip/Wsaa/*`, TA cacheado
+      en `afip_tickets`. CLI `php modux afip:wsaa <service>`.
+- [x] **Padrón** (ws_sr_padron_a5, autocompletar por CUIT): `app/Modules/Iva/Afip/Padron/*`,
+      `GET /padron/{cuit}`. CLI `php modux afip:padron <cuit>`.
+- [x] **WSFEv1 — numeración + CAE**: `app/Modules/Iva/Afip/Wsfe/*` + `FacturaElectronicaService`
+      + `POST /empresas/{id}/periodos/{pid}/ventas/{vid}/cae`. Migración 0029 (`puntos_venta`
+      + columnas cae/cae_vto/afip_resultado/afip_obs/fch_serv_* en `ventas`). SOAP validado
+      en vivo (FEDummy OK en homologación). CLI `php modux afip:wsfe-dummy`.
+- [ ] **Probar en vivo con certificado de homologación** (tramitar CSR + asociar a `wsfe` y
+      al padrón). Variables `.env`: `AFIP_CUIT`, `AFIP_CERT_PATH`, `AFIP_KEY_PATH`, `AFIP_ENV`.
+- [ ] **`CbtesAsoc`**: comprobantes asociados en NC/ND (obligatorio para notas). Hoy el mapper
+      contempla factura; agregar el array `CbtesAsoc` (Tipo/PtoVta/Nro) al `FeCAEReq`.
+- [ ] **Array `Tributos`** (percepciones IIBB/otros): hoy se mandan `ImpTrib`/`ImpTotal`;
+      falta el detalle `Tributos[]` (Id/Desc/BaseImp/Alic/Importe). Mapear desde retenciones.
+- [ ] **ABM de `puntos_venta`** (la tabla existe; falta CRUD y validar contra `FEParamGetPtosVenta`).
+- [ ] **Autocompletar con padrón** en el alta de `iva_clientes`/`iva_proveedores` (el endpoint
+      ya devuelve los datos; falta el "usar estos datos" desde el form).
+- [ ] **Concurrencia en la numeración**: `FECompUltimoAutorizado`+1 sin lock; suficiente para
+      un emisor secuencial, revisar si hay emisión concurrente.
+- [ ] **WSMTXCA** (factura con detalle de ítem) y **WSFEXv1** (exportación, comprobante E):
+      otros WS si el negocio los necesita.
+- [ ] Campos legacy aún no usados: en `empresas` guardar `certificado`/`clave_privada` por CUIT
+      (hoy el cert va por ruta en `.env`, un solo emisor); `ventas_cache_ws`.
 
 ## F) Campos del legacy podados (re-incorporar si el negocio los pide)
 - [ ] **Imputación contable** en comprobantes/discriminación: `*_CTA_*`

@@ -136,6 +136,27 @@ class VentaRepository
         return $this->findById($id, $periodoId);
     }
 
+    /**
+     * Persiste el resultado de la autorización electrónica (CAE) sobre la cabecera.
+     *
+     * @param array<string, mixed> $fields subconjunto de numero/cae/cae_vto/afip_resultado/afip_obs
+     */
+    public function updateCae(int $id, int $periodoId, array $fields): void
+    {
+        $fields = $this->filter($fields, ['numero', 'cae', 'cae_vto', 'afip_resultado', 'afip_obs']);
+
+        if ($fields === []) {
+            return;
+        }
+
+        $set = implode(', ', array_map(static fn (string $c) => "{$c} = :{$c}", array_keys($fields)));
+        $fields['id']         = $id;
+        $fields['periodo_id'] = $periodoId;
+
+        $stmt = $this->pdo->prepare("UPDATE ventas SET {$set} WHERE id = :id AND periodo_id = :periodo_id");
+        $stmt->execute($fields);
+    }
+
     public function delete(int $id, int $periodoId): bool
     {
         // venta_discriminaciones y venta_retenciones caen por FK ON DELETE CASCADE.

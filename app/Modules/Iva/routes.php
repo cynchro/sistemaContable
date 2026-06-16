@@ -7,6 +7,7 @@ use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Modules\Iva\Controllers\PadronController;
+use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -67,4 +68,10 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
 
     // Padrón AFIP: consulta de un contribuyente por CUIT (autocompletar cliente/proveedor)
     $router->get('/padron/{cuit}', [PadronController::class, 'show']);
+
+    // Factura electrónica: solicitar CAE para una venta (numeración por punto de venta + WSFEv1)
+    $router->post(
+        '/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}/cae',
+        [FacturaElectronicaController::class, 'autorizar'],
+    );
 });

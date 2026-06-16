@@ -37,6 +37,7 @@ match ($command) {
     'entitlements:roll-periods' => rollEntitlementPeriods(),
     'afip:wsaa'        => afipWsaa($arg),
     'afip:padron'      => afipPadron($arg),
+    'afip:wsfe-dummy'  => afipWsfeDummy(),
     default            => help(),
 };
 
@@ -544,6 +545,24 @@ function afipPadron(?string $cuit): void
     line('  domicilio   : ' . trim(
         ($dom['direccion'] ?? '') . ' · ' . ($dom['localidad'] ?? '') . ' · ' . ($dom['provincia'] ?? ''),
     ));
+    echo PHP_EOL;
+}
+
+function afipWsfeDummy(): void
+{
+    $app = buildApp();
+
+    try {
+        $status = $app->get(\App\Modules\Iva\Afip\Wsfe\WsfeClient::class)->dummy();
+    } catch (\Throwable $e) {
+        error('WSFE: ' . $e->getMessage());
+        return;
+    }
+
+    line('<green>WSFEv1 FEDummy</green> (ambiente: ' . \App\Support\Config::get('afip.env', 'homologacion') . ')');
+    line('  appserver : ' . ($status['appserver'] ?? '-'));
+    line('  dbserver  : ' . ($status['dbserver'] ?? '-'));
+    line('  authserver: ' . ($status['authserver'] ?? '-'));
     echo PHP_EOL;
 }
 

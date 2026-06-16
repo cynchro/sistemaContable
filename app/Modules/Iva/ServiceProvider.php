@@ -16,6 +16,12 @@ use App\Modules\Iva\Afip\Padron\PadronClient;
 use App\Modules\Iva\Afip\Padron\AfipPadronClient;
 use App\Modules\Iva\Services\PadronService;
 use App\Modules\Iva\Controllers\PadronController;
+use App\Modules\Iva\Afip\Wsfe\WsfeClient;
+use App\Modules\Iva\Afip\Wsfe\AfipWsfeClient;
+use App\Modules\Iva\Afip\Wsfe\WsfeComprobanteMapper;
+use App\Modules\Iva\Afip\Wsfe\WsfeCatalogoRepository;
+use App\Modules\Iva\Services\FacturaElectronicaService;
+use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
@@ -150,5 +156,28 @@ class ServiceProvider extends BaseServiceProvider
         ));
         $c->singleton(PadronService::class, fn () => new PadronService($c->get(PadronClient::class)));
         $c->singleton(PadronController::class, fn () => new PadronController($c->get(PadronService::class)));
+
+        // Factura electrónica (WSFEv1): numeración por punto de venta + solicitud de CAE.
+        $c->singleton(WsfeComprobanteMapper::class, fn () => new WsfeComprobanteMapper());
+        $c->singleton(WsfeCatalogoRepository::class, fn () => new WsfeCatalogoRepository($c->get(PDO::class)));
+        $c->singleton(WsfeClient::class, fn () => new AfipWsfeClient(
+            $c->get(WsaaClient::class),
+            $c->get(SoapTransport::class),
+            (string) Config::get('afip.wsfe.' . Config::get('afip.env', 'homologacion')),
+            (string) Config::get('afip.cuit', ''),
+        ));
+        $c->singleton(FacturaElectronicaService::class, fn () => new FacturaElectronicaService(
+            $c->get(VentaRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+            $c->get(WsfeCatalogoRepository::class),
+            $c->get(WsfeClient::class),
+            $c->get(WsfeComprobanteMapper::class),
+            $c->get(DB::class),
+        ));
+        $c->singleton(
+            FacturaElectronicaController::class,
+            fn () => new FacturaElectronicaController($c->get(FacturaElectronicaService::class)),
+        );
     }
 }
