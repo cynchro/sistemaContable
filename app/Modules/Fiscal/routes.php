@@ -2,6 +2,7 @@
 
 use App\Modules\Fiscal\Controllers\TributoController;
 use App\Modules\Fiscal\Controllers\VencimientoController;
+use App\Modules\Fiscal\Controllers\RequerimientoController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -24,4 +25,11 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
         '/empresas/{empresaId}/vencimientos/{id}/estado',
         [VencimientoController::class, 'cambiarEstado'],
     );
+
+    // Requerimientos (de organismos, por empresa = contribuyente)
+    $router->get('/empresas/{empresaId}/requerimientos', [RequerimientoController::class, 'index']);
+    $router->post('/empresas/{empresaId}/requerimientos', [RequerimientoController::class, 'create']);
+    $router->get('/empresas/{empresaId}/requerimientos/{id}', [RequerimientoController::class, 'show']);
+    $router->put('/empresas/{empresaId}/requerimientos/{id}', [RequerimientoController::class, 'update']);
+    $router->delete('/empresas/{empresaId}/requerimientos/{id}', [RequerimientoController::class, 'delete']);
 });
