@@ -50,15 +50,15 @@ reconstruyó desde el modelo + la semántica de fórmulas. Confirmar:
 - [ ] **Recibo de sueldo en PDF** (haberes/descuentos/neto + datos empleado/empresa).
 - [ ] **Libro de Sueldos** (Ley 20.744), listados, netos por período, orden de pago bancaria.
 
-## F) Funcionalidad de legajo/empresa diferida
-- [ ] **Snapshot** del legajo y conceptos al liquidar (`PERSONAL_LIQUIDACIONES` /
-      `CONCEPTOS_LIQUIDACION` del legacy) — hoy el recibo referencia empleado/concepto
-      vigentes. Necesario para que una liquidación vieja no cambie al editar el legajo.
-- [ ] `sueldos_empresa_config`: hoy sólo existe la tabla; falta su ABM/uso (jornada,
-      tipo de recibo, etc.).
+## F) Funcionalidad de legajo/empresa
+- [x] **Snapshot** del legajo al liquidar (`liquidacion_empleados`): congela
+      nombres/cuil/legajo/básico/antigüedad; el recibo histórico es reproducible aunque
+      se edite el legajo. (El recibo ya congelaba fórmula+importe por línea.)
+      Pendiente menor: snapshot de conceptos (`CONCEPTOS_LIQUIDACION`).
+- [x] `sueldos_empresa_config`: ABM (GET/PUT upsert 1:1) en `/empresas/{id}/sueldos/config`.
+- [x] **Familiares**: CRUD (`/empresas/{id}/empleados/{empId}/familiares`).
 - [ ] Catálogos sin ABM/seed (estados civiles, nacionalidades, obras sociales, etc.):
       sembrar valores AFIP estándar.
-- [ ] **Familiares**: CRUD (la tabla existe; falta el vertical).
 - [ ] **Convenios específicos** del legajo: UOCRA, FAECYS, COMERCIO, UOM, SPEP/SGO,
       seguros — muchos campos de `PERSONAL` diferidos.
 - [ ] Asistencia/horarios/fichadas, vacaciones, embargos, incapacidades.

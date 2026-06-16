@@ -135,19 +135,34 @@ class LiquidacionService
             $novedades,
         );
 
-        $this->db->withTransaction(
-            fn () => $this->liquidaciones->replaceRecibos($liqId, $empleadoId, $resultado['lineas'])
-        );
+        $snapshot = [
+            'legajo'           => $empleado['legajo'] ?? null,
+            'nombres'          => $empleado['nombres'] ?? null,
+            'primer_apellido'  => $empleado['primer_apellido'] ?? null,
+            'segundo_apellido' => $empleado['segundo_apellido'] ?? null,
+            'cuil'             => $empleado['cuil'] ?? null,
+            'fecha_ingreso'    => $empleado['fecha_ingreso'] ?? null,
+            'basico'           => $basico,
+            'antiguedad'       => $antig,
+        ];
+
+        $this->db->withTransaction(function () use ($liqId, $empleadoId, $resultado, $snapshot): void {
+            $this->liquidaciones->replaceRecibos($liqId, $empleadoId, $resultado['lineas']);
+            $this->liquidaciones->upsertSnapshot($liqId, $empleadoId, $snapshot);
+        });
 
         return $resultado;
     }
 
-    /** @return array<string, mixed> recibo (líneas + totales) */
+    /** @return array<string, mixed> recibo (snapshot del empleado + líneas) */
     public function recibo(int $liqId, int $empleadoId, int $empresaId, string $tenantId): array
     {
         $this->assertContexto($liqId, $empleadoId, $empresaId, $tenantId);
 
-        return ['lineas' => $this->liquidaciones->recibos($liqId, $empleadoId)];
+        return [
+            'empleado' => $this->liquidaciones->snapshot($liqId, $empleadoId),
+            'lineas'   => $this->liquidaciones->recibos($liqId, $empleadoId),
+        ];
     }
 
     /**

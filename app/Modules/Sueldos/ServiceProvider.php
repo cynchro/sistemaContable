@@ -11,14 +11,20 @@ use App\Modules\Sueldos\Calc\AntiguedadCalculator;
 use App\Modules\Sueldos\Calc\LiquidacionCalculator;
 use App\Modules\Sueldos\Calc\ContribucionCalculator;
 use App\Modules\Sueldos\Repositories\EmpleadoRepository;
+use App\Modules\Sueldos\Repositories\FamiliarRepository;
+use App\Modules\Sueldos\Repositories\EmpresaConfigRepository;
 use App\Modules\Sueldos\Repositories\ConceptoRepository;
 use App\Modules\Sueldos\Repositories\LiquidacionRepository;
 use App\Modules\Sueldos\Repositories\ContribucionRepository;
 use App\Modules\Sueldos\Services\EmpleadoService;
+use App\Modules\Sueldos\Services\FamiliarService;
+use App\Modules\Sueldos\Services\EmpresaConfigService;
 use App\Modules\Sueldos\Services\ConceptoService;
 use App\Modules\Sueldos\Services\LiquidacionService;
 use App\Modules\Sueldos\Services\ContribucionService;
 use App\Modules\Sueldos\Controllers\EmpleadoController;
+use App\Modules\Sueldos\Controllers\FamiliarController;
+use App\Modules\Sueldos\Controllers\EmpresaConfigController;
 use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Modules\Sueldos\Controllers\LiquidacionController;
 use App\Modules\Sueldos\Controllers\ContribucionController;
@@ -40,6 +46,26 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(EmpresaRepository::class),
         ));
         $c->singleton(EmpleadoController::class, fn () => new EmpleadoController($c->get(EmpleadoService::class)));
+
+        // Grupo familiar del empleado.
+        $c->singleton(FamiliarRepository::class, fn () => new FamiliarRepository($c->get(PDO::class)));
+        $c->singleton(FamiliarService::class, fn () => new FamiliarService(
+            $c->get(FamiliarRepository::class),
+            $c->get(EmpleadoRepository::class),
+            $c->get(EmpresaRepository::class),
+        ));
+        $c->singleton(FamiliarController::class, fn () => new FamiliarController($c->get(FamiliarService::class)));
+
+        // Configuración de sueldos por empresa (1:1).
+        $c->singleton(EmpresaConfigRepository::class, fn () => new EmpresaConfigRepository($c->get(PDO::class)));
+        $c->singleton(EmpresaConfigService::class, fn () => new EmpresaConfigService(
+            $c->get(EmpresaConfigRepository::class),
+            $c->get(EmpresaRepository::class),
+        ));
+        $c->singleton(
+            EmpresaConfigController::class,
+            fn () => new EmpresaConfigController($c->get(EmpresaConfigService::class)),
+        );
 
         // Motor de fórmulas y calculadoras (núcleo del cálculo de liquidación).
         $c->singleton(FormulaEvaluator::class, fn () => new FormulaEvaluator());

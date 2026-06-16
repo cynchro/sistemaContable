@@ -92,6 +92,30 @@ class LiquidacionTest extends FeatureTestCase
         $this->assertCount(1, $this->getJson("{$base}/recibo", $auth)['json']['data']['lineas']);
     }
 
+    public function test_recibo_congela_snapshot_del_empleado(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e] = $this->escenario();
+        $emp = $this->postJson("/empresas/{$e}/empleados", ['nombres' => 'Original', 'basico' => '500000'], $auth);
+        $empId = (int) $emp['json']['data']['id'];
+        $c1 = (int) $this->postJson("/empresas/{$e}/conceptos", [
+            'codigo' => '001', 'descripcion' => 'B', 'formula' => 'BASICO', 'tipo' => 1,
+        ], $auth)['json']['data']['id'];
+        $liqResp = $this->postJson("/empresas/{$e}/liquidaciones", ['periodo_liquidado' => '2026-03'], $auth);
+        $liqId = (int) $liqResp['json']['data']['id'];
+        $base = "/empresas/{$e}/liquidaciones/{$liqId}/empleados/{$empId}";
+
+        $this->putJson("{$base}/novedades", ['novedades' => [['concepto_id' => $c1, 'cantidad' => 1]]], $auth);
+        $this->postJson("{$base}/liquidar", [], $auth);
+
+        // Cambiar el nombre del empleado DESPUÉS de liquidar.
+        $this->putJson("/empresas/{$e}/empleados/{$empId}", ['nombres' => 'Cambiado'], $auth);
+
+        // El recibo conserva el snapshot (nombre al momento de liquidar).
+        $recibo = $this->getJson("{$base}/recibo", $auth);
+        $this->assertSame('Original', $recibo['json']['data']['empleado']['nombres']);
+        $this->assertSame('500000.00', $recibo['json']['data']['empleado']['basico']);
+    }
+
     public function test_aislamiento_por_tenant(): void
     {
         ['empresaId' => $e] = $this->escenario();

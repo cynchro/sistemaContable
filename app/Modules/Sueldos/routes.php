@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Sueldos\Controllers\EmpleadoController;
+use App\Modules\Sueldos\Controllers\FamiliarController;
+use App\Modules\Sueldos\Controllers\EmpresaConfigController;
 use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Modules\Sueldos\Controllers\LiquidacionController;
 use App\Modules\Sueldos\Controllers\ContribucionController;
@@ -15,6 +17,20 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'show']);
     $router->put('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'update']);
     $router->delete('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'delete']);
+
+    // Grupo familiar (anidado bajo empleado)
+    $router->get('/empresas/{empresaId}/empleados/{empleadoId}/familiares', [FamiliarController::class, 'index']);
+    $router->post('/empresas/{empresaId}/empleados/{empleadoId}/familiares', [FamiliarController::class, 'create']);
+    $router->get('/empresas/{empresaId}/empleados/{empleadoId}/familiares/{id}', [FamiliarController::class, 'show']);
+    $router->put('/empresas/{empresaId}/empleados/{empleadoId}/familiares/{id}', [FamiliarController::class, 'update']);
+    $router->delete(
+        '/empresas/{empresaId}/empleados/{empleadoId}/familiares/{id}',
+        [FamiliarController::class, 'delete'],
+    );
+
+    // Configuración de sueldos por empresa (1:1)
+    $router->get('/empresas/{empresaId}/sueldos/config', [EmpresaConfigController::class, 'show']);
+    $router->put('/empresas/{empresaId}/sueldos/config', [EmpresaConfigController::class, 'save']);
 
     // Conceptos de liquidación (con fórmula, anidados bajo empresa)
     $router->get('/empresas/{empresaId}/conceptos', [ConceptoController::class, 'index']);

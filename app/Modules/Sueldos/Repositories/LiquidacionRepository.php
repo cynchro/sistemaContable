@@ -137,6 +137,53 @@ class LiquidacionRepository
         }
     }
 
+    // ── Snapshot del legajo al liquidar ─────────────────────────────────────────
+
+    /** @return array<string, mixed>|null */
+    public function snapshot(int $liquidacionId, int $empleadoId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM liquidacion_empleados WHERE liquidacion_id = ? AND empleado_id = ?'
+        );
+        $stmt->execute([$liquidacionId, $empleadoId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row === false ? null : $row;
+    }
+
+    /**
+     * Congela los datos del empleado para la liquidación. Dentro de transacción.
+     *
+     * @param array<string, mixed> $datos
+     */
+    public function upsertSnapshot(int $liquidacionId, int $empleadoId, array $datos): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO liquidacion_empleados
+                (liquidacion_id, empleado_id, legajo, nombres, primer_apellido, segundo_apellido,
+                 cuil, fecha_ingreso, basico, antiguedad)
+             VALUES (:liquidacion_id, :empleado_id, :legajo, :nombres, :primer_apellido, :segundo_apellido,
+                 :cuil, :fecha_ingreso, :basico, :antiguedad)
+             ON DUPLICATE KEY UPDATE
+                legajo = VALUES(legajo), nombres = VALUES(nombres),
+                primer_apellido = VALUES(primer_apellido), segundo_apellido = VALUES(segundo_apellido),
+                cuil = VALUES(cuil), fecha_ingreso = VALUES(fecha_ingreso),
+                basico = VALUES(basico), antiguedad = VALUES(antiguedad)'
+        );
+        $stmt->execute([
+            'liquidacion_id'   => $liquidacionId,
+            'empleado_id'      => $empleadoId,
+            'legajo'           => $datos['legajo'] ?? null,
+            'nombres'          => $datos['nombres'] ?? null,
+            'primer_apellido'  => $datos['primer_apellido'] ?? null,
+            'segundo_apellido' => $datos['segundo_apellido'] ?? null,
+            'cuil'             => $datos['cuil'] ?? null,
+            'fecha_ingreso'    => $datos['fecha_ingreso'] ?? null,
+            'basico'           => $datos['basico'] ?? 0,
+            'antiguedad'       => $datos['antiguedad'] ?? 0,
+        ]);
+    }
+
     // ── Recibos ─────────────────────────────────────────────────────────────────
 
     /** @return list<array<string, mixed>> */
