@@ -25,6 +25,11 @@ class UpdateEmpresaRequest extends FormRequest
             'actividad2_id'            => 'nullable|integer',
             'exporta'                  => 'nullable|in:S,N',
             'inactiva'                 => 'nullable|in:S,N',
+            'email'                    => 'nullable|email|max:100',
+            'contacto'                 => 'nullable|string|max:150',
+            'tipo_persona'             => 'nullable|string|max:20',
+            'inscripcion'              => 'nullable|string|max:50',
+            'contabilidad'             => 'nullable|string|max:50',
         ];
     }
 }
