@@ -11,7 +11,11 @@ use App\Modules\Iva\Afip\Soap\ExtSoapTransport;
 use App\Modules\Iva\Afip\Wsaa\TicketStore;
 use App\Modules\Iva\Afip\Wsaa\DbTicketStore;
 use App\Modules\Iva\Afip\Wsaa\WsaaClient;
-use App\Modules\Iva\Afip\Wsaa\OpenSslCmsSigner;
+use App\Modules\Iva\Afip\Wsaa\FileCmsSigner;
+use App\Modules\Iva\Afip\Padron\PadronClient;
+use App\Modules\Iva\Afip\Padron\AfipPadronClient;
+use App\Modules\Iva\Services\PadronService;
+use App\Modules\Iva\Controllers\PadronController;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
@@ -125,38 +129,26 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(SoapTransport::class, fn () => new ExtSoapTransport());
         $c->singleton(TicketStore::class, fn () => new DbTicketStore($c->get(PDO::class)));
         $c->singleton(WsaaClient::class, fn () => new WsaaClient(
-            $this->makeCmsSigner(),
+            new FileCmsSigner(
+                Config::get('afip.cert_path'),
+                Config::get('afip.key_path'),
+                (string) Config::get('afip.key_passphrase', ''),
+            ),
             $c->get(SoapTransport::class),
             $c->get(TicketStore::class),
             (string) Config::get('afip.wsaa.' . Config::get('afip.env', 'homologacion')),
             (string) Config::get('afip.cuit', ''),
             (int) Config::get('afip.ta_margin', 600),
         ));
-    }
 
-    /**
-     * Construye el firmante CMS cargando el certificado y la clave desde las rutas
-     * configuradas. Falla con mensaje claro si no están configurados (solo al usarse,
-     * porque el binding es lazy).
-     */
-    private function makeCmsSigner(): OpenSslCmsSigner
-    {
-        $certPath = Config::get('afip.cert_path');
-        $keyPath  = Config::get('afip.key_path');
-
-        if (!$certPath || !$keyPath) {
-            throw new \RuntimeException(
-                'AFIP_CERT_PATH / AFIP_KEY_PATH no configurados en .env (certificado WSAA).'
-            );
-        }
-
-        $cert = @file_get_contents((string) $certPath);
-        $key  = @file_get_contents((string) $keyPath);
-
-        if ($cert === false || $key === false) {
-            throw new \RuntimeException('No se pudo leer el certificado o la clave de AFIP.');
-        }
-
-        return new OpenSslCmsSigner($cert, $key, (string) Config::get('afip.key_passphrase', ''));
+        // Padrón AFIP (consulta por CUIT). Reusa el WSAA para autenticarse.
+        $c->singleton(PadronClient::class, fn () => new AfipPadronClient(
+            $c->get(WsaaClient::class),
+            $c->get(SoapTransport::class),
+            (string) Config::get('afip.padron_a5.' . Config::get('afip.env', 'homologacion')),
+            (string) Config::get('afip.cuit', ''),
+        ));
+        $c->singleton(PadronService::class, fn () => new PadronService($c->get(PadronClient::class)));
+        $c->singleton(PadronController::class, fn () => new PadronController($c->get(PadronService::class)));
     }
 }

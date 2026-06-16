@@ -22,6 +22,12 @@ return [
         'produccion'   => 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl',
     ],
 
+    // Endpoints del padrón alcance 5 (consulta de contribuyentes por CUIT).
+    'padron_a5' => [
+        'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
+        'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
+    ],
+
     // Margen (segundos) antes de la expiración del TA para considerarlo vencido.
     'ta_margin' => (int) ($_ENV['AFIP_TA_MARGIN'] ?? 600),
 ];

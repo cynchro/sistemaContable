@@ -3,8 +3,8 @@
 > Fuente: https://www.afip.gob.ar/ws/ (documentación SOAP de ARCA, ex AFIP).
 > Objetivo: medir la brecha entre nuestro módulo `Iva` actual y lo que exigen los
 > web services para **emitir factura electrónica** (CAE) y **consultar padrón**.
-> Estado: análisis + **escalón 1 (WSAA) IMPLEMENTADO** (ver §8). El resto sigue siendo
-> el plan para el hito "AFIP / factura electrónica" diferido en `app/Modules/Iva/pendientes.md`.
+> Estado: análisis + **escalones 1 (WSAA) y 2 (padrón) IMPLEMENTADOS** (ver §8). El resto
+> sigue siendo el plan para "AFIP / factura electrónica" diferido en `app/Modules/Iva/pendientes.md`.
 
 ## 1. Catálogo de web services relevantes
 
@@ -115,8 +115,26 @@ Autenticación con certificado, en `app/Modules/Iva/Afip/`:
 (generar CSR, asociarlo al servicio `wsfe` en el ambiente de testing de ARCA), apuntar
 `AFIP_CERT_PATH`/`AFIP_KEY_PATH` a los PEM y correr `php modux afip:wsaa wsfe`.
 
-Siguiente escalón sugerido: **consulta de padrón** (autocompletar CUIT) reusando este WSAA,
-antes de la numeración + `FECAESolicitar`.
+## 9. Estado de implementación — escalón 2: padrón (HECHO)
+Consulta de contribuyentes por CUIT (ws_sr_padron_a5), en `app/Modules/Iva/Afip/Padron/`:
+- **`PersonaPadron`**: DTO normalizado (cuit, tipoPersona, estadoClave, denominación,
+  domicilio, impuestos) + `fromSoapResponse()` que mapea `personaReturn.datosGenerales`
+  (nombres de campo confirmados contra la respuesta real / pyafipws).
+- **`PadronClient`** (interfaz) + **`AfipPadronClient`**: autentica con el WSAA
+  (servicio `ws_sr_padron_a5`) y llama `getPersona(token, sign, cuitRepresentada, idPersona)`.
+- **`Services/PadronService`**: valida el formato del CUIT (11 dígitos) antes de pegarle a AFIP.
+- **`Controllers/PadronController`** + ruta **`GET /padron/{cuit}`** (Auth + Tenant).
+- Config: `afip.padron_a5.{homologacion,produccion}` en `config/afip.php`.
+- CLI: **`php modux afip:padron <cuit>`**.
+- Tests: 7 (normalizador física/jurídica/impuestos, cliente con WSAA+SOAP dobles, endpoint
+  HTTP con PadronClient sustituido, validación 422, requiere auth). 431 verdes.
+
+**Para probarlo en vivo**: mismo certificado de homologación que WSAA → `php modux afip:padron <cuit>`.
+Pendiente (cuando se valide en vivo): **enganchar el autocompletar** en el alta de
+`iva_clientes`/`iva_proveedores` (hoy el endpoint devuelve los datos; falta el "usar estos
+datos" desde el form de alta).
+
+Siguiente escalón sugerido: **numeración por punto de venta + `FECAESolicitar`** (emisión de CAE).
 
 ## Fuentes
 - Portal WS: https://www.afip.gob.ar/ws/

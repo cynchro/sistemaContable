@@ -6,6 +6,7 @@ use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
+use App\Modules\Iva\Controllers\PadronController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -63,4 +64,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
         '/empresas/{empresaId}/periodos/{periodoId}/exportar/compras',
         [ReporteIvaController::class, 'exportarCompras'],
     );
+
+    // Padrón AFIP: consulta de un contribuyente por CUIT (autocompletar cliente/proveedor)
+    $router->get('/padron/{cuit}', [PadronController::class, 'show']);
 });

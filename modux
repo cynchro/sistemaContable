@@ -36,6 +36,7 @@ match ($command) {
     'queue:flush'      => queueFlush(),
     'entitlements:roll-periods' => rollEntitlementPeriods(),
     'afip:wsaa'        => afipWsaa($arg),
+    'afip:padron'      => afipPadron($arg),
     default            => help(),
 };
 
@@ -513,6 +514,36 @@ function afipWsaa(?string $service): void
     line('  expira: ' . $ticket->expirationTime->format(DATE_ATOM));
     line('  token : ' . substr($ticket->token, 0, 48) . '…');
     line('  sign  : ' . substr($ticket->sign, 0, 48) . '…');
+    echo PHP_EOL;
+}
+
+function afipPadron(?string $cuit): void
+{
+    if (!$cuit) {
+        error('Usage: php modux afip:padron <cuit>');
+        return;
+    }
+
+    $app = buildApp();
+
+    try {
+        $persona = $app->get(\App\Modules\Iva\Services\PadronService::class)->consultar($cuit);
+    } catch (\App\Exceptions\ValidationException $e) {
+        $msgs = array_merge(...array_values($e->getErrors()));
+        error('Padrón: ' . implode(' ', $msgs));
+        return;
+    } catch (\Throwable $e) {
+        error('Padrón: ' . $e->getMessage());
+        return;
+    }
+
+    line("<green>Persona</green> CUIT <yellow>{$persona->cuit}</yellow> ({$persona->tipoPersona})");
+    line('  denominación: ' . $persona->denominacion);
+    line('  estado clave: ' . ($persona->estadoClave ?? '-'));
+    $dom = $persona->domicilio;
+    line('  domicilio   : ' . trim(
+        ($dom['direccion'] ?? '') . ' · ' . ($dom['localidad'] ?? '') . ' · ' . ($dom['provincia'] ?? ''),
+    ));
     echo PHP_EOL;
 }
 
