@@ -8,6 +8,9 @@ use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Contribuyentes\Repositories\SocioRepository;
 use App\Modules\Contribuyentes\Services\SocioService;
 use App\Modules\Contribuyentes\Controllers\SocioController;
+use App\Modules\Contribuyentes\Repositories\CredencialRepository;
+use App\Modules\Contribuyentes\Services\CredencialService;
+use App\Modules\Contribuyentes\Controllers\CredencialController;
 
 /**
  * Wiring del módulo Contribuyentes (CRM del contribuyente, de sistemaCuarto).
@@ -26,5 +29,15 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(EmpresaRepository::class),
         ));
         $c->singleton(SocioController::class, fn () => new SocioController($c->get(SocioService::class)));
+
+        $c->singleton(CredencialRepository::class, fn () => new CredencialRepository($c->get(PDO::class)));
+        $c->singleton(CredencialService::class, fn () => new CredencialService(
+            $c->get(CredencialRepository::class),
+            $c->get(EmpresaRepository::class),
+        ));
+        $c->singleton(
+            CredencialController::class,
+            fn () => new CredencialController($c->get(CredencialService::class)),
+        );
     }
 }
