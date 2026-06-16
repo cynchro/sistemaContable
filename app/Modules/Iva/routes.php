@@ -8,6 +8,7 @@ use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Modules\Iva\Controllers\PadronController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
+use App\Modules\Iva\Controllers\PuntoVentaController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -74,4 +75,11 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
         '/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}/cae',
         [FacturaElectronicaController::class, 'autorizar'],
     );
+
+    // Puntos de venta (por empresa) — registro para la numeración de factura electrónica
+    $router->get('/empresas/{empresaId}/puntos-venta', [PuntoVentaController::class, 'index']);
+    $router->post('/empresas/{empresaId}/puntos-venta', [PuntoVentaController::class, 'create']);
+    $router->get('/empresas/{empresaId}/puntos-venta/{id}', [PuntoVentaController::class, 'show']);
+    $router->put('/empresas/{empresaId}/puntos-venta/{id}', [PuntoVentaController::class, 'update']);
+    $router->delete('/empresas/{empresaId}/puntos-venta/{id}', [PuntoVentaController::class, 'delete']);
 });

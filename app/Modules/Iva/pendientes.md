@@ -69,7 +69,9 @@
       contempla factura; agregar el array `CbtesAsoc` (Tipo/PtoVta/Nro) al `FeCAEReq`.
 - [ ] **Array `Tributos`** (percepciones IIBB/otros): hoy se mandan `ImpTrib`/`ImpTotal`;
       falta el detalle `Tributos[]` (Id/Desc/BaseImp/Alic/Importe). Mapear desde retenciones.
-- [ ] **ABM de `puntos_venta`** (la tabla existe; falta CRUD y validar contra `FEParamGetPtosVenta`).
+- [x] **ABM de `puntos_venta`**: CRUD por empresa (`/empresas/{id}/puntos-venta`), único por
+      número. Pendiente menor: validar contra `FEParamGetPtosVenta` (sync desde AFIP) y, opcional,
+      exigir en la emisión que el punto de venta esté registrado y activo.
 - [ ] **Autocompletar con padrón** en el alta de `iva_clientes`/`iva_proveedores` (el endpoint
       ya devuelve los datos; falta el "usar estos datos" desde el form).
 - [ ] **Concurrencia en la numeración**: `FECompUltimoAutorizado`+1 sin lock; suficiente para

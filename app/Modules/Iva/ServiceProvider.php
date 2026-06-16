@@ -22,6 +22,9 @@ use App\Modules\Iva\Afip\Wsfe\WsfeComprobanteMapper;
 use App\Modules\Iva\Afip\Wsfe\WsfeCatalogoRepository;
 use App\Modules\Iva\Services\FacturaElectronicaService;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
+use App\Modules\Iva\Repositories\PuntoVentaRepository;
+use App\Modules\Iva\Services\PuntoVentaService;
+use App\Modules\Iva\Controllers\PuntoVentaController;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
@@ -178,6 +181,17 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             FacturaElectronicaController::class,
             fn () => new FacturaElectronicaController($c->get(FacturaElectronicaService::class)),
+        );
+
+        // ABM de puntos de venta (numeración de factura electrónica).
+        $c->singleton(PuntoVentaRepository::class, fn () => new PuntoVentaRepository($c->get(PDO::class)));
+        $c->singleton(PuntoVentaService::class, fn () => new PuntoVentaService(
+            $c->get(PuntoVentaRepository::class),
+            $c->get(EmpresaRepository::class),
+        ));
+        $c->singleton(
+            PuntoVentaController::class,
+            fn () => new PuntoVentaController($c->get(PuntoVentaService::class)),
         );
     }
 }
