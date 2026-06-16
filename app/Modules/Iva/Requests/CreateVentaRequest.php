@@ -37,6 +37,7 @@ class CreateVentaRequest extends FormRequest
             'cai'                     => 'nullable|string|max:15',
             'fecha_cai'               => 'nullable|date:Y-m-d',
             'discriminaciones'        => 'nullable|array',
+            'comprobantes_asociados'  => 'nullable|array',
         ];
     }
 }

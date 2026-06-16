@@ -55,10 +55,10 @@ class VentaService
         $periodo = $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
 
-        [$header, $lineas] = $this->preparar($data);
+        [$header, $lineas, $asociados] = $this->preparar($data);
 
         return $this->db->withTransaction(
-            fn () => $this->ventas->create($header, $lineas, $periodoId)
+            fn () => $this->ventas->create($header, $lineas, $asociados, $periodoId)
         );
     }
 
@@ -72,10 +72,10 @@ class VentaService
         $this->ventas->findById($id, $periodoId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
 
-        [$header, $lineas] = $this->preparar($data);
+        [$header, $lineas, $asociados] = $this->preparar($data);
 
         return $this->db->withTransaction(
-            fn () => $this->ventas->replace($id, $header, $lineas, $periodoId)
+            fn () => $this->ventas->replace($id, $header, $lineas, $asociados, $periodoId)
         );
     }
 
@@ -88,10 +88,10 @@ class VentaService
     }
 
     /**
-     * Corre la calculadora y arma [cabecera con total, líneas con importes].
+     * Corre la calculadora y arma [cabecera con total, líneas con importes, asociados].
      *
      * @param  array<string, mixed> $data
-     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>}
+     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>, 2: list<array<string, mixed>>}
      */
     private function preparar(array $data): array
     {
@@ -115,7 +115,40 @@ class VentaService
             ];
         }
 
-        return [$header, $lineas];
+        return [$header, $lineas, $this->normalizarAsociados($data['comprobantes_asociados'] ?? [])];
+    }
+
+    /**
+     * Normaliza los comprobantes asociados (CbtesAsoc para NC/ND).
+     *
+     * @param  mixed $asociados
+     * @return list<array<string, mixed>>
+     */
+    private function normalizarAsociados(mixed $asociados): array
+    {
+        if (!is_array($asociados)) {
+            throw new ValidationException(['comprobantes_asociados' => ['Debe ser una lista.']]);
+        }
+
+        $out = [];
+        foreach (array_values($asociados) as $i => $asoc) {
+            if (!is_array($asoc) || ($asoc['numero'] ?? '') === '' || ($asoc['punto_venta'] ?? '') === '') {
+                throw new ValidationException([
+                    'comprobantes_asociados' => ["El asociado {$i} requiere punto_venta y numero."],
+                ]);
+            }
+
+            $out[] = [
+                'tipo_comprobante_id' => $asoc['tipo_comprobante_id'] ?? null,
+                'letra'               => $asoc['letra'] ?? null,
+                'punto_venta'         => $asoc['punto_venta'],
+                'numero'              => $asoc['numero'],
+                'cuit'                => $asoc['cuit'] ?? null,
+                'fecha'               => $asoc['fecha'] ?? null,
+            ];
+        }
+
+        return $out;
     }
 
     /**

@@ -62,8 +62,13 @@ class WsfeComprobanteMapper
             'CondicionIVAReceptorId' => CondicionReceptorResolver::id($ctx->condicionCodigo),
         ];
 
+        // El WSDL espera <Iva><AlicIva>…</AlicIva></Iva> (ArrayOfAlicIva); ídem CbtesAsoc.
         if ($ivaArray !== []) {
-            $det['Iva'] = $ivaArray;
+            $det['Iva'] = ['AlicIva' => $ivaArray];
+        }
+
+        if ($ctx->cbtesAsoc !== []) {
+            $det['CbtesAsoc'] = ['CbteAsoc' => $ctx->cbtesAsoc];
         }
 
         // Conceptos 2 (servicios) y 3 (productos+servicios) requieren fechas de servicio.

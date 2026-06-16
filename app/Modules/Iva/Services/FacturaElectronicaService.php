@@ -69,6 +69,7 @@ class FacturaElectronicaService
             condicionCodigo: (string) ($codigos['condicion_codigo'] ?? ''),
             monId: ($codigos['moneda'] ?? '') !== '' ? (string) $codigos['moneda'] : 'PES',
             monCotiz: (float) ($venta['tipo_cambio'] ?? 0) ?: 1.0,
+            cbtesAsoc: $this->cbtesAsoc((array) ($venta['comprobantes_asociados'] ?? [])),
         );
 
         $cae = $this->wsfe->solicitarCae($this->mapper->build($venta, $ctx));
@@ -100,6 +101,37 @@ class FacturaElectronicaService
             'cae'     => $cae->cae,
             'cae_vto' => self::fechaIso((string) $cae->caeVto),
         ];
+    }
+
+    /**
+     * Resuelve los comprobantes asociados de la venta al formato CbteAsoc de AFIP
+     * (Tipo/PtoVta/Nro [+ Cuit/CbteFch]). El CbteTipo sale del resolver (tipo+letra).
+     *
+     * @param  list<array<string, mixed>> $asociados
+     * @return list<array<string, mixed>>
+     */
+    private function cbtesAsoc(array $asociados): array
+    {
+        $out = [];
+        foreach ($asociados as $a) {
+            $cbteAsoc = [
+                'Tipo'   => CbteTipoResolver::resolve((string) ($a['tipo_codigo'] ?? ''), (string) ($a['letra'] ?? '')),
+                'PtoVta' => (int) ($a['punto_venta'] ?? 0),
+                'Nro'    => (int) ($a['numero'] ?? 0),
+            ];
+
+            $cuit = preg_replace('/\D/', '', (string) ($a['cuit'] ?? '')) ?? '';
+            if ($cuit !== '') {
+                $cbteAsoc['Cuit'] = $cuit;
+            }
+            if (!empty($a['fecha']) && preg_match('/^\d{4}-\d{2}-\d{2}/', (string) $a['fecha'])) {
+                $cbteAsoc['CbteFch'] = str_replace('-', '', substr((string) $a['fecha'], 0, 10));
+            }
+
+            $out[] = $cbteAsoc;
+        }
+
+        return $out;
     }
 
     /**

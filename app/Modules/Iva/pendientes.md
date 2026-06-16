@@ -65,8 +65,11 @@
       en vivo (FEDummy OK en homologación). CLI `php modux afip:wsfe-dummy`.
 - [ ] **Probar en vivo con certificado de homologación** (tramitar CSR + asociar a `wsfe` y
       al padrón). Variables `.env`: `AFIP_CUIT`, `AFIP_CERT_PATH`, `AFIP_KEY_PATH`, `AFIP_ENV`.
-- [ ] **`CbtesAsoc`**: comprobantes asociados en NC/ND (obligatorio para notas). Hoy el mapper
-      contempla factura; agregar el array `CbtesAsoc` (Tipo/PtoVta/Nro) al `FeCAEReq`.
+- [x] **`CbtesAsoc`**: comprobantes asociados para NC/ND. Migración 0030
+      (`venta_comprobantes_asociados`, parte del agregado venta); el alta/edición de venta
+      acepta `comprobantes_asociados[]` (tipo_comprobante_id/letra/punto_venta/numero/cuit/fecha)
+      y el mapper los emite como `CbtesAsoc → CbteAsoc[]` (Tipo resuelto por tipo+letra).
+      También se corrigió el envoltorio del array `Iva` → `AlicIva` (ArrayOfAlicIva del WSDL).
 - [ ] **Array `Tributos`** (percepciones IIBB/otros): hoy se mandan `ImpTrib`/`ImpTotal`;
       falta el detalle `Tributos[]` (Id/Desc/BaseImp/Alic/Importe). Mapear desde retenciones.
 - [x] **ABM de `puntos_venta`**: CRUD por empresa (`/empresas/{id}/puntos-venta`), único por

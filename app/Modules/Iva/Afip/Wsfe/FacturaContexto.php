@@ -9,6 +9,7 @@ namespace App\Modules\Iva\Afip\Wsfe;
  */
 final class FacturaContexto
 {
+    /** @param list<array<string, mixed>> $cbtesAsoc comprobantes asociados ya resueltos (Tipo/PtoVta/Nro/...) */
     public function __construct(
         public readonly int $ptoVta,
         public readonly int $numero,
@@ -17,6 +18,7 @@ final class FacturaContexto
         public readonly string $condicionCodigo,
         public readonly string $monId = 'PES',
         public readonly float $monCotiz = 1.0,
+        public readonly array $cbtesAsoc = [],
     ) {
     }
 }

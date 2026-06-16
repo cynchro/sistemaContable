@@ -49,14 +49,35 @@ class WsfeComprobanteMapperTest extends UnitTestCase
         $this->assertSame('PES', $det['MonId']);
         $this->assertSame(1, $det['CondicionIVAReceptorId']);
 
-        // Iva[]: dos alícuotas mapeadas a sus Id AFIP (21%→5, 10.5%→4).
+        // Iva: envuelto en AlicIva (ArrayOfAlicIva del WSDL); 21%→5, 10.5%→4.
         $this->assertSame(
             [
-                ['Id' => 5, 'BaseImp' => 1000.0, 'Importe' => 210.0],
-                ['Id' => 4, 'BaseImp' => 500.0, 'Importe' => 52.5],
+                'AlicIva' => [
+                    ['Id' => 5, 'BaseImp' => 1000.0, 'Importe' => 210.0],
+                    ['Id' => 4, 'BaseImp' => 500.0, 'Importe' => 52.5],
+                ],
             ],
             $det['Iva'],
         );
+        $this->assertArrayNotHasKey('CbtesAsoc', $det);
+    }
+
+    public function test_incluye_comprobantes_asociados(): void
+    {
+        $venta = ['fecha' => '2026-02-10', 'cuit' => '30711111118', 'concepto' => 1,
+                  'total' => '0.00', 'discriminaciones' => []];
+        $ctx = new FacturaContexto(
+            ptoVta: 1,
+            numero: 3,
+            cbteTipo: 3,   // NC A
+            docTipo: 80,
+            condicionCodigo: 'RI',
+            cbtesAsoc: [['Tipo' => 1, 'PtoVta' => 1, 'Nro' => 11]],
+        );
+
+        $det = (new WsfeComprobanteMapper())->build($venta, $ctx)['FeDetReq']['FECAEDetRequest'][0];
+
+        $this->assertSame(['CbteAsoc' => [['Tipo' => 1, 'PtoVta' => 1, 'Nro' => 11]]], $det['CbtesAsoc']);
     }
 
     public function test_concepto_servicios_agrega_fechas(): void

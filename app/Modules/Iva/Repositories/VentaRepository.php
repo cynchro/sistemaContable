@@ -28,6 +28,8 @@ class VentaRepository
 
     private const RETENCION_WRITABLE = ['tipo_retencion_id', 'porcentaje', 'importe'];
 
+    private const ASOCIADO_WRITABLE = ['tipo_comprobante_id', 'letra', 'punto_venta', 'numero', 'cuit', 'fecha'];
+
     public function __construct(private PDO $pdo)
     {
     }
@@ -68,6 +70,16 @@ class VentaRepository
 
         $venta['discriminaciones'] = $discriminaciones;
 
+        // Comprobantes asociados (con el codigo de tipo, para resolver el CbteTipo AFIP).
+        $asocStmt = $this->pdo->prepare(
+            'SELECT a.*, tc.codigo AS tipo_codigo
+             FROM venta_comprobantes_asociados a
+             LEFT JOIN tipos_comprobante tc ON tc.id = a.tipo_comprobante_id
+             WHERE a.venta_id = ? ORDER BY a.id'
+        );
+        $asocStmt->execute([$id]);
+        $venta['comprobantes_asociados'] = (array) $asocStmt->fetchAll(PDO::FETCH_ASSOC);
+
         return $venta;
     }
 
@@ -76,9 +88,10 @@ class VentaRepository
      *
      * @param  array<string, mixed>                                 $header
      * @param  list<array<string, mixed>>                           $discriminaciones cada una con 'retenciones'
+     * @param  list<array<string, mixed>>                           $asociados        comprobantes asociados (NC/ND)
      * @return array<string, mixed>
      */
-    public function create(array $header, array $discriminaciones, int $periodoId): array
+    public function create(array $header, array $discriminaciones, array $asociados, int $periodoId): array
     {
         $headerFields = $this->filter($header, self::HEADER_WRITABLE) + ['periodo_id' => $periodoId];
         $ventaId = $this->insert('ventas', $headerFields);
@@ -95,6 +108,8 @@ class VentaRepository
             }
         }
 
+        $this->insertAsociados($ventaId, $asociados);
+
         return $this->findById($ventaId, $periodoId);
     }
 
@@ -103,9 +118,10 @@ class VentaRepository
      *
      * @param  array<string, mixed>       $header
      * @param  list<array<string, mixed>> $discriminaciones
+     * @param  list<array<string, mixed>> $asociados
      * @return array<string, mixed>
      */
-    public function replace(int $id, array $header, array $discriminaciones, int $periodoId): array
+    public function replace(int $id, array $header, array $discriminaciones, array $asociados, int $periodoId): array
     {
         $fields = $this->filter($header, self::HEADER_WRITABLE);
 
@@ -133,7 +149,20 @@ class VentaRepository
             }
         }
 
+        $this->pdo->prepare('DELETE FROM venta_comprobantes_asociados WHERE venta_id = ?')->execute([$id]);
+        $this->insertAsociados($id, $asociados);
+
         return $this->findById($id, $periodoId);
+    }
+
+    /** @param list<array<string, mixed>> $asociados */
+    private function insertAsociados(int $ventaId, array $asociados): void
+    {
+        foreach ($asociados as $asoc) {
+            $fields = $this->filter($asoc, self::ASOCIADO_WRITABLE);
+            $fields['venta_id'] = $ventaId;
+            $this->insert('venta_comprobantes_asociados', $fields);
+        }
     }
 
     /**

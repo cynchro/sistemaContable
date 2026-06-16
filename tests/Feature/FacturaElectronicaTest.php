@@ -15,7 +15,7 @@ class FacturaElectronicaTest extends FeatureTestCase
     {
         $this->pdo->exec(
             "INSERT INTO tipos_comprobante (id, codigo, nombre, cod_citi, acredita, signo)
-             VALUES (1, 'FA', 'Factura', '01', 'N', 1)"
+             VALUES (1, 'FA', 'Factura', '01', 'N', 1), (3, 'NC', 'Nota de Crédito', '03', 'S', -1)"
         );
         $this->pdo->exec("INSERT INTO tipos_documento (id, nombre, cod_afip) VALUES (1, 'CUIT', 80)");
         $this->pdo->exec(
@@ -102,6 +102,62 @@ class FacturaElectronicaTest extends FeatureTestCase
 
         $this->assertSame(200, $this->postJson($url, [], $ctx['auth'])['status']);
         $this->assertSame(409, $this->postJson($url, [], $ctx['auth'])['status']);
+    }
+
+    public function test_emite_nota_credito_con_comprobantes_asociados(): void
+    {
+        $this->seedCatalogos();
+        $auth = $this->bearer($this->actingAsUser()['token']);
+        $e = (int) $this->postJson('/empresas', ['nombre' => 'NC SA'], $auth)['json']['data']['id'];
+        $p = (int) $this->postJson("/empresas/{$e}/periodos", [
+            'nombre' => '2026-02', 'fecha_ini' => '2026-02-01', 'fecha_fin' => '2026-02-28',
+        ], $auth)['json']['data']['id'];
+
+        // Nota de crédito (tipo 3) que asocia la Factura A (tipo 1) 0001-00000011.
+        $v = (int) $this->postJson("/empresas/{$e}/periodos/{$p}/ventas", [
+            'fecha'                  => '2026-02-10',
+            'tipo_comprobante_id'    => 3,
+            'tipo_documento_id'      => 1,
+            'condicion_iva_id'       => 1,
+            'tipo_moneda_id'         => 1,
+            'letra'                  => 'A',
+            'punto_venta'            => '1',
+            'cuit'                   => '30711111118',
+            'discriminaciones'       => [['neto_gravado' => '100.00', 'iva_alicuota' => '21.000']],
+            'comprobantes_asociados' => [
+                ['tipo_comprobante_id' => 1, 'letra' => 'A', 'punto_venta' => '1', 'numero' => '11'],
+            ],
+        ], $auth)['json']['data']['id'];
+
+        // El asociado se persiste en el agregado.
+        $venta = $this->getJson("/empresas/{$e}/periodos/{$p}/ventas/{$v}", $auth)['json']['data'];
+        $this->assertCount(1, $venta['comprobantes_asociados']);
+
+        // Fake que captura el FeCAEReq enviado a AFIP.
+        $captor = new class implements WsfeClient {
+            /** @var array<string, mixed> */
+            public array $req = [];
+            public function dummy(): array
+            {
+                return [];
+            }
+            public function ultimoAutorizado(int $ptoVta, int $cbteTipo): int
+            {
+                return 0;
+            }
+            public function solicitarCae(array $feCaeReq): ComprobanteCae
+            {
+                $this->req = $feCaeReq;
+                return new ComprobanteCae('A', '74000000000099', '20260228');
+            }
+        };
+        $this->app->instance(WsfeClient::class, $captor);
+
+        $resp = $this->postJson("/empresas/{$e}/periodos/{$p}/ventas/{$v}/cae", [], $auth);
+        $this->assertSame(200, $resp['status']);
+
+        $det = $captor->req['FeDetReq']['FECAEDetRequest'][0];
+        $this->assertSame(['CbteAsoc' => [['Tipo' => 1, 'PtoVta' => 1, 'Nro' => 11]]], $det['CbtesAsoc']);
     }
 
     public function test_rechazo_de_afip_devuelve_409_y_persiste_resultado(): void
