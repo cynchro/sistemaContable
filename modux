@@ -35,6 +35,7 @@ match ($command) {
     'queue:retry'      => queueRetry($arg),
     'queue:flush'      => queueFlush(),
     'entitlements:roll-periods' => rollEntitlementPeriods(),
+    'afip:wsaa'        => afipWsaa($arg),
     default            => help(),
 };
 
@@ -490,6 +491,28 @@ function showRoutes(): void
         );
     }
 
+    echo PHP_EOL;
+}
+
+function afipWsaa(?string $service): void
+{
+    $service = $service ?: 'wsfe';
+
+    $app = buildApp();
+
+    try {
+        $wsaa   = $app->get(\App\Modules\Iva\Afip\Wsaa\WsaaClient::class);
+        $ticket = $wsaa->authorize($service);
+    } catch (\Throwable $e) {
+        error('WSAA: ' . $e->getMessage());
+        return;
+    }
+
+    $env = \App\Support\Config::get('afip.env', 'homologacion');
+    line("<green>TA obtenido</green> para servicio <yellow>[{$service}]</yellow> (ambiente: {$env})");
+    line('  expira: ' . $ticket->expirationTime->format(DATE_ATOM));
+    line('  token : ' . substr($ticket->token, 0, 48) . '…');
+    line('  sign  : ' . substr($ticket->sign, 0, 48) . '…');
     echo PHP_EOL;
 }
 

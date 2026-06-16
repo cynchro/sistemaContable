@@ -3,8 +3,8 @@
 > Fuente: https://www.afip.gob.ar/ws/ (documentación SOAP de ARCA, ex AFIP).
 > Objetivo: medir la brecha entre nuestro módulo `Iva` actual y lo que exigen los
 > web services para **emitir factura electrónica** (CAE) y **consultar padrón**.
-> Estado: análisis. NADA de esto está implementado todavía; es el plan para el hito
-> "AFIP / factura electrónica" diferido en `app/Modules/Iva/pendientes.md`.
+> Estado: análisis + **escalón 1 (WSAA) IMPLEMENTADO** (ver §8). El resto sigue siendo
+> el plan para el hito "AFIP / factura electrónica" diferido en `app/Modules/Iva/pendientes.md`.
 
 ## 1. Catálogo de web services relevantes
 
@@ -93,6 +93,30 @@ integración SOAP antes de meterse con la emisión de CAE.
 - **Orden sugerido:** (1) WSAA + un `FEParamGet*` de prueba en homologación → (2) consulta
   de padrón (autocompletar CUIT) → (3) numeración + FECAESolicitar de comprobantes simples
   (Factura C/B sin asociados) → (4) NC/ND con `CbtesAsoc` y servicios → (5) producción.
+
+## 8. Estado de implementación — escalón 1: WSAA (HECHO)
+Autenticación con certificado, en `app/Modules/Iva/Afip/`:
+- **`Wsaa/LoginTicketRequest`**: arma el TRA (XML con uniqueId + ventana de validez).
+- **`Wsaa/CmsSigner`** (interfaz) + **`OpenSslCmsSigner`**: firma el TRA en CMS/PKCS#7
+  (openssl) y devuelve base64.
+- **`Soap/SoapTransport`** (interfaz) + **`ExtSoapTransport`**: capa SOAP aislada
+  (ext-soap, agregada al Dockerfile) → mockeable, los tests no dependen de la extensión.
+- **`Wsaa/AccessTicket`**: value object del TA (token/sign/expiración) + `fromXml()` + `isExpired()`.
+- **`Wsaa/TicketStore`** (interfaz) + **`DbTicketStore`**: cache del TA en `afip_tickets`
+  (migración 0028), por (cuit, service), con upsert. Persiste entre requests (~12h).
+- **`Wsaa/WsaaClient`**: orquesta cache→TRA→firma→loginCms→parse→cache.
+- Config `config/afip.php` (`AFIP_ENV`, `AFIP_CUIT`, `AFIP_CERT_PATH`, `AFIP_KEY_PATH`,
+  `AFIP_KEY_PASSPHRASE`); endpoints homologación/producción.
+- CLI de prueba real: **`php modux afip:wsaa wsfe`** (requiere certificado de homologación).
+- Tests: 9 (TRA, TA parse/expiración, firma CMS con cert autofirmado, WsaaClient con dobles
+  —cache hit/miss/renovación—, y persistencia del TA en DB). 424 verdes.
+
+**Para probar contra AFIP de verdad** falta: tramitar un certificado de **homologación**
+(generar CSR, asociarlo al servicio `wsfe` en el ambiente de testing de ARCA), apuntar
+`AFIP_CERT_PATH`/`AFIP_KEY_PATH` a los PEM y correr `php modux afip:wsaa wsfe`.
+
+Siguiente escalón sugerido: **consulta de padrón** (autocompletar CUIT) reusando este WSAA,
+antes de la numeración + `FECAESolicitar`.
 
 ## Fuentes
 - Portal WS: https://www.afip.gob.ar/ws/

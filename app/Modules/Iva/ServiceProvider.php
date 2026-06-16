@@ -4,7 +4,14 @@ namespace App\Modules\Iva;
 
 use PDO;
 use App\Support\DB;
+use App\Support\Config;
 use App\Support\ServiceProvider as BaseServiceProvider;
+use App\Modules\Iva\Afip\Soap\SoapTransport;
+use App\Modules\Iva\Afip\Soap\ExtSoapTransport;
+use App\Modules\Iva\Afip\Wsaa\TicketStore;
+use App\Modules\Iva\Afip\Wsaa\DbTicketStore;
+use App\Modules\Iva\Afip\Wsaa\WsaaClient;
+use App\Modules\Iva\Afip\Wsaa\OpenSslCmsSigner;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
@@ -113,5 +120,43 @@ class ServiceProvider extends BaseServiceProvider
             ReporteIvaController::class,
             fn () => new ReporteIvaController($c->get(ReporteIvaService::class)),
         );
+
+        // AFIP / WSAA: autenticación con certificado (TA cacheado en DB).
+        $c->singleton(SoapTransport::class, fn () => new ExtSoapTransport());
+        $c->singleton(TicketStore::class, fn () => new DbTicketStore($c->get(PDO::class)));
+        $c->singleton(WsaaClient::class, fn () => new WsaaClient(
+            $this->makeCmsSigner(),
+            $c->get(SoapTransport::class),
+            $c->get(TicketStore::class),
+            (string) Config::get('afip.wsaa.' . Config::get('afip.env', 'homologacion')),
+            (string) Config::get('afip.cuit', ''),
+            (int) Config::get('afip.ta_margin', 600),
+        ));
+    }
+
+    /**
+     * Construye el firmante CMS cargando el certificado y la clave desde las rutas
+     * configuradas. Falla con mensaje claro si no están configurados (solo al usarse,
+     * porque el binding es lazy).
+     */
+    private function makeCmsSigner(): OpenSslCmsSigner
+    {
+        $certPath = Config::get('afip.cert_path');
+        $keyPath  = Config::get('afip.key_path');
+
+        if (!$certPath || !$keyPath) {
+            throw new \RuntimeException(
+                'AFIP_CERT_PATH / AFIP_KEY_PATH no configurados en .env (certificado WSAA).'
+            );
+        }
+
+        $cert = @file_get_contents((string) $certPath);
+        $key  = @file_get_contents((string) $keyPath);
+
+        if ($cert === false || $key === false) {
+            throw new \RuntimeException('No se pudo leer el certificado o la clave de AFIP.');
+        }
+
+        return new OpenSslCmsSigner($cert, $key, (string) Config::get('afip.key_passphrase', ''));
     }
 }
