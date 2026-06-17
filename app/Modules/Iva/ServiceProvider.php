@@ -98,6 +98,7 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(PeriodoRepository::class),
             $c->get(IvaComprobanteCalculator::class),
             $c->get(DB::class),
+            $c->get(ReferenceValidator::class),
         ));
         $c->singleton(VentaController::class, fn () => new VentaController($c->get(VentaService::class)));
 
@@ -109,6 +110,7 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(PeriodoRepository::class),
             $c->get(IvaComprobanteCalculator::class),
             $c->get(DB::class),
+            $c->get(ReferenceValidator::class),
         ));
         $c->singleton(CompraController::class, fn () => new CompraController($c->get(CompraService::class)));
 

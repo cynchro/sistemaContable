@@ -3,6 +3,7 @@
 namespace App\Modules\Iva\Services;
 
 use App\Support\DB;
+use App\Support\ReferenceValidator;
 use App\Exceptions\ConflictException;
 use App\Exceptions\ValidationException;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
@@ -25,6 +26,7 @@ class CompraService
         private PeriodoRepository $periodos,
         private IvaComprobanteCalculator $calculator,
         private DB $db,
+        private ReferenceValidator $refs,
     ) {
     }
 
@@ -52,6 +54,7 @@ class CompraService
     {
         $periodo = $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
+        $this->assertReferencias($data, $empresaId, $tenantId);
         $this->assertNoDuplicado($data, $empresaId);
 
         [$header, $lineas] = $this->preparar($data);
@@ -70,6 +73,7 @@ class CompraService
         $periodo = $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
         $this->compras->findById($id, $periodoId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
+        $this->assertReferencias($data, $empresaId, $tenantId);
         $this->assertNoDuplicado($data, $empresaId, $id);
 
         [$header, $lineas] = $this->preparar($data);
@@ -199,6 +203,35 @@ class CompraService
         }
 
         return $periodo;
+    }
+
+    /**
+     * Valida que las FKs de la compra existan y pertenezcan al ámbito: rubro del tenant,
+     * proveedor de la empresa; el resto son catálogos globales. Devuelve 422 (no 500 por FK).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function assertReferencias(array $data, int $empresaId, string $tenantId): void
+    {
+        $this->refs->validate([
+            'tipo_comprobante_id'      => [
+                'table' => 'tipos_comprobante', 'value' => $data['tipo_comprobante_id'] ?? null,
+            ],
+            'tipo_documento_id'        => ['table' => 'tipos_documento', 'value' => $data['tipo_documento_id'] ?? null],
+            'condicion_iva_id'         => ['table' => 'condiciones_iva', 'value' => $data['condicion_iva_id'] ?? null],
+            'provincia_id'             => ['table' => 'provincias', 'value' => $data['provincia_id'] ?? null],
+            'tipo_operacion_compra_id' => [
+                'table' => 'tipos_operacion_compra', 'value' => $data['tipo_operacion_compra_id'] ?? null,
+            ],
+            'tipo_moneda_id'           => ['table' => 'tipos_moneda', 'value' => $data['tipo_moneda_id'] ?? null],
+            'rubro_id'                 => [
+                'table' => 'rubros', 'value' => $data['rubro_id'] ?? null, 'scope' => ['tenant_id' => $tenantId],
+            ],
+            'proveedor_id'             => [
+                'table' => 'iva_proveedores', 'value' => $data['proveedor_id'] ?? null,
+                'scope' => ['empresa_id' => $empresaId],
+            ],
+        ]);
     }
 
     /**

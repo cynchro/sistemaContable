@@ -147,6 +147,20 @@ class VentaCrudTest extends FeatureTestCase
         $this->assertSame(409, $resp['status']);
     }
 
+    public function test_fk_inexistente_da_422(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();
+
+        $resp = $this->postJson(
+            "/empresas/{$e}/periodos/{$p}/ventas",
+            $this->ventaValida(['tipo_comprobante_id' => 999]),
+            $auth,
+        );
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('tipo_comprobante_id', $resp['json']['errors']);
+    }
+
     public function test_editar_el_mismo_comprobante_no_es_duplicado(): void
     {
         ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();

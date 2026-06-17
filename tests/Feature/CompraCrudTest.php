@@ -121,6 +121,25 @@ class CompraCrudTest extends FeatureTestCase
         $this->assertSame(404, $resp['status']);
     }
 
+    public function test_proveedor_de_otra_empresa_da_422(): void
+    {
+        ['auth' => $auth, 'empresaId' => $eA, 'periodoId' => $p] = $this->escenario();
+        // Proveedor cargado en otra empresa del mismo tenant.
+        $eB = (int) $this->postJson('/empresas', ['nombre' => 'Otra SA'], $auth)['json']['data']['id'];
+        $provB = (int) $this->postJson("/empresas/{$eB}/proveedores", [
+            'nombre' => 'Prov B',
+        ], $auth)['json']['data']['id'];
+
+        $resp = $this->postJson(
+            "/empresas/{$eA}/periodos/{$p}/compras",
+            $this->compraValida(['proveedor_id' => $provB]),
+            $auth,
+        );
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('proveedor_id', $resp['json']['errors']);
+    }
+
     public function test_duplicado_por_proveedor_pero_no_entre_proveedores(): void
     {
         ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();

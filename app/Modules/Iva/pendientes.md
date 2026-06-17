@@ -19,9 +19,10 @@
       (existencia + scope) usado en `IvaClienteService`/`IvaProveedorService`: `condicion_iva_id`
       y `provincia_id` (catálogos globales), `cuenta_id` (de la empresa) y `rubro_id` (del tenant)
       → 422 con el campo exacto, en vez del 500 por FK. Reutilizable para otros verticales.
-- [ ] Aplicar el mismo `ReferenceValidator` a las FKs de **ventas/compras** (tipo_comprobante_id,
-      tipo_documento_id, condicion_iva_id, provincia_id, rubro_id, tipo_operacion_*, tipo_moneda_id,
-      cliente_id/proveedor_id). Mismo patrón, pendiente de cablear.
+- [x] Mismo `ReferenceValidator` aplicado a **ventas/compras**: tipo_comprobante_id,
+      tipo_documento_id, condicion_iva_id, provincia_id, tipo_operacion_{venta,compra}_id,
+      tipo_moneda_id (globales), rubro_id (del tenant), cliente_id/proveedor_id (de la empresa)
+      → 422 con el campo exacto en create/update.
 - [x] **Validación de duplicados** (legacy `SISTEMA.VALIDA_DUPLICADOS`): al crear/editar
       un comprobante se chequea que no exista otro igual en la empresa (across períodos).
       Ventas: tipo+letra+punto_venta+número. Compras: + CUIT del proveedor (distintos
