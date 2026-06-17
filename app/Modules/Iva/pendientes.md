@@ -70,8 +70,15 @@
       acepta `comprobantes_asociados[]` (tipo_comprobante_id/letra/punto_venta/numero/cuit/fecha)
       y el mapper los emite como `CbtesAsoc → CbteAsoc[]` (Tipo resuelto por tipo+letra).
       También se corrigió el envoltorio del array `Iva` → `AlicIva` (ArrayOfAlicIva del WSDL).
-- [ ] **Array `Tributos`** (percepciones IIBB/otros): hoy se mandan `ImpTrib`/`ImpTotal`;
-      falta el detalle `Tributos[]` (Id/Desc/BaseImp/Alic/Importe). Mapear desde retenciones.
+- [x] **Array `Tributos`**: `imp_interno` se emite como `Tributos → Tributo[]` (Id 4,
+      Impuestos internos), que es el único tributo que integra el total del comprobante.
+- [ ] **Percepciones como Tributos** (IIBB/IVA/municipales): el catálogo `tipos_retencion`
+      del legacy son percepciones, pero el calculador **NO las suma al total** (fiel al legacy,
+      ver `IvaComprobanteCalculator` y `VentaCrudTest`). Incluirlas en `Tributos` rompería la
+      validación AFIP `ImpTotal = ImpNeto+ImpIVA+ImpOpEx+ImpTotConc+ImpTrib`. Para soportarlas
+      hace falta una **decisión de dominio**: si las percepciones integran el total del
+      comprobante (y entonces también el libro IVA/DDJJ). Mapeo disponible vía `tipo_rg3685`
+      (2 Nac→Id1, 3 IIBB→Id2, 4 Munic→Id3, 1 PercIVA/5 no-cat→Id99) una vez resuelto eso.
 - [x] **ABM de `puntos_venta`**: CRUD por empresa (`/empresas/{id}/puntos-venta`), único por
       número. Pendiente menor: validar contra `FEParamGetPtosVenta` (sync desde AFIP) y, opcional,
       exigir en la emisión que el punto de venta esté registrado y activo.

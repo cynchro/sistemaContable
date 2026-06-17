@@ -71,6 +71,18 @@ class WsfeComprobanteMapper
             $det['CbtesAsoc'] = ['CbteAsoc' => $ctx->cbtesAsoc];
         }
 
+        // Tributos: impuestos internos (Id 4), único tributo del comprobante en este modelo
+        // (las percepciones del legacy no integran el total → no se emiten como Tributo).
+        if ($impTrib > 0) {
+            $det['Tributos'] = ['Tributo' => [[
+                'Id'      => 4,
+                'Desc'    => 'Impuestos internos',
+                'BaseImp' => 0.0,
+                'Alic'    => 0.0,
+                'Importe' => $impTrib,
+            ]]];
+        }
+
         // Conceptos 2 (servicios) y 3 (productos+servicios) requieren fechas de servicio.
         if (in_array($concepto, [2, 3], true)) {
             $det['FchServDesde'] = self::fecha((string) ($venta['fch_serv_desde'] ?? $venta['fecha'] ?? ''));

@@ -60,6 +60,29 @@ class WsfeComprobanteMapperTest extends UnitTestCase
             $det['Iva'],
         );
         $this->assertArrayNotHasKey('CbtesAsoc', $det);
+        $this->assertArrayNotHasKey('Tributos', $det); // sin imp_interno → sin tributos
+    }
+
+    public function test_impuestos_internos_se_emiten_como_tributo(): void
+    {
+        $venta = [
+            'fecha' => '2026-01-15', 'cuit' => '30711111118', 'concepto' => 1,
+            'imp_interno' => '50.00', 'total' => '0.00',
+            'discriminaciones' => [
+                ['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000', 'iva_importe' => '210.00'],
+            ],
+        ];
+        $ctx = new FacturaContexto(1, 11, 1, 80, 'RI');
+
+        $det = (new WsfeComprobanteMapper())->build($venta, $ctx)['FeDetReq']['FECAEDetRequest'][0];
+
+        $this->assertSame(50.0, $det['ImpTrib']);
+        $this->assertSame(
+            ['Tributo' => [
+                ['Id' => 4, 'Desc' => 'Impuestos internos', 'BaseImp' => 0.0, 'Alic' => 0.0, 'Importe' => 50.0],
+            ]],
+            $det['Tributos'],
+        );
     }
 
     public function test_incluye_comprobantes_asociados(): void
