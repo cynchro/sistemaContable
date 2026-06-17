@@ -20,8 +20,12 @@
       devolver 422.
 - [ ] **Validación de ámbito cruzado**: que `cuenta_id` pertenezca a la misma
       empresa y `rubro_id` al mismo tenant del sujeto/comprobante.
-- [ ] **Validación de duplicados** (legacy `SISTEMA.VALIDA_DUPLICADOS`): evitar
-      cargar dos veces el mismo comprobante (tipo+pv+número+proveedor/cliente).
+- [x] **Validación de duplicados** (legacy `SISTEMA.VALIDA_DUPLICADOS`): al crear/editar
+      un comprobante se chequea que no exista otro igual en la empresa (across períodos).
+      Ventas: tipo+letra+punto_venta+número. Compras: + CUIT del proveedor (distintos
+      proveedores pueden repetir pv/número). pv/número se comparan por valor numérico
+      (ignora ceros a la izquierda). Devuelve 409. Se omite si falta pv o número.
+      Pendiente menor: hacerlo configurable (el legacy tenía el flag on/off).
 - [ ] **ABM de catálogos por-tenant** que hoy son sólo lectura/seed
       (`tipos_retencion`, etc.), si el negocio lo requiere.
 - [ ] **Cálculo del importe de retención** (hoy se recibe del input): opción de

@@ -166,6 +166,43 @@ class VentaRepository
     }
 
     /**
+     * Busca un comprobante de venta duplicado en la empresa (mismo tipo + letra +
+     * punto de venta + número), comparando pv/número por valor numérico (ignora ceros
+     * a la izquierda). Devuelve el id existente o null. Excluye `$exceptId` (para update).
+     */
+    public function findDuplicado(
+        int $empresaId,
+        ?int $tipoId,
+        ?string $letra,
+        string $puntoVenta,
+        string $numero,
+        int $exceptId = 0,
+    ): ?int {
+        $stmt = $this->pdo->prepare(
+            'SELECT v.id FROM ventas v
+             JOIN periodos p ON p.id = v.periodo_id
+             WHERE p.empresa_id = :empresa
+               AND v.tipo_comprobante_id <=> :tipo
+               AND UPPER(COALESCE(v.letra, \'\')) = :letra
+               AND CAST(v.punto_venta AS UNSIGNED) = :pv
+               AND CAST(v.numero AS UNSIGNED) = :numero
+               AND v.id <> :except
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'empresa' => $empresaId,
+            'tipo'    => $tipoId,
+            'letra'   => strtoupper(trim((string) $letra)),
+            'pv'      => (int) $puntoVenta,
+            'numero'  => (int) $numero,
+            'except'  => $exceptId,
+        ]);
+        $id = $stmt->fetchColumn();
+
+        return $id === false ? null : (int) $id;
+    }
+
+    /**
      * Persiste el resultado de la autorización electrónica (CAE) sobre la cabecera.
      *
      * @param array<string, mixed> $fields subconjunto de numero/cae/cae_vto/afip_resultado/afip_obs

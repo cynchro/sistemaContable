@@ -142,6 +142,47 @@ class CompraRepository
     }
 
     /**
+     * Busca un comprobante de compra duplicado en la empresa: mismo proveedor (CUIT) +
+     * tipo + letra + punto de venta + número. Incluye el CUIT porque distintos proveedores
+     * pueden repetir punto de venta/número. pv/número se comparan por valor numérico.
+     * Devuelve el id existente o null. Excluye `$exceptId` (para update).
+     */
+    public function findDuplicado(
+        int $empresaId,
+        ?string $cuit,
+        ?int $tipoId,
+        ?string $letra,
+        string $puntoVenta,
+        string $numero,
+        int $exceptId = 0,
+    ): ?int {
+        $stmt = $this->pdo->prepare(
+            'SELECT c.id FROM compras c
+             JOIN periodos p ON p.id = c.periodo_id
+             WHERE p.empresa_id = :empresa
+               AND COALESCE(c.cuit, \'\') = :cuit
+               AND c.tipo_comprobante_id <=> :tipo
+               AND UPPER(COALESCE(c.letra, \'\')) = :letra
+               AND CAST(c.punto_venta AS UNSIGNED) = :pv
+               AND CAST(c.numero AS UNSIGNED) = :numero
+               AND c.id <> :except
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'empresa' => $empresaId,
+            'cuit'    => trim((string) $cuit),
+            'tipo'    => $tipoId,
+            'letra'   => strtoupper(trim((string) $letra)),
+            'pv'      => (int) $puntoVenta,
+            'numero'  => (int) $numero,
+            'except'  => $exceptId,
+        ]);
+        $id = $stmt->fetchColumn();
+
+        return $id === false ? null : (int) $id;
+    }
+
+    /**
      * @param  array<string, mixed> $fields
      * @return int  id insertado
      */

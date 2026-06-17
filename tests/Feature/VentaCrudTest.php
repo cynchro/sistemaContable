@@ -133,4 +133,35 @@ class VentaCrudTest extends FeatureTestCase
         $resp = $this->getJson("/empresas/{$e}/periodos/{$p}/ventas", $bobAuth);
         $this->assertSame(404, $resp['status']);
     }
+
+    public function test_no_permite_comprobante_duplicado(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();
+
+        $primera = $this->ventaValida(['letra' => 'A', 'punto_venta' => '1', 'numero' => '100']);
+        $this->assertSame(201, $this->postJson("/empresas/{$e}/periodos/{$p}/ventas", $primera, $auth)['status']);
+
+        // Mismo comprobante con ceros a la izquierda en pv/número → se detecta igual.
+        $repetida = $this->ventaValida(['letra' => 'A', 'punto_venta' => '0001', 'numero' => '00000100']);
+        $resp = $this->postJson("/empresas/{$e}/periodos/{$p}/ventas", $repetida, $auth);
+        $this->assertSame(409, $resp['status']);
+    }
+
+    public function test_editar_el_mismo_comprobante_no_es_duplicado(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();
+
+        $id = (int) $this->postJson(
+            "/empresas/{$e}/periodos/{$p}/ventas",
+            $this->ventaValida(['letra' => 'A', 'punto_venta' => '1', 'numero' => '100']),
+            $auth,
+        )['json']['data']['id'];
+
+        $resp = $this->putJson(
+            "/empresas/{$e}/periodos/{$p}/ventas/{$id}",
+            $this->ventaValida(['letra' => 'A', 'punto_venta' => '1', 'numero' => '100']),
+            $auth,
+        );
+        $this->assertSame(200, $resp['status']);
+    }
 }

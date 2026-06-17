@@ -120,4 +120,25 @@ class CompraCrudTest extends FeatureTestCase
         $resp = $this->getJson("/empresas/{$e}/periodos/{$p}/compras", $bobAuth);
         $this->assertSame(404, $resp['status']);
     }
+
+    public function test_duplicado_por_proveedor_pero_no_entre_proveedores(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();
+
+        $url = "/empresas/{$e}/periodos/{$p}/compras";
+        $base = $this->compraValida(['letra' => 'A', 'punto_venta' => '1', 'numero' => '100', 'cuit' => '30111111118']);
+        $this->assertSame(201, $this->postJson($url, $base, $auth)['status']);
+
+        // Mismo proveedor (CUIT) + mismo comprobante → duplicado (409), con ceros a la izquierda.
+        $repetida = $this->compraValida([
+            'letra' => 'A', 'punto_venta' => '0001', 'numero' => '00000100', 'cuit' => '30111111118',
+        ]);
+        $this->assertSame(409, $this->postJson($url, $repetida, $auth)['status']);
+
+        // Otro proveedor con el mismo punto de venta/número → permitido (201).
+        $otroProv = $this->compraValida([
+            'letra' => 'A', 'punto_venta' => '1', 'numero' => '100', 'cuit' => '30222222223',
+        ]);
+        $this->assertSame(201, $this->postJson($url, $otroProv, $auth)['status']);
+    }
 }

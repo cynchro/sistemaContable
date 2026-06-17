@@ -52,6 +52,7 @@ class CompraService
     {
         $periodo = $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
+        $this->assertNoDuplicado($data, $empresaId);
 
         [$header, $lineas] = $this->preparar($data);
 
@@ -69,6 +70,7 @@ class CompraService
         $periodo = $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
         $this->compras->findById($id, $periodoId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
+        $this->assertNoDuplicado($data, $empresaId, $id);
 
         [$header, $lineas] = $this->preparar($data);
 
@@ -197,6 +199,39 @@ class CompraService
         }
 
         return $periodo;
+    }
+
+    /**
+     * Evita cargar dos veces el mismo comprobante de compra en la empresa (mismo proveedor
+     * por CUIT + tipo + letra + punto de venta + número). Se omite si falta punto de venta
+     * o número (no hay clave para comparar).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function assertNoDuplicado(array $data, int $empresaId, int $exceptId = 0): void
+    {
+        $pv     = trim((string) ($data['punto_venta'] ?? ''));
+        $numero = trim((string) ($data['numero'] ?? ''));
+
+        if ($pv === '' || $numero === '') {
+            return;
+        }
+
+        $dupId = $this->compras->findDuplicado(
+            $empresaId,
+            $data['cuit'] ?? null,
+            isset($data['tipo_comprobante_id']) ? (int) $data['tipo_comprobante_id'] : null,
+            $data['letra'] ?? null,
+            $pv,
+            $numero,
+            $exceptId,
+        );
+
+        if ($dupId !== null) {
+            throw new ConflictException(
+                "Ya existe ese comprobante del proveedor (punto de venta {$pv}, número {$numero})."
+            );
+        }
     }
 
     /** @param array<string, mixed> $periodo */
