@@ -3,20 +3,24 @@
 namespace App\Modules\Compartido;
 
 use PDO;
+use App\Support\ReferenceValidator;
 use App\Support\ServiceProvider as BaseServiceProvider;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Compartido\Repositories\CuentaRepository;
 use App\Modules\Compartido\Repositories\RubroRepository;
+use App\Modules\Compartido\Repositories\TipoRetencionRepository;
 use App\Modules\Compartido\Repositories\CatalogoRepository;
 use App\Modules\Compartido\Services\EmpresaService;
 use App\Modules\Compartido\Services\PeriodoService;
 use App\Modules\Compartido\Services\CuentaService;
 use App\Modules\Compartido\Services\RubroService;
+use App\Modules\Compartido\Services\TipoRetencionService;
 use App\Modules\Compartido\Controllers\EmpresaController;
 use App\Modules\Compartido\Controllers\PeriodoController;
 use App\Modules\Compartido\Controllers\CuentaController;
 use App\Modules\Compartido\Controllers\RubroController;
+use App\Modules\Compartido\Controllers\TipoRetencionController;
 use App\Modules\Compartido\Controllers\CatalogoController;
 
 /**
@@ -51,6 +55,17 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(RubroRepository::class, fn () => new RubroRepository($c->get(PDO::class)));
         $c->singleton(RubroService::class, fn () => new RubroService($c->get(RubroRepository::class)));
         $c->singleton(RubroController::class, fn () => new RubroController($c->get(RubroService::class)));
+
+        $c->singleton(ReferenceValidator::class, fn () => new ReferenceValidator($c->get(PDO::class)));
+        $c->singleton(TipoRetencionRepository::class, fn () => new TipoRetencionRepository($c->get(PDO::class)));
+        $c->singleton(TipoRetencionService::class, fn () => new TipoRetencionService(
+            $c->get(TipoRetencionRepository::class),
+            $c->get(ReferenceValidator::class),
+        ));
+        $c->singleton(
+            TipoRetencionController::class,
+            fn () => new TipoRetencionController($c->get(TipoRetencionService::class)),
+        );
 
         $c->singleton(CatalogoRepository::class, fn () => new CatalogoRepository($c->get(PDO::class)));
         $c->singleton(CatalogoController::class, fn () => new CatalogoController($c->get(CatalogoRepository::class)));

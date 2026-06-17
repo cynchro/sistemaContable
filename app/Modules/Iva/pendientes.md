@@ -30,8 +30,11 @@
       proveedores pueden repetir pv/número). pv/número se comparan por valor numérico
       (ignora ceros a la izquierda). Devuelve 409. Se omite si falta pv o número.
       Pendiente menor: hacerlo configurable (el legacy tenía el flag on/off).
-- [ ] **ABM de catálogos por-tenant** que hoy son sólo lectura/seed
-      (`tipos_retencion`, etc.), si el negocio lo requiere.
+- [x] **ABM de `tipos_retencion` por tenant** (migración 0031 agrega `tenant_id` nullable):
+      el estudio ve las estándar de AFIP (tenant_id NULL, read-only) + las propias, y solo edita/
+      borra las propias. `/tipos-retencion` (CRUD, en Compartido). El resto de los catálogos AFIP
+      (condiciones_iva, tipos_comprobante, etc.) quedan read-only a propósito: códigos fijos de los
+      que dependen los resolvers de factura electrónica.
 - [x] **Cálculo del importe de retención/percepción**: si la retención trae `importe` se
       respeta; si trae solo `porcentaje`, se calcula `base × porcentaje / 100`
       (`IvaComprobanteCalculator::importeRetencion`). `base` explícita opcional; por defecto el

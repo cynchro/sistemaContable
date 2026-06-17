@@ -4,6 +4,7 @@ use App\Modules\Compartido\Controllers\EmpresaController;
 use App\Modules\Compartido\Controllers\PeriodoController;
 use App\Modules\Compartido\Controllers\CuentaController;
 use App\Modules\Compartido\Controllers\RubroController;
+use App\Modules\Compartido\Controllers\TipoRetencionController;
 use App\Modules\Compartido\Controllers\CatalogoController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
@@ -38,6 +39,13 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/rubros/{id}', [RubroController::class, 'show']);
     $router->put('/rubros/{id}', [RubroController::class, 'update']);
     $router->delete('/rubros/{id}', [RubroController::class, 'delete']);
+
+    // Tipos de retención/percepción (estándar AFIP + propios del estudio)
+    $router->get('/tipos-retencion', [TipoRetencionController::class, 'index']);
+    $router->post('/tipos-retencion', [TipoRetencionController::class, 'create']);
+    $router->get('/tipos-retencion/{id}', [TipoRetencionController::class, 'show']);
+    $router->put('/tipos-retencion/{id}', [TipoRetencionController::class, 'update']);
+    $router->delete('/tipos-retencion/{id}', [TipoRetencionController::class, 'delete']);
 });
 
 // Catálogos AFIP globales (solo lectura; no requieren tenant)
