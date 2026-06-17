@@ -34,6 +34,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}', [VentaController::class, 'show']);
     $router->put('/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}', [VentaController::class, 'update']);
     $router->delete('/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}', [VentaController::class, 'delete']);
+    $router->post('/empresas/{empresaId}/periodos/{periodoId}/ventas/{id}/mover', [VentaController::class, 'mover']);
 
     // Compras (agregado bajo período: cabecera + discriminación + retenciones)
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/compras', [CompraController::class, 'index']);
@@ -41,6 +42,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'show']);
     $router->put('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'update']);
     $router->delete('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}', [CompraController::class, 'delete']);
+    $router->post('/empresas/{empresaId}/periodos/{periodoId}/compras/{id}/mover', [CompraController::class, 'mover']);
 
     // Libro IVA: totales del período (derivados) y detalle por alícuota/condición
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/totales', [LibroIvaController::class, 'totales']);

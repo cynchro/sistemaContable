@@ -12,9 +12,10 @@
 - [x] **No borrar período con comprobantes**: `PeriodoService.delete` chequea
       `PeriodoRepository.hasComprobantes()` (ventas o compras del período) y devuelve 409.
       Evita el `ON DELETE CASCADE` que borraría los comprobantes en silencio.
-- [ ] **Mover comprobante entre períodos** (`POST /ventas/{id}/mover`, idem compras):
-      reasignar `periodo_id` validando que el destino esté abierto y la fecha entre.
-      (Funcionalidad "Mover" del manual de Ventas/Compras.)
+- [x] **Mover comprobante entre períodos**: `POST /empresas/{id}/periodos/{pid}/ventas/{id}/mover`
+      (e ídem compras) con `{periodo_destino_id}`. Valida origen y destino abiertos (de la
+      misma empresa) y que la fecha del comprobante caiga en el rango del destino. Reasigna
+      `periodo_id` en transacción. (Funcionalidad "Mover" del legacy.)
 - [x] **Validación amable de FKs** + **ámbito cruzado**: nuevo `App\Support\ReferenceValidator`
       (existencia + scope) usado en `IvaClienteService`/`IvaProveedorService`: `condicion_iva_id`
       y `provincia_id` (catálogos globales), `cuenta_id` (de la empresa) y `rubro_id` (del tenant)

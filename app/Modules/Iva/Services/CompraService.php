@@ -92,6 +92,27 @@ class CompraService
     }
 
     /**
+     * Mueve un comprobante a otro período de la misma empresa: ambos períodos deben estar
+     * abiertos y la fecha del comprobante debe caer en el rango del destino.
+     *
+     * @return array<string, mixed>
+     */
+    public function mover(int $id, int $empresaId, int $periodoId, int $periodoDestinoId, string $tenantId): array
+    {
+        $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
+        $compra = $this->compras->findById($id, $periodoId);
+
+        $destino = $this->assertPeriodoEditable($empresaId, $periodoDestinoId, $tenantId);
+        $this->assertFechaEnPeriodo($compra['fecha'] ?? null, $destino);
+
+        $this->db->withTransaction(
+            fn () => $this->compras->moverAPeriodo($id, $periodoId, $periodoDestinoId)
+        );
+
+        return $this->compras->findById($id, $periodoDestinoId);
+    }
+
+    /**
      * Corre la calculadora y arma [cabecera con total, líneas con importes + cf_computable].
      *
      * @param  array<string, mixed> $data

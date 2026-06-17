@@ -121,6 +121,24 @@ class CompraCrudTest extends FeatureTestCase
         $this->assertSame(404, $resp['status']);
     }
 
+    public function test_mover_comprobante_a_otro_periodo(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p1] = $this->escenario();
+        $p2 = (int) $this->postJson("/empresas/{$e}/periodos", [
+            'nombre' => '2026-Q1', 'fecha_ini' => '2026-01-10', 'fecha_fin' => '2026-02-28',
+        ], $auth)['json']['data']['id'];
+        $id = $this->crearCompra(['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p1]);
+
+        $resp = $this->postJson(
+            "/empresas/{$e}/periodos/{$p1}/compras/{$id}/mover",
+            ['periodo_destino_id' => $p2],
+            $auth,
+        );
+        $this->assertSame(200, $resp['status']);
+        $this->assertSame(200, $this->getJson("/empresas/{$e}/periodos/{$p2}/compras/{$id}", $auth)['status']);
+        $this->assertSame(404, $this->getJson("/empresas/{$e}/periodos/{$p1}/compras/{$id}", $auth)['status']);
+    }
+
     public function test_proveedor_de_otra_empresa_da_422(): void
     {
         ['auth' => $auth, 'empresaId' => $eA, 'periodoId' => $p] = $this->escenario();

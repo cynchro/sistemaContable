@@ -147,6 +147,43 @@ class VentaCrudTest extends FeatureTestCase
         $this->assertSame(409, $resp['status']);
     }
 
+    public function test_mover_comprobante_a_otro_periodo(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p1] = $this->escenario();
+        // Período destino cuyo rango incluye la fecha de la venta (2026-01-15).
+        $p2 = (int) $this->postJson("/empresas/{$e}/periodos", [
+            'nombre' => '2026-Q1', 'fecha_ini' => '2026-01-10', 'fecha_fin' => '2026-02-28',
+        ], $auth)['json']['data']['id'];
+        $id = $this->crearVenta(['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p1]);
+
+        $resp = $this->postJson(
+            "/empresas/{$e}/periodos/{$p1}/ventas/{$id}/mover",
+            ['periodo_destino_id' => $p2],
+            $auth,
+        );
+        $this->assertSame(200, $resp['status']);
+
+        // Quedó en el destino y ya no está en el origen.
+        $this->assertSame(200, $this->getJson("/empresas/{$e}/periodos/{$p2}/ventas/{$id}", $auth)['status']);
+        $this->assertSame(404, $this->getJson("/empresas/{$e}/periodos/{$p1}/ventas/{$id}", $auth)['status']);
+    }
+
+    public function test_mover_con_fecha_fuera_del_destino_falla(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p1] = $this->escenario();
+        $p2 = (int) $this->postJson("/empresas/{$e}/periodos", [
+            'nombre' => '2026-03', 'fecha_ini' => '2026-03-01', 'fecha_fin' => '2026-03-31',
+        ], $auth)['json']['data']['id'];
+        $id = $this->crearVenta(['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p1]);
+
+        $resp = $this->postJson(
+            "/empresas/{$e}/periodos/{$p1}/ventas/{$id}/mover",
+            ['periodo_destino_id' => $p2],
+            $auth,
+        );
+        $this->assertSame(422, $resp['status']);
+    }
+
     public function test_fk_inexistente_da_422(): void
     {
         ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();

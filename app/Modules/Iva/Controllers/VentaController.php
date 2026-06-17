@@ -7,6 +7,7 @@ use App\Support\Response;
 use App\Modules\Iva\Services\VentaService;
 use App\Modules\Iva\Requests\CreateVentaRequest;
 use App\Modules\Iva\Requests\UpdateVentaRequest;
+use App\Modules\Iva\Requests\MoverComprobanteRequest;
 
 class VentaController
 {
@@ -68,5 +69,18 @@ class VentaController
         );
 
         return Response::success(['message' => 'Venta eliminada.']);
+    }
+
+    public function mover(Request $request, MoverComprobanteRequest $validated): Response
+    {
+        $venta = $this->service->mover(
+            (int) $request->route('id'),
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (int) $validated->validated()['periodo_destino_id'],
+            (string) $request->tenantId(),
+        );
+
+        return Response::success($venta);
     }
 }

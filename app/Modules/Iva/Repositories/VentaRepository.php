@@ -223,6 +223,17 @@ class VentaRepository
         $stmt->execute($fields);
     }
 
+    /** Reasigna el comprobante a otro período (mover). Las reglas las valida el Service. */
+    public function moverAPeriodo(int $id, int $periodoOrigen, int $periodoDestino): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'UPDATE ventas SET periodo_id = :destino WHERE id = :id AND periodo_id = :origen'
+        );
+        $stmt->execute(['destino' => $periodoDestino, 'id' => $id, 'origen' => $periodoOrigen]);
+
+        return $stmt->rowCount() > 0;
+    }
+
     public function delete(int $id, int $periodoId): bool
     {
         // venta_discriminaciones y venta_retenciones caen por FK ON DELETE CASCADE.

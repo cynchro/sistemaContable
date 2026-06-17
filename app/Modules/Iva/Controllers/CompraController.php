@@ -7,6 +7,7 @@ use App\Support\Response;
 use App\Modules\Iva\Services\CompraService;
 use App\Modules\Iva\Requests\CreateCompraRequest;
 use App\Modules\Iva\Requests\UpdateCompraRequest;
+use App\Modules\Iva\Requests\MoverComprobanteRequest;
 
 class CompraController
 {
@@ -68,5 +69,18 @@ class CompraController
         );
 
         return Response::success(['message' => 'Compra eliminada.']);
+    }
+
+    public function mover(Request $request, MoverComprobanteRequest $validated): Response
+    {
+        $compra = $this->service->mover(
+            (int) $request->route('id'),
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (int) $validated->validated()['periodo_destino_id'],
+            (string) $request->tenantId(),
+        );
+
+        return Response::success($compra);
     }
 }

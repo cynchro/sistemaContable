@@ -94,6 +94,27 @@ class VentaService
     }
 
     /**
+     * Mueve un comprobante a otro período de la misma empresa: ambos períodos deben estar
+     * abiertos y la fecha del comprobante debe caer en el rango del destino.
+     *
+     * @return array<string, mixed>
+     */
+    public function mover(int $id, int $empresaId, int $periodoId, int $periodoDestinoId, string $tenantId): array
+    {
+        $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
+        $venta = $this->ventas->findById($id, $periodoId);
+
+        $destino = $this->assertPeriodoEditable($empresaId, $periodoDestinoId, $tenantId);
+        $this->assertFechaEnPeriodo($venta['fecha'] ?? null, $destino);
+
+        $this->db->withTransaction(
+            fn () => $this->ventas->moverAPeriodo($id, $periodoId, $periodoDestinoId)
+        );
+
+        return $this->ventas->findById($id, $periodoDestinoId);
+    }
+
+    /**
      * Corre la calculadora y arma [cabecera con total, líneas con importes, asociados].
      *
      * @param  array<string, mixed> $data
