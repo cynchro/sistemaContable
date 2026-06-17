@@ -82,4 +82,11 @@ class IvaComprobanteCalculatorTest extends UnitTestCase
         $this->assertSame('0.00', $r['iva']);
         $this->assertSame('0.00', $r['total']);
     }
+
+    public function test_importe_retencion_base_por_porcentaje(): void
+    {
+        $this->assertSame('30.00', $this->calc->importeRetencion('1000.00', '3.000'));
+        $this->assertSame('52.50', $this->calc->importeRetencion('500', '10.5'));
+        $this->assertSame('0.00', $this->calc->importeRetencion('1000', '0'));
+    }
 }

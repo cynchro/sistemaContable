@@ -147,6 +147,44 @@ class VentaCrudTest extends FeatureTestCase
         $this->assertSame(409, $resp['status']);
     }
 
+    public function test_calcula_importe_retencion_desde_porcentaje(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();
+
+        $resp = $this->postJson("/empresas/{$e}/periodos/{$p}/ventas", [
+            'fecha'            => '2026-01-15',
+            'discriminaciones' => [
+                // Sin importe: se calcula sobre el neto de la línea (1000 × 3% = 30).
+                ['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000',
+                 'retenciones' => [['porcentaje' => '3.000']]],
+                // Con base explícita: 500 × 10% = 50 (no usa el neto 2000).
+                ['neto_gravado' => '2000.00', 'iva_alicuota' => '21.000',
+                 'retenciones' => [['porcentaje' => '10.000', 'base' => '500.00']]],
+            ],
+        ], $auth);
+
+        $this->assertSame(201, $resp['status']);
+        $d = $resp['json']['data']['discriminaciones'];
+        $this->assertSame('30.00', $d[0]['retenciones'][0]['importe']);
+        $this->assertSame('50.00', $d[1]['retenciones'][0]['importe']);
+    }
+
+    public function test_retencion_sin_importe_ni_porcentaje_falla(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();
+
+        $resp = $this->postJson("/empresas/{$e}/periodos/{$p}/ventas", [
+            'fecha'            => '2026-01-15',
+            'discriminaciones' => [
+                ['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000',
+                 'retenciones' => [['tipo_retencion_id' => null]]],
+            ],
+        ], $auth);
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('discriminaciones', $resp['json']['errors']);
+    }
+
     public function test_mover_comprobante_a_otro_periodo(): void
     {
         ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p1] = $this->escenario();

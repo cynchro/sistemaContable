@@ -67,4 +67,10 @@ final class IvaComprobanteCalculator implements Calculator
             'total'        => $total->value(2),
         ];
     }
+
+    /** Importe de una retención/percepción: base × porcentaje / 100 (redondeado a 2). */
+    public function importeRetencion(int|float|string $base, int|float|string $porcentaje): string
+    {
+        return Decimal::of($base)->percentage(Decimal::of($porcentaje))->round(2)->value(2);
+    }
 }

@@ -32,8 +32,11 @@
       Pendiente menor: hacerlo configurable (el legacy tenía el flag on/off).
 - [ ] **ABM de catálogos por-tenant** que hoy son sólo lectura/seed
       (`tipos_retencion`, etc.), si el negocio lo requiere.
-- [ ] **Cálculo del importe de retención** (hoy se recibe del input): opción de
-      calcularlo por `base × porcentaje` según tipo de retención.
+- [x] **Cálculo del importe de retención/percepción**: si la retención trae `importe` se
+      respeta; si trae solo `porcentaje`, se calcula `base × porcentaje / 100`
+      (`IvaComprobanteCalculator::importeRetencion`). `base` explícita opcional; por defecto el
+      neto gravado de la línea. ⚠️ La base por tipo de percepción es **decisión contable**
+      (ver `preguntas.md` A5); hoy default = neto gravado.
 
 ## B) RBAC / permisos
 - [ ] Hoy los endpoints usan `AuthMiddleware` + `TenantMiddleware`. Falta aplicar

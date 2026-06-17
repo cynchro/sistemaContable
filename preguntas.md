@@ -38,6 +38,16 @@ Cliente del Exterior. Quedan sin mapear: "Responsable No Inscripto" y "No Dispon
 **Hoy asumimos:** no se usan (si aparece una, el sistema avisa que no la puede mapear).
 **Respuesta:**
 
+### A5. Base de cálculo de las percepciones/retenciones
+**Contexto:** ahora se puede cargar una percepción indicando el **porcentaje** y el sistema
+calcula el importe (`base × porcentaje`). Si no se aclara una base, usamos por defecto el
+**neto gravado** de la línea.
+**Pregunta:** ¿sobre qué monto se calcula cada tipo de percepción? (p. ej. Percepción IIBB
+sobre el neto; Percepción de IVA, ¿sobre el IVA o sobre el neto?; ¿sobre neto+IVA?). Si depende
+del tipo, decinos la base de cada uno y lo dejamos fijo por tipo.
+**Hoy asumimos:** base = neto gravado de la línea (salvo que se informe una base explícita).
+**Respuesta:**
+
 ### A4. Layout de los archivos CITI / RG 3685 (regímenes de información)
 **Contexto:** AFIP pide exportar ventas/compras en archivos de texto con un formato exacto.
 No tenemos el instructivo con el layout exacto (posiciones/anchos de cada campo).

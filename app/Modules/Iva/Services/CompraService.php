@@ -129,19 +129,46 @@ class CompraService
         $lineas = [];
         foreach ($lineasInput as $i => $linea) {
             $ivaImporte = $calc['lineas'][$i]['iva_importe'];
+            $neto       = $calc['lineas'][$i]['neto_gravado'];
             $lineas[] = [
-                'neto_gravado'     => $calc['lineas'][$i]['neto_gravado'],
+                'neto_gravado'     => $neto,
                 'iva_alicuota'     => $linea['iva_alicuota'],
                 'iva_importe'      => $ivaImporte,
                 'iva_inc_alicuota' => $linea['iva_inc_alicuota'],
                 'iva_inc_importe'  => $calc['lineas'][$i]['iva_inc_importe'],
                 // Crédito fiscal computable: informado, o el IVA completo por defecto.
                 'cf_computable'    => $linea['cf_computable'] ?? $ivaImporte,
-                'retenciones'      => $linea['retenciones'],
+                'retenciones'      => $this->resolverRetenciones($linea['retenciones'], $neto),
             ];
         }
 
         return [$header, $lineas];
+    }
+
+    /**
+     * Resuelve el importe de cada retención: si vino informado se usa; si no, se calcula
+     * base × porcentaje / 100 (base = la informada, o el neto gravado de la línea por defecto).
+     *
+     * @param  list<array<string, mixed>> $retenciones
+     * @return list<array<string, mixed>>
+     */
+    private function resolverRetenciones(array $retenciones, string $netoBase): array
+    {
+        $out = [];
+        foreach ($retenciones as $ret) {
+            $importe = $ret['importe'];
+            if ($importe === null) {
+                $base = $this->esNumerico($ret['base'] ?? null) ? (string) $ret['base'] : $netoBase;
+                $importe = $this->calculator->importeRetencion($base, (string) $ret['porcentaje']);
+            }
+            $out[] = [
+                'tipo_retencion_id' => $ret['tipo_retencion_id'],
+                'porcentaje'        => $ret['porcentaje'],
+                'importe'           => $importe,
+            ];
+        }
+
+        return $out;
     }
 
     /**
@@ -177,15 +204,18 @@ class CompraService
 
             $retenciones = [];
             foreach (array_values((array) ($linea['retenciones'] ?? [])) as $j => $ret) {
-                if (!is_array($ret) || !$this->esNumerico($ret['importe'] ?? null)) {
+                $importe    = $ret['importe'] ?? null;
+                $porcentaje = $ret['porcentaje'] ?? null;
+                if (!is_array($ret) || (!$this->esNumerico($importe) && !$this->esNumerico($porcentaje))) {
                     throw new ValidationException([
-                        'discriminaciones' => ["La retención {$j} de la línea {$i} requiere importe numérico."],
+                        'discriminaciones' => ["La retención {$j} de la línea {$i} requiere importe o porcentaje."],
                     ]);
                 }
                 $retenciones[] = [
                     'tipo_retencion_id' => $ret['tipo_retencion_id'] ?? null,
-                    'porcentaje'        => $ret['porcentaje'] ?? null,
-                    'importe'           => $ret['importe'],
+                    'porcentaje'        => $porcentaje,
+                    'base'              => $ret['base'] ?? null,
+                    'importe'           => $this->esNumerico($importe) ? $importe : null,
                 ];
             }
 
