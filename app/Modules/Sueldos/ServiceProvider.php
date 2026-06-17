@@ -11,6 +11,7 @@ use App\Modules\Sueldos\Calc\AntiguedadCalculator;
 use App\Modules\Sueldos\Calc\LiquidacionCalculator;
 use App\Modules\Sueldos\Calc\ContribucionCalculator;
 use App\Modules\Sueldos\Calc\SacCalculator;
+use App\Modules\Sueldos\Calc\VacacionesCalculator;
 use App\Modules\Sueldos\Repositories\EmpleadoRepository;
 use App\Modules\Sueldos\Repositories\FamiliarRepository;
 use App\Modules\Sueldos\Repositories\EmpresaConfigRepository;
@@ -24,6 +25,7 @@ use App\Modules\Sueldos\Services\ConceptoService;
 use App\Modules\Sueldos\Services\LiquidacionService;
 use App\Modules\Sueldos\Services\ContribucionService;
 use App\Modules\Sueldos\Services\SacService;
+use App\Modules\Sueldos\Services\VacacionesService;
 use App\Modules\Sueldos\Controllers\EmpleadoController;
 use App\Modules\Sueldos\Controllers\FamiliarController;
 use App\Modules\Sueldos\Controllers\EmpresaConfigController;
@@ -31,6 +33,7 @@ use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Modules\Sueldos\Controllers\LiquidacionController;
 use App\Modules\Sueldos\Controllers\ContribucionController;
 use App\Modules\Sueldos\Controllers\SacController;
+use App\Modules\Sueldos\Controllers\VacacionesController;
 
 /**
  * Wiring del módulo Sueldos. Reusa EmpresaRepository del Compartido (empresa
@@ -111,6 +114,19 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(SacCalculator::class),
         ));
         $c->singleton(SacController::class, fn () => new SacController($c->get(SacService::class)));
+
+        // Vacaciones: días por antigüedad + importe (Ley 20.744).
+        $c->singleton(VacacionesCalculator::class, fn () => new VacacionesCalculator());
+        $c->singleton(VacacionesService::class, fn () => new VacacionesService(
+            $c->get(EmpleadoRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(AntiguedadCalculator::class),
+            $c->get(VacacionesCalculator::class),
+        ));
+        $c->singleton(
+            VacacionesController::class,
+            fn () => new VacacionesController($c->get(VacacionesService::class)),
+        );
 
         // Contribuciones patronales (definiciones + cálculo sobre la base del recibo).
         $c->singleton(ContribucionRepository::class, fn () => new ContribucionRepository($c->get(PDO::class)));

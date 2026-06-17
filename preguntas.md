@@ -158,6 +158,19 @@ Sirve para saber qué particularidades de cada convenio priorizar.
 **Hoy asumimos:** mejor remuneración remunerativa del semestre × 50% × (días/180).
 **Respuesta:**
 
+### B10. 🔴 Vacaciones — días y base de cálculo
+**Contexto:** calculamos los días por antigüedad al 31/12 (Ley 20.744: 14 / 21 / 28 / 35) y el
+importe como **remuneración mensual / 25 × días** (art. 155).
+**Pregunta:**
+1. ¿La **escala de días** es la de la LCT (14/21/28/35) o hay convenios con otra?
+2. La **base** de la que sacamos el valor del día, ¿es el **básico** del legajo, el remunerativo
+   total, o el mejor sueldo? (hoy usamos el básico)
+3. ¿El divisor es **25** para todos, o cambia (p. ej. jornalizados)?
+4. ¿Hay **proporcionalidad** cuando no se trabajó el año completo (art. 153: 1 día cada 20
+   trabajados)? ¿La calculamos?
+**Hoy asumimos:** escala LCT, base = básico del legajo, divisor 25, sin proporcionalidad por año incompleto.
+**Respuesta:**
+
 ---
 
 ## C) Honorarios

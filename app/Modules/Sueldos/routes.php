@@ -7,6 +7,7 @@ use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Modules\Sueldos\Controllers\LiquidacionController;
 use App\Modules\Sueldos\Controllers\ContribucionController;
 use App\Modules\Sueldos\Controllers\SacController;
+use App\Modules\Sueldos\Controllers\VacacionesController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -21,6 +22,9 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
 
     // SAC (aguinaldo): cálculo para un empleado en un semestre
     $router->get('/empresas/{empresaId}/empleados/{empleadoId}/sac', [SacController::class, 'calcular']);
+
+    // Vacaciones: días por antigüedad + importe (Ley 20.744)
+    $router->get('/empresas/{empresaId}/empleados/{empleadoId}/vacaciones', [VacacionesController::class, 'calcular']);
 
     // Grupo familiar (anidado bajo empleado)
     $router->get('/empresas/{empresaId}/empleados/{empleadoId}/familiares', [FamiliarController::class, 'index']);
