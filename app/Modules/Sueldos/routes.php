@@ -6,6 +6,7 @@ use App\Modules\Sueldos\Controllers\EmpresaConfigController;
 use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Modules\Sueldos\Controllers\LiquidacionController;
 use App\Modules\Sueldos\Controllers\ContribucionController;
+use App\Modules\Sueldos\Controllers\SacController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 
@@ -17,6 +18,9 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'show']);
     $router->put('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'update']);
     $router->delete('/empresas/{empresaId}/empleados/{id}', [EmpleadoController::class, 'delete']);
+
+    // SAC (aguinaldo): cálculo para un empleado en un semestre
+    $router->get('/empresas/{empresaId}/empleados/{empleadoId}/sac', [SacController::class, 'calcular']);
 
     // Grupo familiar (anidado bajo empleado)
     $router->get('/empresas/{empresaId}/empleados/{empleadoId}/familiares', [FamiliarController::class, 'index']);

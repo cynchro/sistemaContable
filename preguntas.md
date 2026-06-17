@@ -146,6 +146,18 @@ Sirve para saber qué particularidades de cada convenio priorizar.
 **Hoy asumimos:** liquidación genérica, sin particularidades de convenio.
 **Respuesta:**
 
+### B9. 🔴 SAC (aguinaldo) — base y proporcionalidad
+**Contexto:** ya calculamos el SAC tomando la **mejor remuneración remunerativa del semestre**
+(Ley 23.041) × 50%, proporcional por días trabajados.
+**Pregunta:**
+1. ¿La base es la **mejor remuneración del semestre**, o usan promedio / último sueldo?
+2. ¿Qué conceptos integran esa base? (¿solo remunerativos? ¿algún no remunerativo por convenio?)
+3. La **proporcionalidad** por períodos incompletos, ¿es por **días trabajados / 180**? ¿Cómo se
+   cuentan los días (ingreso/egreso, licencias sin goce)?
+4. ¿Se paga sobre lo **devengado** o sobre lo efectivamente liquidado/pagado?
+**Hoy asumimos:** mejor remuneración remunerativa del semestre × 50% × (días/180).
+**Respuesta:**
+
 ---
 
 ## C) Honorarios

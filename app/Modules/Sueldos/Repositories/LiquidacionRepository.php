@@ -198,6 +198,38 @@ class LiquidacionRepository
     }
 
     /**
+     * Mayor remuneración REMUNERATIVA mensual (recibos tipo 1) del empleado entre dos
+     * períodos liquidados (inclusive), considerando solo liquidaciones mensuales (tipo 1).
+     * Base del SAC (Ley 23.041). Devuelve '0.00' si no hay liquidaciones en el rango.
+     */
+    public function mejorRemuneracionSemestre(
+        int $empresaId,
+        int $empleadoId,
+        string $periodoDesde,
+        string $periodoHasta,
+    ): string {
+        $stmt = $this->pdo->prepare(
+            'SELECT COALESCE(MAX(rem), 0) FROM (
+                SELECT COALESCE(SUM(CASE WHEN r.tipo = 1 THEN r.importe ELSE 0 END), 0) AS rem
+                FROM liquidaciones l
+                JOIN recibos r ON r.liquidacion_id = l.id AND r.empleado_id = :emp
+                WHERE l.empresa_id = :empresa
+                  AND l.tipo = 1
+                  AND l.periodo_liquidado BETWEEN :desde AND :hasta
+                GROUP BY l.id
+            ) t'
+        );
+        $stmt->execute([
+            'emp'     => $empleadoId,
+            'empresa' => $empresaId,
+            'desde'   => $periodoDesde,
+            'hasta'   => $periodoHasta,
+        ]);
+
+        return number_format((float) $stmt->fetchColumn(), 2, '.', '');
+    }
+
+    /**
      * Reemplaza los recibos del empleado en la liquidación. Dentro de transacción.
      *
      * @param list<array<string, mixed>> $lineas

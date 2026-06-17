@@ -10,6 +10,7 @@ use App\Modules\Sueldos\Calc\FormulaEvaluator;
 use App\Modules\Sueldos\Calc\AntiguedadCalculator;
 use App\Modules\Sueldos\Calc\LiquidacionCalculator;
 use App\Modules\Sueldos\Calc\ContribucionCalculator;
+use App\Modules\Sueldos\Calc\SacCalculator;
 use App\Modules\Sueldos\Repositories\EmpleadoRepository;
 use App\Modules\Sueldos\Repositories\FamiliarRepository;
 use App\Modules\Sueldos\Repositories\EmpresaConfigRepository;
@@ -22,12 +23,14 @@ use App\Modules\Sueldos\Services\EmpresaConfigService;
 use App\Modules\Sueldos\Services\ConceptoService;
 use App\Modules\Sueldos\Services\LiquidacionService;
 use App\Modules\Sueldos\Services\ContribucionService;
+use App\Modules\Sueldos\Services\SacService;
 use App\Modules\Sueldos\Controllers\EmpleadoController;
 use App\Modules\Sueldos\Controllers\FamiliarController;
 use App\Modules\Sueldos\Controllers\EmpresaConfigController;
 use App\Modules\Sueldos\Controllers\ConceptoController;
 use App\Modules\Sueldos\Controllers\LiquidacionController;
 use App\Modules\Sueldos\Controllers\ContribucionController;
+use App\Modules\Sueldos\Controllers\SacController;
 
 /**
  * Wiring del módulo Sueldos. Reusa EmpresaRepository del Compartido (empresa
@@ -98,6 +101,16 @@ class ServiceProvider extends BaseServiceProvider
             LiquidacionController::class,
             fn () => new LiquidacionController($c->get(LiquidacionService::class)),
         );
+
+        // SAC (aguinaldo): cálculo desde el historial de liquidaciones.
+        $c->singleton(SacCalculator::class, fn () => new SacCalculator());
+        $c->singleton(SacService::class, fn () => new SacService(
+            $c->get(LiquidacionRepository::class),
+            $c->get(EmpleadoRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(SacCalculator::class),
+        ));
+        $c->singleton(SacController::class, fn () => new SacController($c->get(SacService::class)));
 
         // Contribuciones patronales (definiciones + cálculo sobre la base del recibo).
         $c->singleton(ContribucionRepository::class, fn () => new ContribucionRepository($c->get(PDO::class)));
