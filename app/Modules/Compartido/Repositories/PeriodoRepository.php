@@ -19,6 +19,22 @@ class PeriodoRepository
     {
     }
 
+    /**
+     * ¿El período tiene comprobantes cargados (ventas o compras)? Se usa para impedir su
+     * borrado (las FK son ON DELETE CASCADE: borrar el período arrastraría los comprobantes).
+     * Consulta directa a las tablas del módulo Iva: es SQL del mismo sistema (monolito).
+     */
+    public function hasComprobantes(int $periodoId): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT EXISTS(SELECT 1 FROM ventas WHERE periodo_id = :p1)
+                 OR EXISTS(SELECT 1 FROM compras WHERE periodo_id = :p2)'
+        );
+        $stmt->execute(['p1' => $periodoId, 'p2' => $periodoId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
     /** @return list<array<string, mixed>> */
     public function findAllByEmpresa(int $empresaId): array
     {

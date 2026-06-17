@@ -9,9 +9,9 @@
 > `docs/ingenieria-inversa/iva.md`). Nada de esto bloquea la operación básica.
 
 ## A) Quick wins (ya factibles, sin dependencias externas)
-- [ ] **No borrar período con comprobantes**: hoy hay un `TODO` en `PeriodoService`
-      (cuando no existían ventas/compras). Ya existen → implementar el guard
-      (período con ventas o compras no se puede eliminar).
+- [x] **No borrar período con comprobantes**: `PeriodoService.delete` chequea
+      `PeriodoRepository.hasComprobantes()` (ventas o compras del período) y devuelve 409.
+      Evita el `ON DELETE CASCADE` que borraría los comprobantes en silencio.
 - [ ] **Mover comprobante entre períodos** (`POST /ventas/{id}/mover`, idem compras):
       reasignar `periodo_id` validando que el destino esté abierto y la fecha entre.
       (Funcionalidad "Mover" del manual de Ventas/Compras.)

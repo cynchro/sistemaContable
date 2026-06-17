@@ -80,4 +80,21 @@ class PeriodoCrudTest extends FeatureTestCase
         $resp = $this->getJson("/empresas/{$aliceEmpresaId}/periodos", $bobAuth);
         $this->assertSame(404, $resp['status']);
     }
+
+    public function test_no_se_borra_periodo_con_comprobantes(): void
+    {
+        [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
+        $p = (int) $this->postJson("/empresas/{$empresaId}/periodos", [
+            'nombre' => '2026-01', 'fecha_ini' => '2026-01-01', 'fecha_fin' => '2026-01-31',
+        ], $auth)['json']['data']['id'];
+
+        // Cargar una venta en el período.
+        $this->postJson("/empresas/{$empresaId}/periodos/{$p}/ventas", [
+            'fecha'            => '2026-01-15',
+            'discriminaciones' => [['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000']],
+        ], $auth);
+
+        // Ahora no se puede borrar el período (evita el cascade que arrastraría la venta).
+        $this->assertSame(409, $this->deleteJson("/empresas/{$empresaId}/periodos/{$p}", $auth)['status']);
+    }
 }

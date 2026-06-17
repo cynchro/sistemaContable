@@ -80,6 +80,10 @@ class PeriodoService
         $periodo = $this->periodos->findById($id, $empresaId);
         $this->assertAbierto($periodo, 'eliminar');
 
+        if ($this->periodos->hasComprobantes($id)) {
+            throw new ConflictException('No se puede eliminar un período con comprobantes cargados.');
+        }
+
         $this->periodos->delete($id, $empresaId);
     }
 
