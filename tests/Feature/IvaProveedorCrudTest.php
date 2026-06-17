@@ -61,4 +61,21 @@ class IvaProveedorCrudTest extends FeatureTestCase
         $resp = $this->getJson("/empresas/{$aliceEmpresaId}/proveedores", $bobAuth);
         $this->assertSame(404, $resp['status']);
     }
+
+    public function test_rubro_de_otro_tenant_da_422(): void
+    {
+        // Bob crea un rubro en su tenant.
+        $bobAuth = $this->bearer($this->actingAsUser()['token']);
+        $rubroBob = (int) $this->postJson('/rubros', ['nombre' => 'De Bob'], $bobAuth)['json']['data']['id'];
+
+        // Alice intenta usar el rubro de Bob al crear un proveedor → 422 (otro tenant).
+        [$aliceAuth, $empresaId] = $this->empresaDe($this->actingAsUser());
+        $resp = $this->postJson("/empresas/{$empresaId}/proveedores", [
+            'nombre'   => 'Proveedor X',
+            'rubro_id' => $rubroBob,
+        ], $aliceAuth);
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('rubro_id', $resp['json']['errors']);
+    }
 }

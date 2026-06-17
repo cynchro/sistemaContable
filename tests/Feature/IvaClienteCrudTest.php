@@ -60,4 +60,58 @@ class IvaClienteCrudTest extends FeatureTestCase
         $resp = $this->getJson("/empresas/{$aliceEmpresaId}/clientes", $bobAuth);
         $this->assertSame(404, $resp['status']);
     }
+
+    public function test_fk_inexistente_da_422(): void
+    {
+        [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
+
+        $resp = $this->postJson("/empresas/{$empresaId}/clientes", [
+            'nombre'           => 'Juan',
+            'condicion_iva_id' => 999, // no existe
+        ], $auth);
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('condicion_iva_id', $resp['json']['errors']);
+    }
+
+    public function test_cuenta_de_otra_empresa_da_422(): void
+    {
+        [$auth, $empresaA] = $this->empresaDe($this->actingAsUser());
+        // Otra empresa del mismo tenant, con una cuenta propia.
+        $empresaB = (int) $this->postJson('/empresas', ['nombre' => 'Otra SA'], $auth)['json']['data']['id'];
+        $cuentaB = (int) $this->postJson("/empresas/{$empresaB}/cuentas", [
+            'codigo' => '1.1.01', 'nombre' => 'Caja',
+        ], $auth)['json']['data']['id'];
+
+        $resp = $this->postJson("/empresas/{$empresaA}/clientes", [
+            'nombre'    => 'Juan',
+            'cuenta_id' => $cuentaB, // existe, pero es de otra empresa
+        ], $auth);
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('cuenta_id', $resp['json']['errors']);
+    }
+
+    public function test_referencias_validas_crean_ok(): void
+    {
+        [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
+
+        // Catálogo global vacío en test → sembramos una condición de IVA.
+        $this->pdo->exec(
+            "INSERT INTO condiciones_iva (id, codigo, nombre, codigo_afip) VALUES (1, 'RI', 'Resp. Insc.', '01')"
+        );
+        $cuenta = (int) $this->postJson("/empresas/{$empresaId}/cuentas", [
+            'codigo' => '1.1.01', 'nombre' => 'Caja',
+        ], $auth)['json']['data']['id'];
+        $rubro = (int) $this->postJson('/rubros', ['nombre' => 'Servicios'], $auth)['json']['data']['id'];
+
+        $resp = $this->postJson("/empresas/{$empresaId}/clientes", [
+            'nombre'           => 'Juan',
+            'condicion_iva_id' => 1,
+            'cuenta_id'        => $cuenta,
+            'rubro_id'         => $rubro,
+        ], $auth);
+
+        $this->assertSame(201, $resp['status']);
+    }
 }

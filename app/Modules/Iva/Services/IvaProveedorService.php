@@ -2,6 +2,7 @@
 
 namespace App\Modules\Iva\Services;
 
+use App\Support\ReferenceValidator;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Iva\Repositories\IvaProveedorRepository;
 
@@ -14,6 +15,7 @@ class IvaProveedorService
     public function __construct(
         private IvaProveedorRepository $proveedores,
         private EmpresaRepository $empresas,
+        private ReferenceValidator $refs,
     ) {
     }
 
@@ -40,6 +42,7 @@ class IvaProveedorService
     public function create(array $data, int $empresaId, string $tenantId): array
     {
         $this->assertEmpresa($empresaId, $tenantId);
+        $this->assertReferencias($data, $empresaId, $tenantId);
 
         return $this->proveedores->create($data, $empresaId);
     }
@@ -52,6 +55,7 @@ class IvaProveedorService
     {
         $this->assertEmpresa($empresaId, $tenantId);
         $this->proveedores->findById($id, $empresaId);
+        $this->assertReferencias($data, $empresaId, $tenantId);
         $this->proveedores->update($id, $data, $empresaId);
 
         return $this->proveedores->findById($id, $empresaId);
@@ -67,5 +71,25 @@ class IvaProveedorService
     private function assertEmpresa(int $empresaId, string $tenantId): void
     {
         $this->empresas->findById($empresaId, $tenantId);
+    }
+
+    /**
+     * Valida que las FKs existan y pertenezcan al ámbito: cuenta de la empresa, rubro del
+     * tenant; condición de IVA y provincia son catálogos globales. Devuelve 422 (no 500).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function assertReferencias(array $data, int $empresaId, string $tenantId): void
+    {
+        $this->refs->validate([
+            'condicion_iva_id' => ['table' => 'condiciones_iva', 'value' => $data['condicion_iva_id'] ?? null],
+            'provincia_id'     => ['table' => 'provincias', 'value' => $data['provincia_id'] ?? null],
+            'cuenta_id'        => [
+                'table' => 'cuentas', 'value' => $data['cuenta_id'] ?? null, 'scope' => ['empresa_id' => $empresaId],
+            ],
+            'rubro_id'         => [
+                'table' => 'rubros', 'value' => $data['rubro_id'] ?? null, 'scope' => ['tenant_id' => $tenantId],
+            ],
+        ]);
     }
 }

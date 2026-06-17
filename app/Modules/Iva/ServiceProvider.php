@@ -5,6 +5,7 @@ namespace App\Modules\Iva;
 use PDO;
 use App\Support\DB;
 use App\Support\Config;
+use App\Support\ReferenceValidator;
 use App\Support\ServiceProvider as BaseServiceProvider;
 use App\Modules\Iva\Afip\Soap\SoapTransport;
 use App\Modules\Iva\Afip\Soap\ExtSoapTransport;
@@ -62,10 +63,13 @@ class ServiceProvider extends BaseServiceProvider
     {
         $c = $this->container;
 
+        $c->singleton(ReferenceValidator::class, fn () => new ReferenceValidator($c->get(PDO::class)));
+
         $c->singleton(IvaClienteRepository::class, fn () => new IvaClienteRepository($c->get(PDO::class)));
         $c->singleton(IvaClienteService::class, fn () => new IvaClienteService(
             $c->get(IvaClienteRepository::class),
             $c->get(EmpresaRepository::class),
+            $c->get(ReferenceValidator::class),
         ));
         $c->singleton(
             IvaClienteController::class,
@@ -76,6 +80,7 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(IvaProveedorService::class, fn () => new IvaProveedorService(
             $c->get(IvaProveedorRepository::class),
             $c->get(EmpresaRepository::class),
+            $c->get(ReferenceValidator::class),
         ));
         $c->singleton(
             IvaProveedorController::class,

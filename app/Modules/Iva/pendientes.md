@@ -15,11 +15,13 @@
 - [ ] **Mover comprobante entre períodos** (`POST /ventas/{id}/mover`, idem compras):
       reasignar `periodo_id` validando que el destino esté abierto y la fecha entre.
       (Funcionalidad "Mover" del manual de Ventas/Compras.)
-- [ ] **Validación amable de FKs**: hoy un `condicion_iva_id`/`cuenta_id`/`rubro_id`
-      inexistente provoca error de FK (500). Validar existencia en el Service y
-      devolver 422.
-- [ ] **Validación de ámbito cruzado**: que `cuenta_id` pertenezca a la misma
-      empresa y `rubro_id` al mismo tenant del sujeto/comprobante.
+- [x] **Validación amable de FKs** + **ámbito cruzado**: nuevo `App\Support\ReferenceValidator`
+      (existencia + scope) usado en `IvaClienteService`/`IvaProveedorService`: `condicion_iva_id`
+      y `provincia_id` (catálogos globales), `cuenta_id` (de la empresa) y `rubro_id` (del tenant)
+      → 422 con el campo exacto, en vez del 500 por FK. Reutilizable para otros verticales.
+- [ ] Aplicar el mismo `ReferenceValidator` a las FKs de **ventas/compras** (tipo_comprobante_id,
+      tipo_documento_id, condicion_iva_id, provincia_id, rubro_id, tipo_operacion_*, tipo_moneda_id,
+      cliente_id/proveedor_id). Mismo patrón, pendiente de cablear.
 - [x] **Validación de duplicados** (legacy `SISTEMA.VALIDA_DUPLICADOS`): al crear/editar
       un comprobante se chequea que no exista otro igual en la empresa (across períodos).
       Ventas: tipo+letra+punto_venta+número. Compras: + CUIT del proveedor (distintos
