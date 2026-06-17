@@ -25,4 +25,10 @@ class PadronController
             'impuestos'    => $persona->impuestos,
         ]);
     }
+
+    /** Datos de padrón mapeados a los campos del alta de cliente/proveedor (autocompletar). */
+    public function sugerencia(Request $request): Response
+    {
+        return Response::success($this->service->sugerencia((string) $request->route('cuit')));
+    }
 }

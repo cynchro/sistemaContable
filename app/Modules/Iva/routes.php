@@ -69,6 +69,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
 
     // Padrón AFIP: consulta de un contribuyente por CUIT (autocompletar cliente/proveedor)
     $router->get('/padron/{cuit}', [PadronController::class, 'show']);
+    $router->get('/padron/{cuit}/sugerencia', [PadronController::class, 'sugerencia']);
 
     // Factura electrónica: solicitar CAE para una venta (numeración por punto de venta + WSFEv1)
     $router->post(

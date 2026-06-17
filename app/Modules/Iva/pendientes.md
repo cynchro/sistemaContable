@@ -82,8 +82,10 @@
 - [x] **ABM de `puntos_venta`**: CRUD por empresa (`/empresas/{id}/puntos-venta`), único por
       número. Pendiente menor: validar contra `FEParamGetPtosVenta` (sync desde AFIP) y, opcional,
       exigir en la emisión que el punto de venta esté registrado y activo.
-- [ ] **Autocompletar con padrón** en el alta de `iva_clientes`/`iva_proveedores` (el endpoint
-      ya devuelve los datos; falta el "usar estos datos" desde el form).
+- [x] **Autocompletar con padrón**: `GET /padron/{cuit}/sugerencia` devuelve los campos del
+      alta de cliente/proveedor ya mapeados (nombre/cuit/domicilio/localidad) + el bloque crudo
+      `padron` para que el front complete los desplegables (condición de IVA, provincia) contra
+      los catálogos. No se mapea condición/provincia en el back (evita matching riesgoso).
 - [ ] **Concurrencia en la numeración**: `FECompUltimoAutorizado`+1 sin lock; suficiente para
       un emisor secuencial, revisar si hay emisión concurrente.
 - [ ] **WSMTXCA** (factura con detalle de ítem) y **WSFEXv1** (exportación, comprobante E):

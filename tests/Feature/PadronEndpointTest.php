@@ -42,6 +42,23 @@ class PadronEndpointTest extends FeatureTestCase
         $this->assertSame('CORDOBA', $resp['json']['data']['domicilio']['provincia']);
     }
 
+    public function test_sugerencia_mapea_campos_de_alta(): void
+    {
+        $this->app->instance(PadronClient::class, $this->fakePadron());
+        $auth = $this->bearer($this->actingAsUser()['token']);
+
+        $resp = $this->getJson('/padron/30711111118/sugerencia', $auth);
+
+        $this->assertSame(200, $resp['status']);
+        $d = $resp['json']['data'];
+        $this->assertSame('ACME SA', $d['nombre']);
+        $this->assertSame('30711111118', $d['cuit']);
+        $this->assertSame('Av. Siempreviva 742', $d['domicilio']);
+        // El bloque crudo de padrón viaja para que el front complete los desplegables.
+        $this->assertSame('JURIDICA', $d['padron']['tipo_persona']);
+        $this->assertSame([30], $d['padron']['impuestos']);
+    }
+
     public function test_cuit_invalido_devuelve_422(): void
     {
         $this->app->instance(PadronClient::class, $this->fakePadron());
