@@ -39,7 +39,7 @@
       respeta; si trae solo `porcentaje`, se calcula `base × porcentaje / 100`
       (`IvaComprobanteCalculator::importeRetencion`). `base` explícita opcional; por defecto el
       neto gravado de la línea. ⚠️ La base por tipo de percepción es **decisión contable**
-      (ver `preguntas.md` A5); hoy default = neto gravado.
+      (ver `preguntas.md` A2); hoy default = neto gravado.
 
 ## B) RBAC / permisos
 - [ ] Hoy los endpoints usan `AuthMiddleware` + `TenantMiddleware`. Falta aplicar
