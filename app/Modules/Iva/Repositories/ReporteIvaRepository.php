@@ -7,7 +7,7 @@ use PDO;
 /**
  * Datos de los reportes "Subdiario / Libro IVA" de ventas y compras: un renglón por
  * comprobante, enriquecido con los importes calculados (neto gravado, IVA, IVA inc.,
- * retención —y crédito computable en compras—) y los nombres de los catálogos.
+ * percepción —y crédito computable en compras—) y los nombres de los catálogos.
  *
  * Replica las vistas VIVENTAS / VICOMPRAS del legacy. Acotado a `periodo_id`; la
  * pertenencia del período la valida el Service.
@@ -29,9 +29,8 @@ class ReporteIvaRepository
                    FROM venta_discriminaciones vd WHERE vd.venta_id = v.id) AS iva,
                 (SELECT COALESCE(SUM(vd.iva_inc_importe), 0) FROM venta_discriminaciones vd
                   WHERE vd.venta_id = v.id) AS iva_inc,
-                (SELECT COALESCE(SUM(vr.importe), 0) FROM venta_retenciones vr
-                   JOIN venta_discriminaciones vd2 ON vr.venta_discriminacion_id = vd2.id
-                  WHERE vd2.venta_id = v.id) AS retencion,
+                (SELECT COALESCE(SUM(vp.importe), 0) FROM venta_percepciones vp
+                  WHERE vp.venta_id = v.id) AS percepcion,
                 tc.codigo AS tipo_comprobante_codigo, tc.nombre AS tipo_comprobante_nombre, tc.cod_citi,
                 td.nombre AS tipo_documento_nombre, td.cod_afip AS tipo_documento_cod_afip,
                 pr.nombre AS provincia_nombre,
@@ -62,9 +61,8 @@ class ReporteIvaRepository
                   WHERE cd.compra_id = c.id) AS iva_inc,
                 (SELECT COALESCE(SUM(cd.cf_computable), 0) FROM compra_discriminaciones cd
                   WHERE cd.compra_id = c.id) AS cf_computable,
-                (SELECT COALESCE(SUM(cr.importe), 0) FROM compra_retenciones cr
-                   JOIN compra_discriminaciones cd2 ON cr.compra_discriminacion_id = cd2.id
-                  WHERE cd2.compra_id = c.id) AS retencion,
+                (SELECT COALESCE(SUM(cp.importe), 0) FROM compra_percepciones cp
+                  WHERE cp.compra_id = c.id) AS percepcion,
                 tc.codigo AS tipo_comprobante_codigo, tc.nombre AS tipo_comprobante_nombre, tc.cod_citi,
                 pr.nombre AS provincia_nombre,
                 ci.codigo AS condicion_codigo, ci.nombre AS condicion_nombre,

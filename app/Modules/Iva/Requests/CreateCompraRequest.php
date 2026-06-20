@@ -35,6 +35,7 @@ class CreateCompraRequest extends FormRequest
             'cai'                      => 'nullable|string|max:15',
             'fecha_cai'                => 'nullable|date:Y-m-d',
             'discriminaciones'         => 'nullable|array',
+            'percepciones'             => 'nullable|array',
         ];
     }
 }

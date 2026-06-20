@@ -8,15 +8,18 @@ use App\Exceptions\ConflictException;
 use App\Exceptions\ValidationException;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
+use App\Modules\Compartido\Repositories\TipoRetencionRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
+use App\Modules\Iva\Calc\PercepcionCalculator;
 use App\Modules\Iva\Repositories\CompraRepository;
 
 /**
  * Orquesta el alta/edición/baja de comprobantes de compra (agregado cabecera +
- * discriminación + retenciones). Mismas reglas que ventas (empresa∈tenant,
+ * discriminación + percepciones). Mismas reglas que ventas (empresa∈tenant,
  * período abierto, fecha en rango, cálculo por el motor, todo en una transacción).
- * Diferencia: cada línea lleva `cf_computable` (crédito fiscal computable); si no
- * se informa, se asume igual al IVA calculado (crédito íntegramente computable).
+ * Diferencias: cada línea lleva `cf_computable` (crédito fiscal computable); si no
+ * se informa, se asume igual al IVA calculado (crédito íntegramente computable). Las
+ * percepciones sufridas se registran a nivel comprobante e integran el total (A1/A2).
  */
 class CompraService
 {
@@ -27,6 +30,8 @@ class CompraService
         private IvaComprobanteCalculator $calculator,
         private DB $db,
         private ReferenceValidator $refs,
+        private PercepcionCalculator $percepcionCalc,
+        private TipoRetencionRepository $tiposRetencion,
     ) {
     }
 
@@ -57,10 +62,10 @@ class CompraService
         $this->assertReferencias($data, $empresaId, $tenantId);
         $this->assertNoDuplicado($data, $empresaId);
 
-        [$header, $lineas] = $this->preparar($data);
+        [$header, $lineas, $percepciones] = $this->preparar($data, $tenantId);
 
         return $this->db->withTransaction(
-            fn () => $this->compras->create($header, $lineas, $periodoId)
+            fn () => $this->compras->create($header, $lineas, $percepciones, $periodoId)
         );
     }
 
@@ -76,10 +81,10 @@ class CompraService
         $this->assertReferencias($data, $empresaId, $tenantId);
         $this->assertNoDuplicado($data, $empresaId, $id);
 
-        [$header, $lineas] = $this->preparar($data);
+        [$header, $lineas, $percepciones] = $this->preparar($data, $tenantId);
 
         return $this->db->withTransaction(
-            fn () => $this->compras->replace($id, $header, $lineas, $periodoId)
+            fn () => $this->compras->replace($id, $header, $lineas, $percepciones, $periodoId)
         );
     }
 
@@ -113,15 +118,21 @@ class CompraService
     }
 
     /**
-     * Corre la calculadora y arma [cabecera con total, líneas con importes + cf_computable].
+     * Corre la calculadora y arma [cabecera con total, líneas (+ cf_computable), percepciones].
      *
      * @param  array<string, mixed> $data
-     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>}
+     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>, 2: list<array<string, mixed>>}
      */
-    private function preparar(array $data): array
+    private function preparar(array $data, string $tenantId): array
     {
-        $lineasInput = $this->normalizarDiscriminaciones($data['discriminaciones'] ?? []);
-        $calc        = $this->calculator->calcular($data, $lineasInput);
+        $lineasInput  = $this->normalizarDiscriminaciones($data['discriminaciones'] ?? []);
+        $percepciones = $this->resolverPercepciones(
+            $this->normalizarPercepciones($data['percepciones'] ?? []),
+            $data,
+            $lineasInput,
+            $tenantId,
+        );
+        $calc = $this->calculator->calcular($data, $lineasInput, $percepciones);
 
         $header = $data;
         $header['total'] = $calc['total'];
@@ -129,42 +140,48 @@ class CompraService
         $lineas = [];
         foreach ($lineasInput as $i => $linea) {
             $ivaImporte = $calc['lineas'][$i]['iva_importe'];
-            $neto       = $calc['lineas'][$i]['neto_gravado'];
             $lineas[] = [
-                'neto_gravado'     => $neto,
+                'neto_gravado'     => $calc['lineas'][$i]['neto_gravado'],
                 'iva_alicuota'     => $linea['iva_alicuota'],
                 'iva_importe'      => $ivaImporte,
                 'iva_inc_alicuota' => $linea['iva_inc_alicuota'],
                 'iva_inc_importe'  => $calc['lineas'][$i]['iva_inc_importe'],
                 // Crédito fiscal computable: informado, o el IVA completo por defecto.
                 'cf_computable'    => $linea['cf_computable'] ?? $ivaImporte,
-                'retenciones'      => $this->resolverRetenciones($linea['retenciones'], $neto),
             ];
         }
 
-        return [$header, $lineas];
+        return [$header, $lineas, $percepciones];
     }
 
     /**
-     * Resuelve el importe de cada retención: si vino informado se usa; si no, se calcula
-     * base × porcentaje / 100 (base = la informada, o el neto gravado de la línea por defecto).
+     * Resuelve cada percepción sufrida del comprobante: toma del tipo de retención la base
+     * de cálculo y la alícuota por defecto, y delega en PercepcionCalculator base e importe
+     * (que integran el total). Un importe/base/alícuota informados pisan los del tipo.
      *
-     * @param  list<array<string, mixed>> $retenciones
+     * @param  list<array<string, mixed>> $percepciones normalizadas
+     * @param  array<string, mixed>       $cabecera
+     * @param  list<array<string, mixed>> $lineas
      * @return list<array<string, mixed>>
      */
-    private function resolverRetenciones(array $retenciones, string $netoBase): array
+    private function resolverPercepciones(array $percepciones, array $cabecera, array $lineas, string $tenantId): array
     {
         $out = [];
-        foreach ($retenciones as $ret) {
-            $importe = $ret['importe'];
-            if ($importe === null) {
-                $base = $this->esNumerico($ret['base'] ?? null) ? (string) $ret['base'] : $netoBase;
-                $importe = $this->calculator->importeRetencion($base, (string) $ret['porcentaje']);
-            }
+        foreach ($percepciones as $perc) {
+            $tipo = $this->tiposRetencion->findVisible($perc['tipo_retencion_id'], $tenantId);
+            $calc = $this->percepcionCalc->calcular($cabecera, $lineas, [
+                'base_calculo' => (string) ($tipo['base_calculo'] ?? 'neto_gravado'),
+                'alicuota'     => $perc['alicuota'] ?? ($tipo['alicuota'] ?? null),
+                'base'         => $perc['base'],
+                'importe'      => $perc['importe'],
+            ]);
+
             $out[] = [
-                'tipo_retencion_id' => $ret['tipo_retencion_id'],
-                'porcentaje'        => $ret['porcentaje'],
-                'importe'           => $importe,
+                'tipo_retencion_id' => $perc['tipo_retencion_id'],
+                'provincia_id'      => $perc['provincia_id'] ?? ($tipo['provincia_id'] ?? null),
+                'base'              => $calc['base'],
+                'alicuota'          => $calc['alicuota'],
+                'importe'           => $calc['importe'],
             ];
         }
 
@@ -172,7 +189,7 @@ class CompraService
     }
 
     /**
-     * Valida y normaliza las líneas de discriminación (y sus retenciones).
+     * Valida y normaliza las líneas de discriminación.
      *
      * @param  mixed $discriminaciones
      * @return list<array<string, mixed>>
@@ -202,29 +219,46 @@ class CompraService
                 ]);
             }
 
-            $retenciones = [];
-            foreach (array_values((array) ($linea['retenciones'] ?? [])) as $j => $ret) {
-                $importe    = $ret['importe'] ?? null;
-                $porcentaje = $ret['porcentaje'] ?? null;
-                if (!is_array($ret) || (!$this->esNumerico($importe) && !$this->esNumerico($porcentaje))) {
-                    throw new ValidationException([
-                        'discriminaciones' => ["La retención {$j} de la línea {$i} requiere importe o porcentaje."],
-                    ]);
-                }
-                $retenciones[] = [
-                    'tipo_retencion_id' => $ret['tipo_retencion_id'] ?? null,
-                    'porcentaje'        => $porcentaje,
-                    'base'              => $ret['base'] ?? null,
-                    'importe'           => $this->esNumerico($importe) ? $importe : null,
-                ];
-            }
-
             $out[] = [
                 'neto_gravado'     => $linea['neto_gravado'],
                 'iva_alicuota'     => $linea['iva_alicuota'],
                 'iva_inc_alicuota' => $linea['iva_inc_alicuota'] ?? null,
                 'cf_computable'    => $cf,
-                'retenciones'      => $retenciones,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Valida y normaliza las percepciones sufridas del comprobante (a nivel cabecera). Cada
+     * una requiere `tipo_retencion_id`; `alicuota`, `base`, `importe` y `provincia_id` son
+     * opcionales (si faltan, se toman del tipo o se calculan según su base).
+     *
+     * @param  mixed $percepciones
+     * @return list<array<string, mixed>>
+     */
+    private function normalizarPercepciones(mixed $percepciones): array
+    {
+        if (!is_array($percepciones)) {
+            throw new ValidationException(['percepciones' => ['percepciones debe ser una lista.']]);
+        }
+
+        $out = [];
+        foreach (array_values($percepciones) as $i => $perc) {
+            if (!is_array($perc) || !$this->esNumerico($perc['tipo_retencion_id'] ?? null)) {
+                throw new ValidationException([
+                    'percepciones' => ["La percepción {$i} requiere tipo_retencion_id."],
+                ]);
+            }
+
+            $out[] = [
+                'tipo_retencion_id' => (int) $perc['tipo_retencion_id'],
+                'alicuota'          => $this->esNumerico($perc['alicuota'] ?? null) ? $perc['alicuota'] : null,
+                'base'              => $this->esNumerico($perc['base'] ?? null) ? $perc['base'] : null,
+                'importe'           => $this->esNumerico($perc['importe'] ?? null) ? $perc['importe'] : null,
+                'provincia_id'      => $this->esNumerico($perc['provincia_id'] ?? null)
+                    ? (int) $perc['provincia_id'] : null,
             ];
         }
 

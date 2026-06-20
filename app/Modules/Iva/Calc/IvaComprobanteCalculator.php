@@ -14,22 +14,27 @@ use App\Support\Calc\Contracts\Calculator;
  *   iva_importe     = round(neto_gravado · iva_alicuota / 100, 2)
  *   iva_inc_importe = round(neto_gravado · iva_inc_alicuota / 100, 2)
  *   total = neto_no_grav + exento + imp_interno
- *         + Σ neto_gravado + Σ iva_importe + Σ iva_inc_importe
+ *         + Σ neto_gravado + Σ iva_importe + Σ iva_inc_importe + Σ percepciones
  *
  * El IVA del comprobante es la suma de los importes YA redondeados por línea
  * (igual que el legacy, que guarda y suma VD_IVA_IMPORTE), para reconciliar 1:1.
+ *
+ * Las PERCEPCIONES (ya resueltas por {@see PercepcionCalculator}) integran el total
+ * del comprobante (respuestas.md A1, confirmado con factura real). Se reciben con su
+ * importe y se suman al total; el cálculo de cada una vive en su propia calculadora.
  */
 final class IvaComprobanteCalculator implements Calculator
 {
     /**
      * @param  array{neto_no_grav?: mixed, exento?: mixed, imp_interno?: mixed} $cabecera
      * @param  list<array{neto_gravado?: mixed, iva_alicuota?: mixed, iva_inc_alicuota?: mixed}> $lineas
+     * @param  list<array{importe?: mixed}> $percepciones percepciones ya resueltas (integran el total)
      * @return array{
      *   lineas: list<array{neto_gravado: string, iva_importe: string, iva_inc_importe: string}>,
-     *   neto_gravado: string, iva: string, iva_inc: string, total: string
+     *   neto_gravado: string, iva: string, iva_inc: string, percepciones: string, total: string
      * }
      */
-    public function calcular(array $cabecera, array $lineas): array
+    public function calcular(array $cabecera, array $lineas, array $percepciones = []): array
     {
         $netoGravado = Decimal::zero();
         $ivaTotal    = Decimal::zero();
@@ -52,25 +57,26 @@ final class IvaComprobanteCalculator implements Calculator
             ];
         }
 
+        $percepcionesTotal = Decimal::zero();
+        foreach ($percepciones as $perc) {
+            $percepcionesTotal = $percepcionesTotal->add(Decimal::of($perc['importe'] ?? 0)->round(2));
+        }
+
         $total = Decimal::of($cabecera['neto_no_grav'] ?? 0)->round(2)
             ->add(Decimal::of($cabecera['exento'] ?? 0)->round(2))
             ->add(Decimal::of($cabecera['imp_interno'] ?? 0)->round(2))
             ->add($netoGravado)
             ->add($ivaTotal)
-            ->add($ivaIncTotal);
+            ->add($ivaIncTotal)
+            ->add($percepcionesTotal);
 
         return [
             'lineas'       => $lineasOut,
             'neto_gravado' => $netoGravado->value(2),
             'iva'          => $ivaTotal->value(2),
             'iva_inc'      => $ivaIncTotal->value(2),
+            'percepciones' => $percepcionesTotal->value(2),
             'total'        => $total->value(2),
         ];
-    }
-
-    /** Importe de una retención/percepción: base × porcentaje / 100 (redondeado a 2). */
-    public function importeRetencion(int|float|string $base, int|float|string $porcentaje): string
-    {
-        return Decimal::of($base)->percentage(Decimal::of($porcentaje))->round(2)->value(2);
     }
 }

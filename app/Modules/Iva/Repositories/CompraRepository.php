@@ -6,7 +6,7 @@ use PDO;
 use App\Exceptions\NotFoundException;
 
 /**
- * Persistencia del agregado Compra = cabecera + discriminaciones + retenciones.
+ * Persistencia del agregado Compra = cabecera + discriminaciones + percepciones.
  * Simétrico a VentaRepository (lado proveedor; la discriminación lleva cf_computable).
  * Acotado a `periodo_id`; la pertenencia del período la valida el Service. Los
  * multi-insert corren dentro de la transacción que abre el Service.
@@ -26,7 +26,7 @@ class CompraRepository
         'iva_inc_importe', 'cf_computable',
     ];
 
-    private const RETENCION_WRITABLE = ['tipo_retencion_id', 'porcentaje', 'importe'];
+    private const PERCEPCION_WRITABLE = ['tipo_retencion_id', 'provincia_id', 'base', 'alicuota', 'importe'];
 
     public function __construct(private PDO $pdo)
     {
@@ -41,7 +41,7 @@ class CompraRepository
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /** @return array<string, mixed> Cabecera con discriminaciones y sus retenciones. */
+    /** @return array<string, mixed> Cabecera con discriminaciones y percepciones. */
     public function findById(int $id, int $periodoId): array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM compras WHERE id = ? AND periodo_id = ?');
@@ -54,19 +54,17 @@ class CompraRepository
 
         $disStmt = $this->pdo->prepare('SELECT * FROM compra_discriminaciones WHERE compra_id = ? ORDER BY id');
         $disStmt->execute([$id]);
-        $discriminaciones = (array) $disStmt->fetchAll(PDO::FETCH_ASSOC);
+        $compra['discriminaciones'] = (array) $disStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $retStmt = $this->pdo->prepare(
-            'SELECT * FROM compra_retenciones WHERE compra_discriminacion_id = ? ORDER BY id'
+        // Percepciones sufridas del comprobante (con datos del tipo: clasificación RG y código AFIP).
+        $percStmt = $this->pdo->prepare(
+            'SELECT p.*, tr.tipo_rg3685, tr.cod_afip AS tipo_cod_afip, tr.nombre AS tipo_nombre
+             FROM compra_percepciones p
+             LEFT JOIN tipos_retencion tr ON tr.id = p.tipo_retencion_id
+             WHERE p.compra_id = ? ORDER BY p.id'
         );
-
-        foreach ($discriminaciones as &$dis) {
-            $retStmt->execute([$dis['id']]);
-            $dis['retenciones'] = (array) $retStmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-        unset($dis);
-
-        $compra['discriminaciones'] = $discriminaciones;
+        $percStmt->execute([$id]);
+        $compra['percepciones'] = (array) $percStmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $compra;
     }
@@ -75,15 +73,16 @@ class CompraRepository
      * Inserta el agregado completo. Debe llamarse dentro de una transacción.
      *
      * @param  array<string, mixed>       $header
-     * @param  list<array<string, mixed>> $discriminaciones cada una con 'retenciones'
+     * @param  list<array<string, mixed>> $discriminaciones
+     * @param  list<array<string, mixed>> $percepciones     percepciones del comprobante (integran el total)
      * @return array<string, mixed>
      */
-    public function create(array $header, array $discriminaciones, int $periodoId): array
+    public function create(array $header, array $discriminaciones, array $percepciones, int $periodoId): array
     {
         $headerFields = $this->filter($header, self::HEADER_WRITABLE) + ['periodo_id' => $periodoId];
         $compraId = $this->insert('compras', $headerFields);
 
-        $this->insertHijos($compraId, $discriminaciones);
+        $this->insertHijos($compraId, $discriminaciones, $percepciones);
 
         return $this->findById($compraId, $periodoId);
     }
@@ -93,9 +92,10 @@ class CompraRepository
      *
      * @param  array<string, mixed>       $header
      * @param  list<array<string, mixed>> $discriminaciones
+     * @param  list<array<string, mixed>> $percepciones
      * @return array<string, mixed>
      */
-    public function replace(int $id, array $header, array $discriminaciones, int $periodoId): array
+    public function replace(int $id, array $header, array $discriminaciones, array $percepciones, int $periodoId): array
     {
         $fields = $this->filter($header, self::HEADER_WRITABLE);
 
@@ -107,11 +107,10 @@ class CompraRepository
             $stmt->execute($fields);
         }
 
-        // Las retenciones caen por cascade al borrar las discriminaciones.
-        $del = $this->pdo->prepare('DELETE FROM compra_discriminaciones WHERE compra_id = ?');
-        $del->execute([$id]);
+        $this->pdo->prepare('DELETE FROM compra_discriminaciones WHERE compra_id = ?')->execute([$id]);
+        $this->pdo->prepare('DELETE FROM compra_percepciones WHERE compra_id = ?')->execute([$id]);
 
-        $this->insertHijos($id, $discriminaciones);
+        $this->insertHijos($id, $discriminaciones, $percepciones);
 
         return $this->findById($id, $periodoId);
     }
@@ -129,26 +128,31 @@ class CompraRepository
 
     public function delete(int $id, int $periodoId): bool
     {
-        // compra_discriminaciones y compra_retenciones caen por FK ON DELETE CASCADE.
+        // compra_discriminaciones y compra_percepciones caen por FK ON DELETE CASCADE.
         $stmt = $this->pdo->prepare('DELETE FROM compras WHERE id = ? AND periodo_id = ?');
         $stmt->execute([$id, $periodoId]);
 
         return $stmt->rowCount() > 0;
     }
 
-    /** @param list<array<string, mixed>> $discriminaciones */
-    private function insertHijos(int $compraId, array $discriminaciones): void
+    /**
+     * Inserta las discriminaciones y percepciones de un comprobante.
+     *
+     * @param list<array<string, mixed>> $discriminaciones
+     * @param list<array<string, mixed>> $percepciones
+     */
+    private function insertHijos(int $compraId, array $discriminaciones, array $percepciones): void
     {
         foreach ($discriminaciones as $dis) {
             $disFields = $this->filter($dis, self::DISCRIMINACION_WRITABLE);
             $disFields['compra_id'] = $compraId;
-            $disId = $this->insert('compra_discriminaciones', $disFields);
+            $this->insert('compra_discriminaciones', $disFields);
+        }
 
-            foreach ((array) ($dis['retenciones'] ?? []) as $ret) {
-                $retFields = $this->filter($ret, self::RETENCION_WRITABLE);
-                $retFields['compra_discriminacion_id'] = $disId;
-                $this->insert('compra_retenciones', $retFields);
-            }
+        foreach ($percepciones as $perc) {
+            $percFields = $this->filter($perc, self::PERCEPCION_WRITABLE);
+            $percFields['compra_id'] = $compraId;
+            $this->insert('compra_percepciones', $percFields);
         }
     }
 

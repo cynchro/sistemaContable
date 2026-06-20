@@ -19,12 +19,12 @@ class ReporteIvaService
 {
     /** @var list<string> Columnas de importe a totalizar en ventas. */
     private const COLS_VENTAS = [
-        'neto_gravado', 'iva', 'iva_inc', 'retencion', 'neto_no_grav', 'exento', 'imp_interno', 'total',
+        'neto_gravado', 'iva', 'iva_inc', 'percepcion', 'neto_no_grav', 'exento', 'imp_interno', 'total',
     ];
 
     /** @var list<string> Columnas de importe a totalizar en compras. */
     private const COLS_COMPRAS = [
-        'neto_gravado', 'iva', 'iva_inc', 'cf_computable', 'retencion',
+        'neto_gravado', 'iva', 'iva_inc', 'cf_computable', 'percepcion',
         'neto_no_grav', 'exento', 'imp_interno', 'total',
     ];
 
@@ -41,7 +41,7 @@ class ReporteIvaService
         'neto_no_grav'           => 'No Gravado',
         'exento'                 => 'Exento',
         'imp_interno'            => 'Imp. Interno',
-        'retencion'              => 'Retenciones',
+        'percepcion'             => 'Percepciones',
         'total'                  => 'Total',
     ];
 
@@ -59,7 +59,7 @@ class ReporteIvaService
         'neto_no_grav'           => 'No Gravado',
         'exento'                 => 'Exento',
         'imp_interno'            => 'Imp. Interno',
-        'retencion'              => 'Retenciones',
+        'percepcion'             => 'Percepciones',
         'total'                  => 'Total',
     ];
 

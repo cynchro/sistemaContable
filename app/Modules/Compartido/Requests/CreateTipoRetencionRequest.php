@@ -15,6 +15,7 @@ class CreateTipoRetencionRequest extends FormRequest
             'alicuota'     => 'nullable|numeric',
             'tipo_rg3685'  => 'nullable|integer',
             'provincia_id' => 'nullable|integer',
+            'base_calculo' => 'nullable|in:neto_gravado,neto_mas_imp_interno,iva_percepcion',
         ];
     }
 }

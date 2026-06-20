@@ -41,4 +41,21 @@ class LibroIvaController
             (string) $request->tenantId(),
         ));
     }
+
+    /**
+     * DDJJ "IVA Simple" del período (F.2051 del Portal IVA, reemplaza al F2002).
+     * Los arrastres se pasan por query: saldo_tecnico_anterior,
+     * saldo_libre_disponibilidad_anterior, retenciones_percepciones_pagos.
+     */
+    public function ivaSimple(Request $request): Response
+    {
+        return Response::success($this->service->ivaSimple(
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (string) $request->tenantId(),
+            (string) $request->input('saldo_tecnico_anterior', '0'),
+            (string) $request->input('saldo_libre_disponibilidad_anterior', '0'),
+            (string) $request->input('retenciones_percepciones_pagos', '0'),
+        ));
+    }
 }

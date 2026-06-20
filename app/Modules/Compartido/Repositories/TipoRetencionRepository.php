@@ -12,7 +12,7 @@ use App\Exceptions\NotFoundException;
  */
 class TipoRetencionRepository
 {
-    private const WRITABLE = ['cod_afip', 'alicuota', 'nombre', 'tipo_rg3685', 'provincia_id'];
+    private const WRITABLE = ['cod_afip', 'alicuota', 'nombre', 'tipo_rg3685', 'provincia_id', 'base_calculo'];
 
     public function __construct(private PDO $pdo)
     {

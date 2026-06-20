@@ -85,6 +85,33 @@ class WsfeComprobanteMapperTest extends UnitTestCase
         );
     }
 
+    public function test_percepciones_se_emiten_como_tributos_y_suman_a_imptrib(): void
+    {
+        $venta = [
+            'fecha' => '2026-01-15', 'cuit' => '30711111118', 'concepto' => 1,
+            'imp_interno' => '50.00', 'total' => '0.00',
+            'discriminaciones' => [
+                ['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000', 'iva_importe' => '210.00'],
+            ],
+            'percepciones' => [
+                ['tipo_rg3685' => 3, 'base' => '1000.00', 'alicuota' => '2.500', 'importe' => '25.00'],
+            ],
+        ];
+        $ctx = new FacturaContexto(1, 11, 1, 80, 'RI');
+
+        $det = (new WsfeComprobanteMapper())->build($venta, $ctx)['FeDetReq']['FECAEDetRequest'][0];
+
+        $this->assertSame(75.0, $det['ImpTrib']); // 50 internos + 25 percepción
+        $this->assertSame(
+            ['Tributo' => [
+                ['Id' => 4, 'Desc' => 'Impuestos internos', 'BaseImp' => 0.0, 'Alic' => 0.0, 'Importe' => 50.0],
+                ['Id' => 7, 'Desc' => 'Percepciones de Ingresos Brutos',
+                 'BaseImp' => 1000.0, 'Alic' => 2.5, 'Importe' => 25.0],
+            ]],
+            $det['Tributos'],
+        );
+    }
+
     public function test_incluye_comprobantes_asociados(): void
     {
         $venta = ['fecha' => '2026-02-10', 'cuit' => '30711111118', 'concepto' => 1,

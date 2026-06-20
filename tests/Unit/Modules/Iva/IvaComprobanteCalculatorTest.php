@@ -83,10 +83,16 @@ class IvaComprobanteCalculatorTest extends UnitTestCase
         $this->assertSame('0.00', $r['total']);
     }
 
-    public function test_importe_retencion_base_por_porcentaje(): void
+    public function test_percepciones_integran_el_total(): void
     {
-        $this->assertSame('30.00', $this->calc->importeRetencion('1000.00', '3.000'));
-        $this->assertSame('52.50', $this->calc->importeRetencion('500', '10.5'));
-        $this->assertSame('0.00', $this->calc->importeRetencion('1000', '0'));
+        // 1000 neto + 210 IVA = 1210; + percepciones 37.50 + 7.50 = 1255.00
+        $r = $this->calc->calcular(
+            [],
+            [['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000']],
+            [['importe' => '37.50'], ['importe' => '7.50']],
+        );
+
+        $this->assertSame('45.00', $r['percepciones']);
+        $this->assertSame('1255.00', $r['total']);
     }
 }

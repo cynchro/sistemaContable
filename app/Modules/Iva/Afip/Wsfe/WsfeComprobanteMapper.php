@@ -4,11 +4,12 @@ namespace App\Modules\Iva\Afip\Wsfe;
 
 /**
  * Arma el FeCAEReq de FECAESolicitar (WSFEv1) a partir del agregado Venta
- * (cabecera + discriminaciones) y el contexto resuelto (punto de venta, numero,
- * CbteTipo, DocTipo, condición del receptor, moneda). Lógica pura, sin DB ni red.
+ * (cabecera + discriminaciones + percepciones) y el contexto resuelto (punto de
+ * venta, numero, CbteTipo, DocTipo, condición del receptor, moneda). Lógica pura,
+ * sin DB ni red.
  *
- * Difiere (documentado en pendientes): CbtesAsoc (NC/ND asociadas) y el array
- * Tributos (percepciones); hoy contempla factura con IVA discriminado.
+ * Las percepciones integran el total (respuestas.md A1) y se emiten como
+ * `Tributos → Tributo[]` (Id por {@see TributoResolver}); su importe suma a ImpTrib.
  */
 class WsfeComprobanteMapper
 {
@@ -38,9 +39,26 @@ class WsfeComprobanteMapper
             ];
         }
 
+        // Percepciones → Tributo[] (integran el total); su importe suma a ImpTrib.
+        $tributos    = [];
+        $impInterno  = round((float) ($venta['imp_interno'] ?? 0), 2);
+        $percepTotal = 0.0;
+        foreach ((array) ($venta['percepciones'] ?? []) as $perc) {
+            $importe = round((float) ($perc['importe'] ?? 0), 2);
+            $percepTotal += $importe;
+            $tributo = TributoResolver::fromRg3685((int) ($perc['tipo_rg3685'] ?? 0));
+            $tributos[] = [
+                'Id'      => $tributo['id'],
+                'Desc'    => $tributo['desc'],
+                'BaseImp' => round((float) ($perc['base'] ?? 0), 2),
+                'Alic'    => round((float) ($perc['alicuota'] ?? 0), 2),
+                'Importe' => $importe,
+            ];
+        }
+
         $impOpEx   = round((float) ($venta['exento'] ?? 0), 2);
         $impTotConc = round((float) ($venta['neto_no_grav'] ?? 0), 2);
-        $impTrib   = round((float) ($venta['imp_interno'] ?? 0), 2);
+        $impTrib   = round($impInterno + $percepTotal, 2);
         $impTotal  = round((float) ($venta['total'] ?? 0), 2);
         $concepto  = (int) ($venta['concepto'] ?? 1);
 
@@ -71,16 +89,19 @@ class WsfeComprobanteMapper
             $det['CbtesAsoc'] = ['CbteAsoc' => $ctx->cbtesAsoc];
         }
 
-        // Tributos: impuestos internos (Id 4), único tributo del comprobante en este modelo
-        // (las percepciones del legacy no integran el total → no se emiten como Tributo).
-        if ($impTrib > 0) {
-            $det['Tributos'] = ['Tributo' => [[
+        // Tributos: impuestos internos (Id 4) + percepciones (Ids por TributoResolver).
+        if ($impInterno > 0) {
+            array_unshift($tributos, [
                 'Id'      => 4,
                 'Desc'    => 'Impuestos internos',
                 'BaseImp' => 0.0,
                 'Alic'    => 0.0,
-                'Importe' => $impTrib,
-            ]]];
+                'Importe' => $impInterno,
+            ]);
+        }
+
+        if ($tributos !== []) {
+            $det['Tributos'] = ['Tributo' => $tributos];
         }
 
         // Conceptos 2 (servicios) y 3 (productos+servicios) requieren fechas de servicio.

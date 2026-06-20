@@ -8,6 +8,7 @@ use App\Support\Calc\Decimal;
 use App\Modules\Iva\Calc\LibroIvaCalculator;
 use App\Modules\Iva\Calc\LibroIvaDetalleCalculator;
 use App\Modules\Iva\Calc\DeclaracionIvaCalculator;
+use App\Modules\Iva\Calc\IvaSimpleCalculator;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
 
 /**
@@ -24,6 +25,7 @@ class LibroIvaService
         private LibroIvaCalculator $calculator,
         private LibroIvaDetalleCalculator $detalleCalculator,
         private DeclaracionIvaCalculator $declaracionCalculator,
+        private IvaSimpleCalculator $ivaSimpleCalculator,
     ) {
     }
 
@@ -110,6 +112,40 @@ class LibroIvaService
                 'credito_computable' => $consolidado['credito_computable'],
                 'saldo_tecnico'      => $consolidado['saldo_tecnico'],
             ],
+        ];
+    }
+
+    /**
+     * DDJJ de IVA "IVA Simple" del período (F.2051 del Portal IVA, reemplaza al F2002):
+     * encadena el débito/crédito computable del período con los arrastres (saldo técnico
+     * anterior, saldo de libre disponibilidad anterior y retenciones/percepciones/pagos a
+     * cuenta), que son insumos del estudio. Ver {@see IvaSimpleCalculator}.
+     *
+     * @return array<string, mixed>
+     */
+    public function ivaSimple(
+        int $empresaId,
+        int $periodoId,
+        string $tenantId,
+        string $saldoTecnicoAnterior = '0',
+        string $saldoLibreDisponibilidadAnterior = '0',
+        string $retencionesPercepcionesPagos = '0',
+    ): array {
+        $declaracion = $this->declaracion($empresaId, $periodoId, $tenantId);
+
+        $f2051 = $this->ivaSimpleCalculator->calcular(
+            $declaracion['saldo']['debito_fiscal'],
+            $declaracion['saldo']['credito_computable'],
+            $saldoTecnicoAnterior,
+            $saldoLibreDisponibilidadAnterior,
+            $retencionesPercepcionesPagos,
+        );
+
+        return [
+            'debito_fiscal'  => $declaracion['debito_fiscal'],
+            'credito_fiscal' => $declaracion['credito_fiscal'],
+            'determinacion_impuesto' => $f2051['determinacion_impuesto'],
+            'posicion_mensual'       => $f2051['posicion_mensual'],
         ];
     }
 

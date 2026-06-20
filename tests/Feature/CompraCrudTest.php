@@ -3,8 +3,9 @@
 namespace Tests\Feature;
 
 /**
- * Compras del módulo IVA: agregado (cabecera + discriminación + retenciones) con
+ * Compras del módulo IVA: agregado (cabecera + discriminación + percepciones) con
  * cálculo de IVA/total por el motor, cf_computable, reglas de período y aislamiento.
+ * Las percepciones sufridas integran el total (respuestas.md A1).
  */
 class CompraCrudTest extends FeatureTestCase
 {
@@ -28,11 +29,23 @@ class CompraCrudTest extends FeatureTestCase
             'fecha'            => '2026-01-15',
             'neto_no_grav'     => '100.00',
             'discriminaciones' => [
-                ['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000',
-                 'retenciones' => [['porcentaje' => '3.000', 'importe' => '30.00']]],
+                ['neto_gravado' => '1000.00', 'iva_alicuota' => '21.000'],
                 ['neto_gravado' => '500.00', 'iva_alicuota' => '10.500'],
             ],
         ], $overrides);
+    }
+
+    /** Crea un tipo de percepción propio del estudio y devuelve su id. */
+    private function crearTipoPercepcion(array $auth, array $data = []): int
+    {
+        $resp = $this->postJson('/tipos-retencion', array_merge([
+            'nombre'       => 'Perc. IIBB',
+            'tipo_rg3685'  => 3,
+            'alicuota'     => '2.5',
+            'base_calculo' => 'neto_gravado',
+        ], $data), $auth);
+
+        return (int) $resp['json']['data']['id'];
     }
 
     private function crearCompra(array $ctx, array $overrides = []): int
@@ -59,7 +72,22 @@ class CompraCrudTest extends FeatureTestCase
         $this->assertSame('210.00', $c['discriminaciones'][0]['iva_importe']);
         // cf_computable por defecto = IVA calculado de la línea.
         $this->assertSame('210.00', $c['discriminaciones'][0]['cf_computable']);
-        $this->assertCount(1, $c['discriminaciones'][0]['retenciones']);
+    }
+
+    public function test_percepcion_sufrida_integra_el_total(): void
+    {
+        ['auth' => $auth, 'empresaId' => $e, 'periodoId' => $p] = $this->escenario();
+        // Percepción sufrida IIBB 2,5% sobre el neto total (1500) = 37.50.
+        $tipoId = $this->crearTipoPercepcion($auth);
+
+        $resp = $this->postJson("/empresas/{$e}/periodos/{$p}/compras", $this->compraValida([
+            'percepciones' => [['tipo_retencion_id' => $tipoId]],
+        ]), $auth);
+
+        $this->assertSame(201, $resp['status']);
+        $c = $resp['json']['data'];
+        $this->assertSame('37.50', $c['percepciones'][0]['importe']);
+        $this->assertSame('1900.00', $c['total']); // 1862.50 + 37.50
     }
 
     public function test_cf_computable_explicito_se_respeta(): void

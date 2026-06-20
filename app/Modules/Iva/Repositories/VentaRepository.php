@@ -6,7 +6,7 @@ use PDO;
 use App\Exceptions\NotFoundException;
 
 /**
- * Persistencia del agregado Venta = cabecera + discriminaciones + retenciones.
+ * Persistencia del agregado Venta = cabecera + discriminaciones + percepciones.
  * Acotado a `periodo_id`; la pertenencia del período a la empresa/tenant la valida
  * el Service. Los multi-insert se ejecutan dentro de la transacción que abre el
  * Service (DB::withTransaction).
@@ -26,7 +26,7 @@ class VentaRepository
         'iva_inc_importe', 'reintegro_t', 'concepto',
     ];
 
-    private const RETENCION_WRITABLE = ['tipo_retencion_id', 'porcentaje', 'importe'];
+    private const PERCEPCION_WRITABLE = ['tipo_retencion_id', 'provincia_id', 'base', 'alicuota', 'importe'];
 
     private const ASOCIADO_WRITABLE = ['tipo_comprobante_id', 'letra', 'punto_venta', 'numero', 'cuit', 'fecha'];
 
@@ -56,19 +56,17 @@ class VentaRepository
 
         $disStmt = $this->pdo->prepare('SELECT * FROM venta_discriminaciones WHERE venta_id = ? ORDER BY id');
         $disStmt->execute([$id]);
-        $discriminaciones = (array) $disStmt->fetchAll(PDO::FETCH_ASSOC);
+        $venta['discriminaciones'] = (array) $disStmt->fetchAll(PDO::FETCH_ASSOC);
 
-        $retStmt = $this->pdo->prepare(
-            'SELECT * FROM venta_retenciones WHERE venta_discriminacion_id = ? ORDER BY id'
+        // Percepciones del comprobante (con datos del tipo: clasificación RG y código AFIP).
+        $percStmt = $this->pdo->prepare(
+            'SELECT p.*, tr.tipo_rg3685, tr.cod_afip AS tipo_cod_afip, tr.nombre AS tipo_nombre
+             FROM venta_percepciones p
+             LEFT JOIN tipos_retencion tr ON tr.id = p.tipo_retencion_id
+             WHERE p.venta_id = ? ORDER BY p.id'
         );
-
-        foreach ($discriminaciones as &$dis) {
-            $retStmt->execute([$dis['id']]);
-            $dis['retenciones'] = (array) $retStmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-        unset($dis);
-
-        $venta['discriminaciones'] = $discriminaciones;
+        $percStmt->execute([$id]);
+        $venta['percepciones'] = (array) $percStmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Comprobantes asociados (con el codigo de tipo, para resolver el CbteTipo AFIP).
         $asocStmt = $this->pdo->prepare(
@@ -86,28 +84,23 @@ class VentaRepository
     /**
      * Inserta el agregado completo. Debe llamarse dentro de una transacción.
      *
-     * @param  array<string, mixed>                                 $header
-     * @param  list<array<string, mixed>>                           $discriminaciones cada una con 'retenciones'
-     * @param  list<array<string, mixed>>                           $asociados        comprobantes asociados (NC/ND)
+     * @param  array<string, mixed>       $header
+     * @param  list<array<string, mixed>> $discriminaciones
+     * @param  list<array<string, mixed>> $percepciones     percepciones del comprobante (integran el total)
+     * @param  list<array<string, mixed>> $asociados        comprobantes asociados (NC/ND)
      * @return array<string, mixed>
      */
-    public function create(array $header, array $discriminaciones, array $asociados, int $periodoId): array
-    {
+    public function create(
+        array $header,
+        array $discriminaciones,
+        array $percepciones,
+        array $asociados,
+        int $periodoId,
+    ): array {
         $headerFields = $this->filter($header, self::HEADER_WRITABLE) + ['periodo_id' => $periodoId];
         $ventaId = $this->insert('ventas', $headerFields);
 
-        foreach ($discriminaciones as $dis) {
-            $disFields = $this->filter($dis, self::DISCRIMINACION_WRITABLE);
-            $disFields['venta_id'] = $ventaId;
-            $disId = $this->insert('venta_discriminaciones', $disFields);
-
-            foreach ((array) ($dis['retenciones'] ?? []) as $ret) {
-                $retFields = $this->filter($ret, self::RETENCION_WRITABLE);
-                $retFields['venta_discriminacion_id'] = $disId;
-                $this->insert('venta_retenciones', $retFields);
-            }
-        }
-
+        $this->insertHijos($ventaId, $discriminaciones, $percepciones);
         $this->insertAsociados($ventaId, $asociados);
 
         return $this->findById($ventaId, $periodoId);
@@ -118,11 +111,18 @@ class VentaRepository
      *
      * @param  array<string, mixed>       $header
      * @param  list<array<string, mixed>> $discriminaciones
+     * @param  list<array<string, mixed>> $percepciones
      * @param  list<array<string, mixed>> $asociados
      * @return array<string, mixed>
      */
-    public function replace(int $id, array $header, array $discriminaciones, array $asociados, int $periodoId): array
-    {
+    public function replace(
+        int $id,
+        array $header,
+        array $discriminaciones,
+        array $percepciones,
+        array $asociados,
+        int $periodoId,
+    ): array {
         $fields = $this->filter($header, self::HEADER_WRITABLE);
 
         if ($fields !== []) {
@@ -133,26 +133,35 @@ class VentaRepository
             $stmt->execute($fields);
         }
 
-        // Las retenciones caen por cascade al borrar las discriminaciones.
-        $del = $this->pdo->prepare('DELETE FROM venta_discriminaciones WHERE venta_id = ?');
-        $del->execute([$id]);
-
-        foreach ($discriminaciones as $dis) {
-            $disFields = $this->filter($dis, self::DISCRIMINACION_WRITABLE);
-            $disFields['venta_id'] = $id;
-            $disId = $this->insert('venta_discriminaciones', $disFields);
-
-            foreach ((array) ($dis['retenciones'] ?? []) as $ret) {
-                $retFields = $this->filter($ret, self::RETENCION_WRITABLE);
-                $retFields['venta_discriminacion_id'] = $disId;
-                $this->insert('venta_retenciones', $retFields);
-            }
-        }
+        $this->pdo->prepare('DELETE FROM venta_discriminaciones WHERE venta_id = ?')->execute([$id]);
+        $this->pdo->prepare('DELETE FROM venta_percepciones WHERE venta_id = ?')->execute([$id]);
+        $this->insertHijos($id, $discriminaciones, $percepciones);
 
         $this->pdo->prepare('DELETE FROM venta_comprobantes_asociados WHERE venta_id = ?')->execute([$id]);
         $this->insertAsociados($id, $asociados);
 
         return $this->findById($id, $periodoId);
+    }
+
+    /**
+     * Inserta las discriminaciones y percepciones de un comprobante.
+     *
+     * @param list<array<string, mixed>> $discriminaciones
+     * @param list<array<string, mixed>> $percepciones
+     */
+    private function insertHijos(int $ventaId, array $discriminaciones, array $percepciones): void
+    {
+        foreach ($discriminaciones as $dis) {
+            $disFields = $this->filter($dis, self::DISCRIMINACION_WRITABLE);
+            $disFields['venta_id'] = $ventaId;
+            $this->insert('venta_discriminaciones', $disFields);
+        }
+
+        foreach ($percepciones as $perc) {
+            $percFields = $this->filter($perc, self::PERCEPCION_WRITABLE);
+            $percFields['venta_id'] = $ventaId;
+            $this->insert('venta_percepciones', $percFields);
+        }
     }
 
     /** @param list<array<string, mixed>> $asociados */
@@ -236,7 +245,7 @@ class VentaRepository
 
     public function delete(int $id, int $periodoId): bool
     {
-        // venta_discriminaciones y venta_retenciones caen por FK ON DELETE CASCADE.
+        // venta_discriminaciones y venta_percepciones caen por FK ON DELETE CASCADE.
         $stmt = $this->pdo->prepare('DELETE FROM ventas WHERE id = ? AND periodo_id = ?');
         $stmt->execute([$id, $periodoId]);
 

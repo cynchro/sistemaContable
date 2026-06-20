@@ -35,11 +35,13 @@
       borra las propias. `/tipos-retencion` (CRUD, en Compartido). El resto de los catálogos AFIP
       (condiciones_iva, tipos_comprobante, etc.) quedan read-only a propósito: códigos fijos de los
       que dependen los resolvers de factura electrónica.
-- [x] **Cálculo del importe de retención/percepción**: si la retención trae `importe` se
-      respeta; si trae solo `porcentaje`, se calcula `base × porcentaje / 100`
-      (`IvaComprobanteCalculator::importeRetencion`). `base` explícita opcional; por defecto el
-      neto gravado de la línea. ⚠️ La base por tipo de percepción es **decisión contable**
-      (ver `preguntas.md` A2); hoy default = neto gravado.
+- [x] **Percepciones a nivel comprobante que integran el total** (respuestas.md A1/A2, RESUELTO
+      por el contador + factura real Saint-Gobain). Migración 0032 (`venta_percepciones` /
+      `compra_percepciones`, a nivel comprobante; `tipos_retencion.base_calculo`). `PercepcionCalculator`
+      resuelve la base por estrategia: `neto_gravado` (IIBB/municipal), `neto_mas_imp_interno`
+      (IIBB con imp. interno) e `iva_percepcion` (Perc. IVA 3% s/neto 21% + 1,5% s/neto 10,5%, por
+      tramos). El total del comprobante suma Σ percepciones; el ABM de `tipos_retencion` configura
+      `base_calculo`. importe/base/alícuota informados pisan los del tipo.
 
 ## B) RBAC / permisos
 - [ ] Hoy los endpoints usan `AuthMiddleware` + `TenantMiddleware`. Falta aplicar
@@ -57,11 +59,21 @@
       6 Listados, 7 Detalle/cuentas, 1 Factura elec.)
 - [ ] **SIAP / DDJJ adicionales**: `IVASIAP.fr3`, `IVA_DDJJMonotributo.fr3`.
 
-## D) Exportaciones AFIP / Contable (Fase 3) — REQUIERE SPEC EXTERNO
-- [ ] **CITI / RG 3685** (`REGINFO_CV_*`, ancho fijo): el layout exacto NO está en
-      las fuentes (sin config `EXPOTXT`, manual vacío). Falta el instructivo AFIP o
-      la config de producción para implementarlo sin inventar. Campos ya disponibles:
-      `tipos_comprobante.cod_citi`, `condiciones_iva.codigo_afip`, alícuotas, CUIT.
+## D) Exportaciones AFIP / Contable (Fase 3)
+- [x] **Libro IVA Digital / Portal IVA** (régimen vigente que reemplaza CITI/RG3685 — respuestas.md
+      A9). HECHO los 4 archivos comunes: `VENTAS_CBTE` (266), `VENTAS_ALICUOTAS` (62), `COMPRAS_CBTE`
+      (325), `COMPRAS_ALICUOTAS` (84). `Export/RegistroFijo` (formateador de ancho fijo) +
+      `Export/LibroIvaDigitalWriter` (los 4 layouts, líneas CRLF; CbteTipo vía `CbteTipoResolver`,
+      alícuota vía `AlicuotaIvaResolver`) + `LibroIvaDigitalRepository` (percepciones agrupadas por
+      `tipo_rg3685`) + `LibroIvaDigitalService` + `GET /empresas/{id}/periodos/{pid}/libro-iva-digital/
+      {ventas-cbte|ventas-alicuotas|compras-cbte|compras-alicuotas}` (descarga). Validado byte a byte
+      contra los TXT de ejemplo (`imagenes/`). Layout oficial en `imagenes/disenio_registro_IVA_digital.pdf`.
+      - ⚠️ **Supuestos a confirmar con el contador**: (1) en VENTAS no hay campo "Perc. IVA" → la
+        Perc. IVA percibida se vuelca en el campo "Nacionales" (tipo_rg3685 1 y 2 juntos); en COMPRAS
+        sí hay campo Perc. IVA (rg3685=1) y "otros nacionales" agrupa 2 y 5. (2) Tipo de comprobante
+        sólo resuelve los que conoce `CbteTipoResolver` (FA/ND/NC/RF + letra); tickets/MIPYMES/liquid.
+        aún no mapeados → lanzan. (3) Código de operación y despacho de importación van en blanco.
+      - Pendiente (no usan hoy): TurIVA, importaciones de bienes/servicios, comprobantes anulados.
 - [ ] **Exportador TXT configurable** (réplica de `EXPOTXT_ARCHIVOS` /
       `EXPOTXT_CAMPOS` del legacy): archivos y campos definidos como datos.
 - [ ] **Exportación a Contable** (`EXPOVCONTA`): generar asientos / mapeo de cuentas
@@ -84,15 +96,11 @@
       acepta `comprobantes_asociados[]` (tipo_comprobante_id/letra/punto_venta/numero/cuit/fecha)
       y el mapper los emite como `CbtesAsoc → CbteAsoc[]` (Tipo resuelto por tipo+letra).
       También se corrigió el envoltorio del array `Iva` → `AlicIva` (ArrayOfAlicIva del WSDL).
-- [x] **Array `Tributos`**: `imp_interno` se emite como `Tributos → Tributo[]` (Id 4,
-      Impuestos internos), que es el único tributo que integra el total del comprobante.
-- [ ] **Percepciones como Tributos** (IIBB/IVA/municipales): el catálogo `tipos_retencion`
-      del legacy son percepciones, pero el calculador **NO las suma al total** (fiel al legacy,
-      ver `IvaComprobanteCalculator` y `VentaCrudTest`). Incluirlas en `Tributos` rompería la
-      validación AFIP `ImpTotal = ImpNeto+ImpIVA+ImpOpEx+ImpTotConc+ImpTrib`. Para soportarlas
-      hace falta una **decisión de dominio**: si las percepciones integran el total del
-      comprobante (y entonces también el libro IVA/DDJJ). Mapeo disponible vía `tipo_rg3685`
-      (2 Nac→Id1, 3 IIBB→Id2, 4 Munic→Id3, 1 PercIVA/5 no-cat→Id99) una vez resuelto eso.
+- [x] **Array `Tributos`**: `imp_interno` (Id 4, Impuestos internos) **+ percepciones**. Las
+      percepciones del comprobante integran el total (respuestas.md A1) y se emiten como
+      `Tributos → Tributo[]` con el Id resuelto por `TributoResolver` (tipo_rg3685 → 1 PercIVA→6,
+      2 Nac→1, 3 IIBB→7, 4 Munic→8, 5 no-cat→9). Su importe suma a `ImpTrib`, así la validación AFIP
+      `ImpTotal = ImpNeto+ImpIVA+ImpOpEx+ImpTotConc+ImpTrib` cierra.
 - [x] **ABM de `puntos_venta`**: CRUD por empresa (`/empresas/{id}/puntos-venta`), único por
       número. Pendiente menor: validar contra `FEParamGetPtosVenta` (sync desde AFIP) y, opcional,
       exigir en la emisión que el punto de venta esté registrado y activo.
@@ -122,3 +130,16 @@
       — el manual menciona filtros por fecha y búsqueda; hoy se listan completos.
 - [ ] Manejo de `tipo_moneda` / `tipo_cambio` en reportes en moneda extranjera.
 - [ ] Auditoría (el legacy tenía tabla `LOG`): usar el Logger / eventos del framework.
+
+## H) DDJJ IVA Simple (F.2051) — arrastres como insumos
+La DDJJ IVA Simple (`GET …/iva-simple`, `IvaSimpleCalculator`, validada con el caso real
+de `imagenes/pregunta4.jpeg`) calcula débito/crédito del período pero recibe **por query**
+los tres arrastres, porque no hay historial de DDJJ persistido todavía:
+- [ ] **Persistir la DDJJ del período** (saldo técnico y saldo de libre disponibilidad a
+      favor que arrastran) para que el `saldo_tecnico_anterior` y el
+      `saldo_libre_disponibilidad_anterior` se tomen del período anterior, no por query.
+- [ ] **Retenciones/percepciones/pagos a cuenta SUFRIDOS**: hoy es un insumo (`retenciones_
+      percepciones_pagos`). Definir de dónde salen (constancias de retención sufridas vs.
+      lo que el contribuyente practica). Las percepciones que ya modelamos integran el
+      total del comprobante (lado débito), no son "sufridas" → confirmar con el contador.
+- [ ] Restituciones / "neto de usos": hoy se asume que los montos ya vienen netos.

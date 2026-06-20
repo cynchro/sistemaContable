@@ -6,6 +6,7 @@ use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
+use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Controllers\PadronController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
@@ -48,6 +49,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/totales', [LibroIvaController::class, 'totales']);
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/libro-iva', [LibroIvaController::class, 'detalle']);
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/ddjj', [LibroIvaController::class, 'ddjj']);
+    $router->get('/empresas/{empresaId}/periodos/{periodoId}/iva-simple', [LibroIvaController::class, 'ivaSimple']);
 
     // Reportes: subdiario / libro IVA (listado de comprobantes + totales)
     $router->get(
@@ -67,6 +69,13 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get(
         '/empresas/{empresaId}/periodos/{periodoId}/exportar/compras',
         [ReporteIvaController::class, 'exportarCompras'],
+    );
+
+    // Libro IVA Digital (Portal IVA): descarga de los archivos de ancho fijo de ARCA.
+    // archivo: ventas-cbte | ventas-alicuotas | compras-cbte | compras-alicuotas
+    $router->get(
+        '/empresas/{empresaId}/periodos/{periodoId}/libro-iva-digital/{archivo}',
+        [LibroIvaDigitalController::class, 'exportar'],
     );
 
     // Padrón AFIP: consulta de un contribuyente por CUIT (autocompletar cliente/proveedor)

@@ -28,16 +28,23 @@ use App\Modules\Iva\Services\PuntoVentaService;
 use App\Modules\Iva\Controllers\PuntoVentaController;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
+use App\Modules\Compartido\Repositories\TipoRetencionRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
+use App\Modules\Iva\Calc\PercepcionCalculator;
 use App\Modules\Iva\Calc\LibroIvaCalculator;
 use App\Modules\Iva\Calc\LibroIvaDetalleCalculator;
 use App\Modules\Iva\Calc\DeclaracionIvaCalculator;
+use App\Modules\Iva\Calc\IvaSimpleCalculator;
 use App\Modules\Iva\Repositories\IvaClienteRepository;
 use App\Modules\Iva\Repositories\IvaProveedorRepository;
 use App\Modules\Iva\Repositories\VentaRepository;
 use App\Modules\Iva\Repositories\CompraRepository;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
 use App\Modules\Iva\Repositories\ReporteIvaRepository;
+use App\Modules\Iva\Repositories\LibroIvaDigitalRepository;
+use App\Modules\Iva\Export\LibroIvaDigitalWriter;
+use App\Modules\Iva\Services\LibroIvaDigitalService;
+use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Services\IvaClienteService;
 use App\Modules\Iva\Services\IvaProveedorService;
 use App\Modules\Iva\Services\VentaService;
@@ -87,8 +94,9 @@ class ServiceProvider extends BaseServiceProvider
             fn () => new IvaProveedorController($c->get(IvaProveedorService::class)),
         );
 
-        // Motor de cálculos del módulo (calculadora pura, sin estado).
+        // Motor de cálculos del módulo (calculadoras puras, sin estado).
         $c->singleton(IvaComprobanteCalculator::class, fn () => new IvaComprobanteCalculator());
+        $c->singleton(PercepcionCalculator::class, fn () => new PercepcionCalculator());
 
         // Comprobantes de venta (agregado transaccional).
         $c->singleton(VentaRepository::class, fn () => new VentaRepository($c->get(PDO::class)));
@@ -99,10 +107,12 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(IvaComprobanteCalculator::class),
             $c->get(DB::class),
             $c->get(ReferenceValidator::class),
+            $c->get(PercepcionCalculator::class),
+            $c->get(TipoRetencionRepository::class),
         ));
         $c->singleton(VentaController::class, fn () => new VentaController($c->get(VentaService::class)));
 
-        // Comprobantes de compra (agregado transaccional; reusa la calculadora).
+        // Comprobantes de compra (agregado transaccional; reusa las calculadoras).
         $c->singleton(CompraRepository::class, fn () => new CompraRepository($c->get(PDO::class)));
         $c->singleton(CompraService::class, fn () => new CompraService(
             $c->get(CompraRepository::class),
@@ -111,6 +121,8 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(IvaComprobanteCalculator::class),
             $c->get(DB::class),
             $c->get(ReferenceValidator::class),
+            $c->get(PercepcionCalculator::class),
+            $c->get(TipoRetencionRepository::class),
         ));
         $c->singleton(CompraController::class, fn () => new CompraController($c->get(CompraService::class)));
 
@@ -118,6 +130,7 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(LibroIvaCalculator::class, fn () => new LibroIvaCalculator());
         $c->singleton(LibroIvaDetalleCalculator::class, fn () => new LibroIvaDetalleCalculator());
         $c->singleton(DeclaracionIvaCalculator::class, fn () => new DeclaracionIvaCalculator());
+        $c->singleton(IvaSimpleCalculator::class, fn () => new IvaSimpleCalculator());
         $c->singleton(LibroIvaRepository::class, fn () => new LibroIvaRepository($c->get(PDO::class)));
         $c->singleton(LibroIvaService::class, fn () => new LibroIvaService(
             $c->get(LibroIvaRepository::class),
@@ -126,6 +139,7 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(LibroIvaCalculator::class),
             $c->get(LibroIvaDetalleCalculator::class),
             $c->get(DeclaracionIvaCalculator::class),
+            $c->get(IvaSimpleCalculator::class),
         ));
         $c->singleton(LibroIvaController::class, fn () => new LibroIvaController($c->get(LibroIvaService::class)));
 
@@ -139,6 +153,20 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             ReporteIvaController::class,
             fn () => new ReporteIvaController($c->get(ReporteIvaService::class)),
+        );
+
+        // Libro IVA Digital (Portal IVA): exportación de los archivos de ancho fijo de ARCA.
+        $c->singleton(LibroIvaDigitalRepository::class, fn () => new LibroIvaDigitalRepository($c->get(PDO::class)));
+        $c->singleton(LibroIvaDigitalWriter::class, fn () => new LibroIvaDigitalWriter());
+        $c->singleton(LibroIvaDigitalService::class, fn () => new LibroIvaDigitalService(
+            $c->get(LibroIvaDigitalRepository::class),
+            $c->get(LibroIvaDigitalWriter::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+        ));
+        $c->singleton(
+            LibroIvaDigitalController::class,
+            fn () => new LibroIvaDigitalController($c->get(LibroIvaDigitalService::class)),
         );
 
         // AFIP / WSAA: autenticación con certificado (TA cacheado en DB).
