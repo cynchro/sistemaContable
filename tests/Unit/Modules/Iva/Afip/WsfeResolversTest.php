@@ -49,9 +49,11 @@ class WsfeResolversTest extends UnitTestCase
         $this->assertSame(9, CondicionReceptorResolver::id('CE'));
     }
 
-    public function test_condicion_sin_equivalencia_lanza(): void
+    public function test_condicion_sin_informacion_default_consumidor_final(): void
     {
-        $this->expectException(RuntimeException::class);
-        CondicionReceptorResolver::id('RN');
+        // A8: sin datos del receptor → Consumidor Final (5), no se lanza.
+        $this->assertSame(5, CondicionReceptorResolver::id('ND')); // No Disponible
+        $this->assertSame(5, CondicionReceptorResolver::id(''));   // vacío
+        $this->assertSame(5, CondicionReceptorResolver::id('RN')); // RNI eliminado / desconocido
     }
 }
