@@ -1,45 +1,54 @@
 #!/usr/bin/env bash
 #
 # Sincroniza el avance del Ecosistema Contable con el tablero del cliente
-# (clientDashboard). Hace login como admin y envía docs/dashboard/progreso.json
-# al endpoint idempotente POST /api/import.
+# (clientDashboard) enviando docs/dashboard/progreso.json al endpoint idempotente
+# POST /api/import.
+#
+# Autentica con un TOKEN DE SERVICIO (IMPORT_TOKEN), no con usuario/contraseña: así
+# el sync no depende de cuentas sembradas y sobrevive a resets de la base.
 #
 # Uso:
-#   ./sync.sh                         # usa los valores por defecto de abajo
-#   BASE_URL=http://localhost ./sync.sh
-#   ADMIN_EMAIL=admin@example.com ADMIN_PASS=password123 ./sync.sh
+#   IMPORT_TOKEN=... ./sync.sh                 # token de producción (requerido)
+#   BASE_URL=http://localhost ./sync.sh        # sobrescribe el destino (dev local)
 #
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SNAPSHOT="${SNAPSHOT:-$SCRIPT_DIR/progreso.json}"
 
-BASE_URL="${BASE_URL:-http://localhost}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
-ADMIN_PASS="${ADMIN_PASS:-password123}"
+# Si IMPORT_TOKEN no viene por entorno, lo tomamos del .env de la raíz del repo
+# (gitignored). Permite correr ./sync.sh sin exportar nada a mano.
+if [[ -z "${IMPORT_TOKEN:-}" ]]; then
+  ENV_FILE="$SCRIPT_DIR/../../.env"
+  if [[ -f "$ENV_FILE" ]]; then
+    IMPORT_TOKEN="$(sed -n 's/^[[:space:]]*IMPORT_TOKEN[[:space:]]*=[[:space:]]*//p' "$ENV_FILE" | tail -n1)"
+  fi
+fi
+
+BASE_URL="${BASE_URL:-https://dashboard.cynchro.cloud}"
+# Debe coincidir con IMPORT_TOKEN del backend (docker-compose.yml del clientDashboard).
+IMPORT_TOKEN="${IMPORT_TOKEN:-dev-import-token-change-in-prod}"
 
 if [[ ! -f "$SNAPSHOT" ]]; then
   echo "ERROR: no existe el snapshot: $SNAPSHOT" >&2
   exit 1
 fi
 
-echo "→ Login como $ADMIN_EMAIL en $BASE_URL ..."
-LOGIN_RESPONSE="$(curl -sS -X POST "$BASE_URL/api/login" \
+echo "→ Enviando snapshot ($SNAPSHOT) a $BASE_URL/api/import (auth por token) ..."
+HTTP_BODY="$(curl -sS -X POST "$BASE_URL/api/import" \
   -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASS\"}")"
+  -H "Authorization: Bearer $IMPORT_TOKEN" \
+  --data-binary "@$SNAPSHOT" \
+  -w $'\n%{http_code}')"
 
-# Extrae el token sin depender de jq.
-TOKEN="$(printf '%s' "$LOGIN_RESPONSE" | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+STATUS="$(printf '%s' "$HTTP_BODY" | tail -n1)"
+BODY="$(printf '%s' "$HTTP_BODY" | sed '$d')"
 
-if [[ -z "$TOKEN" ]]; then
-  echo "ERROR: login fallido. Respuesta: $LOGIN_RESPONSE" >&2
+echo "$BODY"
+
+if [[ "$STATUS" != "200" ]]; then
+  echo "ERROR: el import falló (HTTP $STATUS)." >&2
   exit 1
 fi
 
-echo "→ Enviando snapshot ($SNAPSHOT) a $BASE_URL/api/import ..."
-curl -sS -X POST "$BASE_URL/api/import" \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $TOKEN" \
-  --data-binary "@$SNAPSHOT"
-echo
 echo "✓ Listo."

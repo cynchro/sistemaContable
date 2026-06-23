@@ -1,10 +1,10 @@
 {
   "project": {
-    "name": "Estudio Cynchro",
+    "name": "Estudio Haddad",
     "description": "Tablero de avances de los sistemas que desarrollamos para el cliente.",
     "client": {
-      "name": "Estudio Cynchro",
-      "email": "cliente@estudio.com",
+      "name": "Estudio Haddad",
+      "email": "juanpablohaddad@hotmail.com",
       "password": "password123"
     }
   },
@@ -60,7 +60,8 @@
             { "title": "Percepciones a nivel comprobante (base por estrategia, Perc. IVA por tramos)", "status": "completed" },
             { "title": "Libro IVA Digital: generar los 4 archivos de ancho fijo (Portal IVA ARCA)", "status": "completed" },
             { "title": "DDJJ IVA Simple (F.2051) con arrastre de saldo y retenciones/percepciones sufridas", "status": "completed" },
-            { "title": "Default Consumidor Final en emisión AFIP cuando no hay condición del receptor (RG 5616)", "status": "completed" }
+            { "title": "Default Consumidor Final en emisión AFIP cuando no hay condición del receptor (RG 5616)", "status": "completed" },
+            { "title": "Soporte de tiques, FCE MiPyME y liquidaciones de servicios públicos en el Libro IVA Digital y la factura electrónica", "status": "completed" }
           ]
         },
         {
