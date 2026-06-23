@@ -1,0 +1,66 @@
+# Producción — levantar con:
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Las credenciales NO están hardcodeadas: salen del archivo `.env` (no versionado).
+# Copiá `.env.example` a `.env` y completá DB_*, DB_ROOT_PASS, JWT_SECRET,
+# APP_ENCRYPTION_KEY, etc. con valores de producción (APP_ENV=production, APP_DEBUG=false).
+#
+# Diferencias con `docker-compose.yml` (desarrollo):
+#   - SIN bind-mount del código: se usan el código y el `vendor/` horneados en la imagen
+#     (deploy inmutable). Para actualizar: `git pull` + `up -d --build`.
+#   - Credenciales parametrizadas desde `.env` (nada en claro en este archivo).
+#   - MySQL NO se expone al host (sin mapeo de puerto): solo accesible por la red interna.
+#   - `restart: unless-stopped` en ambos servicios.
+#
+# Tras el primer `up` (la app NO migra ni siembra sola):
+#   docker compose -f docker-compose.prod.yml exec modux-backend php modux migrate
+#   docker compose -f docker-compose.prod.yml exec modux-backend php seeders/CatalogosIvaSeeder.php
+#   docker compose -f docker-compose.prod.yml exec modux-backend php seeders/AdminSeeder.php <user> <pass> "<estudio>"
+
+services:
+  modux-backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: moduxbackend
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    env_file:
+      - .env
+    environment:
+      # Forzamos el host de DB al servicio interno, gane lo que gane el .env.
+      DB_HOST: moduxdb
+      DB_PORT: '3306'
+    volumes:
+      # La app exige que el archivo .env exista en disco (bootstrap/app.php).
+      # Lo montamos read-only; el resto del código viene de la imagen.
+      - ./.env:/var/www/html/.env:ro
+      # storage/ persistente (logs) fuera del ciclo de vida del contenedor.
+      - app_storage:/var/www/html/storage
+    networks:
+      - app-network
+    depends_on:
+      - moduxdb
+
+  moduxdb:
+    image: mysql:8.0
+    container_name: moduxdb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:?define DB_ROOT_PASS en .env}
+      MYSQL_DATABASE: ${DB_NAME:?define DB_NAME en .env}
+      MYSQL_USER: ${DB_USER:?define DB_USER en .env}
+      MYSQL_PASSWORD: ${DB_PASS:?define DB_PASS en .env}
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:
+  app_storage:
