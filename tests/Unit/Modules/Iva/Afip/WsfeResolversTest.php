@@ -15,9 +15,37 @@ class WsfeResolversTest extends UnitTestCase
         $this->assertSame(1, CbteTipoResolver::resolve('FA', 'A'));
         $this->assertSame(6, CbteTipoResolver::resolve('FA', 'B'));
         $this->assertSame(11, CbteTipoResolver::resolve('FA', 'C'));
+        $this->assertSame(19, CbteTipoResolver::resolve('FA', 'E'));
+        $this->assertSame(51, CbteTipoResolver::resolve('FA', 'M'));
         $this->assertSame(8, CbteTipoResolver::resolve('NC', 'B'));
         $this->assertSame(12, CbteTipoResolver::resolve('ND', 'C'));
         $this->assertSame(4, CbteTipoResolver::resolve('RF', 'A'));
+    }
+
+    public function test_cbte_tipo_tickets_y_fce_mipyme(): void
+    {
+        // Tique Factura (controlador fiscal) — A11/guía de liquidación.
+        $this->assertSame(81, CbteTipoResolver::resolve('TF', 'A'));
+        $this->assertSame(82, CbteTipoResolver::resolve('TF', 'B'));
+        $this->assertSame(83, CbteTipoResolver::resolve('TF', 'C'));
+        // Factura de Crédito Electrónica MiPyME y sus ND/NC.
+        $this->assertSame(201, CbteTipoResolver::resolve('FE', 'A'));
+        $this->assertSame(206, CbteTipoResolver::resolve('FE', 'B'));
+        $this->assertSame(211, CbteTipoResolver::resolve('FE', 'C'));
+        $this->assertSame(202, CbteTipoResolver::resolve('DE', 'A'));
+        $this->assertSame(213, CbteTipoResolver::resolve('CE', 'C'));
+    }
+
+    public function test_cbte_tipo_codigo_fijo_ignora_letra(): void
+    {
+        // El tipo legacy ya identifica la clase → el código no depende de la letra.
+        $this->assertSame(17, CbteTipoResolver::resolve('LA', '')); // Liquid. Serv. Públicos A
+        $this->assertSame(18, CbteTipoResolver::resolve('LB', 'B'));
+        $this->assertSame(112, CbteTipoResolver::resolve('CA', 'A')); // NC Tique A
+        $this->assertSame(114, CbteTipoResolver::resolve('CN', 'C'));
+        $this->assertSame(195, CbteTipoResolver::resolve('FT', 'T')); // Factura T
+        // Nota de Crédito T (id 52, comparte codigo 'NC' pero letra T).
+        $this->assertSame(197, CbteTipoResolver::resolve('NC', 'T'));
     }
 
     public function test_cbte_tipo_desconocido_lanza(): void

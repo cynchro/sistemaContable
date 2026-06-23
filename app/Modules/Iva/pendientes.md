@@ -68,12 +68,26 @@
       `tipo_rg3685`) + `LibroIvaDigitalService` + `GET /empresas/{id}/periodos/{pid}/libro-iva-digital/
       {ventas-cbte|ventas-alicuotas|compras-cbte|compras-alicuotas}` (descarga). Validado byte a byte
       contra los TXT de ejemplo (`imagenes/`). Layout oficial en `imagenes/disenio_registro_IVA_digital.pdf`.
-      - ⚠️ **Supuestos a confirmar con el contador**: (1) en VENTAS no hay campo "Perc. IVA" → la
-        Perc. IVA percibida se vuelca en el campo "Nacionales" (tipo_rg3685 1 y 2 juntos); en COMPRAS
-        sí hay campo Perc. IVA (rg3685=1) y "otros nacionales" agrupa 2 y 5. (2) Tipo de comprobante
-        sólo resuelve los que conoce `CbteTipoResolver` (FA/ND/NC/RF + letra); tickets/MIPYMES/liquid.
-        aún no mapeados → lanzan. (3) Código de operación y despacho de importación van en blanco.
-      - Pendiente (no usan hoy): TurIVA, importaciones de bienes/servicios, comprobantes anulados.
+      - ✅ **Layout confirmado contra el diseño oficial de ARCA** (`imagenes/disenio_registro_IVA_
+        digital.pdf`): el writer coincide campo a campo. (1) En VENTAS efectivamente NO hay campo
+        propio "Perc. IVA" → va en el campo 13 "Nacionales" (tipo_rg3685 1 y 2 juntos); en COMPRAS
+        sí hay campo 12 "Perc. IVA" (rg3685=1) y campo 13 "otros nacionales" agrupa 2 y 5. (3) Código
+        de operación y despacho de importación → en blanco (no operan esos casos; confirmar A12).
+      - Confirmado por el contador (`imagenesreferencias.md`): **TurIVA NO se usa**; el de **ventas
+        anuladas** "el Visual no lo genera". Tipos de comprobante: usan factura/ticket/recibo/ND/NC
+        (A7); FCE MiPyME/liquidaciones/exportación aún sin confirmar (A11) → si aparece, `CbteTipoResolver`
+        lanza en vez de inventar.
+      - Pendiente (no usan hoy): importaciones de bienes/servicios. **Archivo de ventas anuladas**
+        (`CBTES_VENTAS_ANULADOS`, 44 pos.): factible con nuestros datos, agregarlo si lo presentan (A11-bis).
+      - [x] ✅ **Mapeo de tipos de comprobante ampliado (A11, `GUIA_LIQUIDACION.pdf`)**: el
+        `CbteTipoResolver` ahora cubre, además de Factura/ND/NC/Recibo A/B/C/E/M, los comprobantes
+        que el estudio usa de verdad: **Tique Factura** (TF → 81/82/83/118), **FCE MiPyME** (FE/DE/CE
+        → 201-213), **Liquidación de Servicios Públicos A/B** (LA/LB → 17/18), **NC/Tique** (CZ/CA/CB/
+        CN/CT → 110/112/113/114/109), **Factura T** (FT → 195) y **NC T** (NC letra T → 197). Tabla
+        partida en `TABLA` (depende de letra) + `TABLA_FIJA` (tipos cuyo código no depende de la
+        letra porque ya identifican la clase). Lo usa tanto el Libro IVA Digital como WSFE. Tests en
+        `WsfeResolversTest`. Pendiente menor: tipos no-exportables / informes (TZ, TI, RE, LI, PC, CR,
+        OT, DI) siguen sin mapear a propósito (lanzan); revisar con dato real si el estudio carga el Z.
 - [ ] **Exportador TXT configurable** (réplica de `EXPOTXT_ARCHIVOS` /
       `EXPOTXT_CAMPOS` del legacy): archivos y campos definidos como datos.
 - [ ] **Exportación a Contable** (`EXPOVCONTA`): generar asientos / mapeo de cuentas

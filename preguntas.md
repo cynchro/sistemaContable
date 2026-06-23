@@ -86,7 +86,78 @@ tenemos el instructivo con el layout (posiciones/anchos de cada campo).
 **Pregunta:** ¿nos pueden facilitar el **diseño de registro vigente** de CITI Compras/Ventas
 (o el régimen que corresponda hoy), o un **archivo real de ejemplo**?
 **Hoy asumimos:** pendiente, no implementado (no queremos inventar el formato).
+**Respuesta:** RESUELTO en respuestas.md (A9): el régimen vigente es el **Libro IVA Digital /
+Portal IVA**; el contador aportó el spec y 4 TXT de ejemplo. Implementado. Las confirmaciones
+puntuales que quedaron del Libro IVA Digital y de la DDJJ IVA Simple están en A10–A15.
+
+---
+
+## A-bis) IVA — confirmaciones que quedaron pendientes (Libro IVA Digital + F.2051)
+
+> Estas surgieron **después** de las respuestas de la sección A, al construir el **Libro IVA
+> Digital** (los 4 TXT de ARCA) y la **DDJJ IVA Simple (F.2051)**. Ya están implementadas con un
+> supuesto; necesitamos un OK o la corrección.
+>
+> Nota: la **estructura del F.2051** (saldo técnico, arrastres de períodos anteriores, saldo de
+> libre disponibilidad neto de compensaciones y retenciones/percepciones sufridas) **ya quedó
+> confirmada en la respuesta A4** — acá solo queda lo **operativo** (de dónde salen los datos) y
+> los detalles de **layout** del Libro IVA Digital.
+
+### A10. ✅ Libro IVA Digital — Percepción de IVA en VENTAS (RESUELTO por el diseño de registro)
+**Resuelto con `imagenes/disenio_registro_IVA_digital.pdf`:** el layout oficial de ARCA confirma
+que en **ventas** (`LIBRO_IVA_DIGITAL_VENTAS_CBTE`) **no hay** campo propio de Perc. de IVA — los
+campos de percepción son *11 a no categorizados*, *13 impuestos Nacionales*, *14 IIBB*, *15
+Municipales*, *16 internos* → la Perc. de IVA se informa en el campo **13 (Nacionales)**. En
+**compras** (`..._COMPRAS_CBTE`) sí hay campo propio (*12 percepciones del IVA*) + *13 otros
+nacionales*. **Nuestra implementación coincide byte a byte con el layout.** No requiere respuesta.
+
+### A11. ✅ Libro IVA Digital — tipos de comprobante que usan (RESPONDIDO por la guía → genera trabajo de código)
+**Resuelto con `imagenes/GUIA_LIQUIDACION.pdf`** (puntos 1, 8, 16 y 18): el estudio opera con
+**Factura A/B/C/E/M**, **ND**, **NC**, **Ticket Factura A/B/C** (cod. 81/82/83), **NC Tique A**
+(cod. 112), **FCE MiPyME (FE)**, **NC Electrónica MiPyME**, **Liquidación de Servicios Públicos
+A/B**, y comprobantes B (06/07/08/09/82) y C (11/12/13/15/83). TurIVA e importaciones NO se usan.
+**✅ Resuelto en código:** el `CbteTipoResolver` se amplió para mapear esos comprobantes (Tique
+Factura, FCE MiPyME, Liquidación de Servicios Públicos, NC/Tique, Factura T y NC T) además de
+Factura/ND/NC/Recibo A/B/C/E/M. Lo usa el Libro IVA Digital y WSFE. Tests verdes. Ver
+`app/Modules/Iva/pendientes.md §D`.
+
+### A12. ✅ Libro IVA Digital — código de operación y despacho de importación (RESUELTO por la guía)
+**Resuelto con la guía** (punto 6): el cliente solo tilda "Operaciones No Gravadas o Exentas";
+nunca "Importación definitiva de bienes", "Importación de servicios" ni "TurIVA". → el código de
+operación y el despacho de importación van en **blanco**, como hoy. No requiere respuesta.
+
+### A11-bis. 🟢 Libro IVA Digital — archivo de comprobantes de VENTAS ANULADOS
+**Contexto:** el diseño de registro incluye un 5º archivo, `LIBRO_IVA_DIGITAL_CBTES_VENTAS_ANULADOS`
+(44 posiciones: fecha, tipo, punto de venta, número, fecha de anulación). Nos comentaste que el
+sistema viejo (Visual) **no lo generaba**. Nosotros sí registramos comprobantes anulados, así que
+podríamos generarlo.
+**Pregunta:** ¿lo necesitan / lo presentan? ¿Vale la pena que el sistema genere ese archivo?
+**Hoy asumimos:** no se genera (igual que el Visual). Lo agregamos si lo usan.
 **Respuesta:**
+
+### A12. 🟢 Libro IVA Digital — código de operación y despacho de importación
+**Contexto:** el layout confirma que existen los campos "**código de operación**" (ventas/compras,
+"según tabla Código de Operación") y "**despacho de importación**" (compras). Como no operan
+importaciones/exportaciones, hoy los enviamos en **blanco**.
+**Pregunta:** ¿confirmás que **no** usan operaciones con código especial ni despachos de importación
+(y por eso esos campos van en blanco)? Si en algún caso sí, decinos cuáles.
+**Hoy asumimos:** van en **blanco** (no operan esos casos).
+**Respuesta:**
+
+### A13. ✅ DDJJ IVA Simple (F.2051) — de dónde salen las retenciones/percepciones SUFRIDAS (RESUELTO por la guía)
+**Resuelto con la guía** (puntos 10 y 13): las percepciones/retenciones **sufridas** se identifican
+con **"Mis Retenciones" de AFIP** (percepciones de IVA), **"SIFERE consultas"** (percepciones de
+IIBB) y los **comprobantes físicos** de percepción/retención. Para el F.2051 de IVA importan las de
+**IVA**: las **percepciones de IVA en compras** ya las modelamos (`compra_percepciones`); las
+**retenciones de IVA sufridas en cobranzas** son un insumo externo (constancias / "Mis Retenciones").
+**Decisión de implementación pendiente** (no consulta): derivar la parte de percepciones de IVA de
+compras + permitir cargar las retenciones sufridas como insumo del período.
+
+### A14. ✅ IVA Simple (F.2051) — "neto de compensaciones" / restituciones (RESUELTO por la guía)
+**Resuelto con la guía** (puntos 19-22): las **compensaciones** (usar saldos a favor para cubrir
+Ganancias, Bienes Personales, anticipos) se hacen **por fuera** en el **"Sistema de Cuentas
+Tributarias" de ARCA**; al formulario llega el saldo **"neto de usos"**. Confirma nuestro supuesto:
+los importes arrastrados llegan ya netos y el sistema **no** calcula compensaciones ni restituciones.
 
 ---
 
