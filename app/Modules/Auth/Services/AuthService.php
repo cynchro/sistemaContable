@@ -45,7 +45,11 @@ class AuthService
         $this->rateLimiter->clear($cacheKey);
 
         $userId       = (int) $user['id'];
-        $accessToken  = JWTConfig::generateToken($userId, $user['tenant_id'] ?? null);
+        $accessToken  = JWTConfig::generateToken(
+            $userId,
+            $user['tenant_id'] ?? null,
+            isset($user['rol']) ? (int) $user['rol'] : null,
+        );
         $refreshToken = JWTConfig::generateRefreshToken();
 
         $this->repository->updateToken($userId, $accessToken);
@@ -71,7 +75,11 @@ class AuthService
             throw new AuthException('User not found.', 401);
         }
 
-        $newAccessToken  = JWTConfig::generateToken($userId, $user['tenant_id'] ?? null);
+        $newAccessToken  = JWTConfig::generateToken(
+            $userId,
+            $user['tenant_id'] ?? null,
+            isset($user['rol']) ? (int) $user['rol'] : null,
+        );
         $newRefreshToken = JWTConfig::generateRefreshToken();
 
         $this->repository->updateToken($userId, $newAccessToken);

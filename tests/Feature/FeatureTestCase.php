@@ -62,6 +62,21 @@ abstract class FeatureTestCase extends TestCase
 
         // Cada test corre en una transacción que se revierte al final.
         $this->pdo->beginTransaction();
+        $this->seedAuthBase();
+    }
+
+    /**
+     * Siembra el rol Administrador (id 1) con el super-permiso 'Acceso Total', igual
+     * que el RolesUsersSeeder en producción. Así actingAsUser() (rol 1 por defecto)
+     * tiene acceso total y pasa las rutas protegidas con PermissionMiddleware.
+     */
+    private function seedAuthBase(): void
+    {
+        $this->pdo->exec("INSERT IGNORE INTO roles (id, nombre, estado) VALUES (1, 'Administrador', 'activo')");
+        $this->pdo->exec("INSERT IGNORE INTO permisos (`key`, estado) VALUES ('Acceso Total', 2)");
+        $permisoId = (int) $this->pdo->query("SELECT id FROM permisos WHERE `key` = 'Acceso Total'")->fetchColumn();
+        $this->pdo->prepare('INSERT IGNORE INTO roles_permisos (rol, permiso, estado) VALUES (1, ?, 2)')
+            ->execute([$permisoId]);
     }
 
     protected function tearDown(): void
@@ -277,7 +292,7 @@ abstract class FeatureTestCase extends TestCase
         ]);
 
         $userId = (int) $this->pdo->lastInsertId();
-        $token  = JWTConfig::generateToken($userId, $tenantId);
+        $token  = JWTConfig::generateToken($userId, $tenantId, $rol);
 
         $this->pdo->prepare('UPDATE usuarios SET token = ? WHERE id = ?')
             ->execute([$token, $userId]);

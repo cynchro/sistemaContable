@@ -44,10 +44,18 @@
       `base_calculo`. importe/base/alícuota informados pisan los del tipo.
 
 ## B) RBAC / permisos
-- [ ] Hoy los endpoints usan `AuthMiddleware` + `TenantMiddleware`. Falta aplicar
-      `PermissionMiddleware` por recurso (mapeo de los `PERFILES` del legacy:
-      `empresas.*`, `ventas.*`, `compras.*`, `periodos.cerrar`, `reportes.ver`, …).
-      Ver §7 de `docs/ingenieria-inversa/iva.md`.
+- [x] **HECHO**: las rutas del módulo usan `AuthMiddleware` + `TenantMiddleware` +
+      `PermissionMiddleware` por recurso. Taxonomía (key + nivel read/write): `iva.clientes`,
+      `iva.proveedores`, `iva.ventas`, `iva.compras`, `iva.libro` (totales/detalle/ddjj/iva-simple/
+      reportes/exportar/libro-iva-digital; presentar DDJJ = write), `iva.padron`, `iva.facturacion`
+      (CAE, write), `iva.puntos-venta`. GET = lectura, POST/PUT/DELETE = escritura.
+      - **Ajuste de framework**: `PermissionChecker` ahora hace que el super-permiso 'Acceso Total'
+        habilite cualquier key en nivel escritura (antes sólo `AdminMiddleware` lo respetaba). Así el
+        admin pasa sin asignar cada permiso.
+      - **JWT**: `JWTConfig::generateToken` ahora incluye el claim `rol` (login/refresh lo pasan), que
+        `PermissionMiddleware` necesitaba (antes el token no lo llevaba → el middleware nunca tenía rol).
+      - Keys sembrables para roles granulares: `seeders/PermisosIvaSeeder.php`. El admin (Acceso Total)
+        no las necesita. Tests: `IvaRbacTest` (sin permiso → 403; lectura no habilita escritura).
 
 ## C) Reportes (Fase 2) — falta presentación y reportes secundarios
 - [ ] **Render a PDF** de los reportes (los 64 `.fr3` mapeados en

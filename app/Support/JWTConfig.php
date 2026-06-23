@@ -43,7 +43,7 @@ class JWTConfig
         return date('Y-m-d H:i:s', time() + self::refreshLifetime());
     }
 
-    public static function generateToken(int|string $userId, ?string $tenantId = null): string
+    public static function generateToken(int|string $userId, ?string $tenantId = null, ?int $rol = null): string
     {
         $payload = [
             'iss' => Config::get('auth.jwt_issuer', 'monolito-modular'),
@@ -54,6 +54,12 @@ class JWTConfig
 
         if ($tenantId !== null) {
             $payload['tenant_id'] = $tenantId;
+        }
+
+        // El rol viaja en el token para que PermissionMiddleware pueda autorizar
+        // por permiso sin recargar el usuario (RBAC).
+        if ($rol !== null) {
+            $payload['rol'] = $rol;
         }
 
         return JWT::encode($payload, self::secretKey(), self::algorithm());

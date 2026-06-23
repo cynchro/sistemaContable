@@ -2,6 +2,7 @@
 
 namespace App\Support\Auth;
 
+use App\Support\Roles;
 use PDO;
 
 /**
@@ -29,23 +30,32 @@ class PermissionChecker
     /**
      * Nivel de acceso efectivo del rol sobre el permiso (considerando herencia
      * de roles padre), o LEVEL_NONE si ni el rol ni sus ancestros lo tienen.
+     *
+     * El super-permiso ({@see Roles::SUPER_PERMISSION}, "Acceso Total") habilita
+     * cualquier key en nivel escritura: un rol que lo tiene (propio o heredado)
+     * obtiene LEVEL_WRITE sobre todo, sin necesitar cada permiso explícito.
      */
     public function level(int $rolId, string $key): int
     {
         $stmt = $this->pdo->prepare(
             'WITH RECURSIVE ancestors AS (
-                SELECT id, parent_id FROM roles WHERE id = ?
+                SELECT id, parent_id FROM roles WHERE id = :rol
                 UNION ALL
                 SELECT r.id, r.parent_id FROM roles r
                 JOIN ancestors a ON r.id = a.parent_id
             )
-            SELECT MAX(rp.estado) AS estado
+            SELECT MAX(CASE WHEN p.`key` = :superCase THEN ' . self::LEVEL_WRITE . ' ELSE rp.estado END) AS estado
             FROM ancestors a
             JOIN roles_permisos rp ON rp.rol = a.id
             JOIN permisos p ON rp.permiso = p.id
-            WHERE p.`key` = ?'
+            WHERE p.`key` IN (:key, :super)'
         );
-        $stmt->execute([$rolId, $key]);
+        $stmt->execute([
+            ':rol'      => $rolId,
+            ':key'      => $key,
+            ':super'    => Roles::SUPER_PERMISSION,
+            ':superCase' => Roles::SUPER_PERMISSION,
+        ]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         // MAX() sobre cero filas devuelve NULL → sin permiso.
