@@ -43,18 +43,36 @@ class LibroIvaController
     }
 
     /**
-     * DDJJ "IVA Simple" del período (F.2051 del Portal IVA, reemplaza al F2002).
-     * Los arrastres se pasan por query: saldo_tecnico_anterior,
-     * saldo_libre_disponibilidad_anterior, retenciones_percepciones_pagos.
+     * DDJJ "IVA Simple" del período (F.2051 del Portal IVA, reemplaza al F2002) — preview.
+     * Los arrastres de saldo (técnico y libre disponibilidad anteriores) se derivan de la
+     * DDJJ del período anterior persistida; pasarlos por query los sobrescribe. Las
+     * retenciones/percepciones/pagos sufridos van por query (insumo del período).
      */
     public function ivaSimple(Request $request): Response
     {
+        $saldoTecnico = $request->input('saldo_tecnico_anterior');
+        $saldoLibre   = $request->input('saldo_libre_disponibilidad_anterior');
+
         return Response::success($this->service->ivaSimple(
             (int) $request->route('empresaId'),
             (int) $request->route('periodoId'),
             (string) $request->tenantId(),
-            (string) $request->input('saldo_tecnico_anterior', '0'),
-            (string) $request->input('saldo_libre_disponibilidad_anterior', '0'),
+            $saldoTecnico !== null ? (string) $saldoTecnico : null,
+            $saldoLibre !== null ? (string) $saldoLibre : null,
+            (string) $request->input('retenciones_percepciones_pagos', '0'),
+        ));
+    }
+
+    /**
+     * Presenta (persiste) la DDJJ IVA Simple del período. Los arrastres se toman del
+     * período anterior; en el body sólo van las retenciones/percepciones/pagos sufridos.
+     */
+    public function presentarIvaSimple(Request $request): Response
+    {
+        return Response::success($this->service->presentarIvaSimple(
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (string) $request->tenantId(),
             (string) $request->input('retenciones_percepciones_pagos', '0'),
         ));
     }

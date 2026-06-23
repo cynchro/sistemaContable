@@ -147,11 +147,14 @@
 
 ## H) DDJJ IVA Simple (F.2051) — arrastres como insumos
 La DDJJ IVA Simple (`GET …/iva-simple`, `IvaSimpleCalculator`, validada con el caso real
-de `imagenes/pregunta4.jpeg`) calcula débito/crédito del período pero recibe **por query**
-los tres arrastres, porque no hay historial de DDJJ persistido todavía:
-- [ ] **Persistir la DDJJ del período** (saldo técnico y saldo de libre disponibilidad a
-      favor que arrastran) para que el `saldo_tecnico_anterior` y el
-      `saldo_libre_disponibilidad_anterior` se tomen del período anterior, no por query.
+de `imagenes/pregunta4.jpeg`) calcula débito/crédito del período:
+- [x] **Persistir la DDJJ del período** (HECHO, migración 0033 `iva_ddjj_simple`, una por
+      empresa+período). `POST …/iva-simple` la presenta (upsert) y `DdjjSimpleRepository.findAnterior`
+      busca la del período inmediato anterior (por `fecha_ini`). Ahora el `GET …/iva-simple` toma el
+      `saldo_tecnico_anterior` (= saldo técnico a favor del contribuyente del período anterior) y el
+      `saldo_libre_disponibilidad_anterior` (= saldo de libre disponibilidad del período anterior)
+      **automáticamente** de la DDJJ presentada; pasarlos por query los sobrescribe. `LibroIvaService.
+      presentarIvaSimple` orquesta. Tests en `DdjjSimplePersistenciaTest`.
 - [ ] **Retenciones/percepciones/pagos a cuenta SUFRIDOS**: hoy es un insumo (`retenciones_
       percepciones_pagos`). Definir de dónde salen (constancias de retención sufridas vs.
       lo que el contribuyente practica). Las percepciones que ya modelamos integran el

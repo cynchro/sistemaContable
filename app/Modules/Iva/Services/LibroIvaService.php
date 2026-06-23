@@ -10,6 +10,7 @@ use App\Modules\Iva\Calc\LibroIvaDetalleCalculator;
 use App\Modules\Iva\Calc\DeclaracionIvaCalculator;
 use App\Modules\Iva\Calc\IvaSimpleCalculator;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
+use App\Modules\Iva\Repositories\DdjjSimpleRepository;
 
 /**
  * Totales del período (libro IVA), derivados on-the-fly: el repositorio agrega por
@@ -26,6 +27,7 @@ class LibroIvaService
         private LibroIvaDetalleCalculator $detalleCalculator,
         private DeclaracionIvaCalculator $declaracionCalculator,
         private IvaSimpleCalculator $ivaSimpleCalculator,
+        private DdjjSimpleRepository $ddjjSimple,
     ) {
     }
 
@@ -117,9 +119,11 @@ class LibroIvaService
 
     /**
      * DDJJ de IVA "IVA Simple" del período (F.2051 del Portal IVA, reemplaza al F2002):
-     * encadena el débito/crédito computable del período con los arrastres (saldo técnico
-     * anterior, saldo de libre disponibilidad anterior y retenciones/percepciones/pagos a
-     * cuenta), que son insumos del estudio. Ver {@see IvaSimpleCalculator}.
+     * encadena el débito/crédito computable del período con los arrastres. Los dos
+     * arrastres de saldo (técnico a favor y libre disponibilidad anteriores) se toman,
+     * si no se especifican (null), de la DDJJ del período inmediato anterior persistida;
+     * las retenciones/percepciones/pagos sufridos siguen siendo un insumo del período
+     * (constancias). Ver {@see IvaSimpleCalculator}.
      *
      * @return array<string, mixed>
      */
@@ -127,17 +131,24 @@ class LibroIvaService
         int $empresaId,
         int $periodoId,
         string $tenantId,
-        string $saldoTecnicoAnterior = '0',
-        string $saldoLibreDisponibilidadAnterior = '0',
+        ?string $saldoTecnicoAnterior = null,
+        ?string $saldoLibreDisponibilidadAnterior = null,
         string $retencionesPercepcionesPagos = '0',
     ): array {
         $declaracion = $this->declaracion($empresaId, $periodoId, $tenantId);
 
+        [$saldoTecnico, $saldoLibre] = $this->resolverArrastres(
+            $empresaId,
+            $periodoId,
+            $saldoTecnicoAnterior,
+            $saldoLibreDisponibilidadAnterior,
+        );
+
         $f2051 = $this->ivaSimpleCalculator->calcular(
             $declaracion['saldo']['debito_fiscal'],
             $declaracion['saldo']['credito_computable'],
-            $saldoTecnicoAnterior,
-            $saldoLibreDisponibilidadAnterior,
+            $saldoTecnico,
+            $saldoLibre,
             $retencionesPercepcionesPagos,
         );
 
@@ -146,6 +157,66 @@ class LibroIvaService
             'credito_fiscal' => $declaracion['credito_fiscal'],
             'determinacion_impuesto' => $f2051['determinacion_impuesto'],
             'posicion_mensual'       => $f2051['posicion_mensual'],
+        ];
+    }
+
+    /**
+     * Presenta (persiste) la DDJJ IVA Simple del período: deriva los arrastres del
+     * período anterior, calcula y guarda el snapshot (upsert). Ese snapshot es la
+     * base de los arrastres del próximo período. Devuelve el mismo shape que ivaSimple().
+     *
+     * @return array<string, mixed>
+     */
+    public function presentarIvaSimple(
+        int $empresaId,
+        int $periodoId,
+        string $tenantId,
+        string $retencionesPercepcionesPagos = '0',
+    ): array {
+        $resultado = $this->ivaSimple(
+            $empresaId,
+            $periodoId,
+            $tenantId,
+            null,
+            null,
+            $retencionesPercepcionesPagos,
+        );
+
+        $pos = $resultado['posicion_mensual'];
+        $this->ddjjSimple->guardar($empresaId, $periodoId, [
+            ...$resultado['determinacion_impuesto'],
+            'saldo_libre_disponibilidad_anterior' => $pos['saldo_libre_disponibilidad_anterior'],
+            'retenciones_percepciones_pagos'      => $pos['retenciones_percepciones_pagos'],
+            'saldo_a_pagar'                       => $pos['saldo_a_pagar'],
+            'saldo_libre_disponibilidad_periodo'  => $pos['saldo_libre_disponibilidad_periodo'],
+        ]);
+
+        return $resultado;
+    }
+
+    /**
+     * Resuelve los arrastres del F.2051. Si alguno no se especifica (null), lo toma de
+     * la DDJJ del período inmediato anterior persistida (saldo técnico a favor del
+     * contribuyente → saldo técnico anterior; saldo de libre disponibilidad del período
+     * → saldo de libre disponibilidad anterior). Si no hay anterior, 0.
+     *
+     * @return array{0: string, 1: string} [saldoTecnicoAnterior, saldoLibreDisponibilidadAnterior]
+     */
+    private function resolverArrastres(
+        int $empresaId,
+        int $periodoId,
+        ?string $saldoTecnicoAnterior,
+        ?string $saldoLibreDisponibilidadAnterior,
+    ): array {
+        if ($saldoTecnicoAnterior !== null && $saldoLibreDisponibilidadAnterior !== null) {
+            return [$saldoTecnicoAnterior, $saldoLibreDisponibilidadAnterior];
+        }
+
+        $anterior = $this->ddjjSimple->findAnterior($empresaId, $periodoId);
+
+        return [
+            $saldoTecnicoAnterior ?? (string) ($anterior['saldo_tecnico_a_favor_contribuyente'] ?? '0'),
+            $saldoLibreDisponibilidadAnterior ?? (string) ($anterior['saldo_libre_disponibilidad_periodo'] ?? '0'),
         ];
     }
 

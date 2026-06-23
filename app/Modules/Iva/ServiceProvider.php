@@ -40,6 +40,7 @@ use App\Modules\Iva\Repositories\IvaProveedorRepository;
 use App\Modules\Iva\Repositories\VentaRepository;
 use App\Modules\Iva\Repositories\CompraRepository;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
+use App\Modules\Iva\Repositories\DdjjSimpleRepository;
 use App\Modules\Iva\Repositories\ReporteIvaRepository;
 use App\Modules\Iva\Repositories\LibroIvaDigitalRepository;
 use App\Modules\Iva\Export\LibroIvaDigitalWriter;
@@ -132,6 +133,7 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(DeclaracionIvaCalculator::class, fn () => new DeclaracionIvaCalculator());
         $c->singleton(IvaSimpleCalculator::class, fn () => new IvaSimpleCalculator());
         $c->singleton(LibroIvaRepository::class, fn () => new LibroIvaRepository($c->get(PDO::class)));
+        $c->singleton(DdjjSimpleRepository::class, fn () => new DdjjSimpleRepository($c->get(PDO::class)));
         $c->singleton(LibroIvaService::class, fn () => new LibroIvaService(
             $c->get(LibroIvaRepository::class),
             $c->get(EmpresaRepository::class),
@@ -140,6 +142,7 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(LibroIvaDetalleCalculator::class),
             $c->get(DeclaracionIvaCalculator::class),
             $c->get(IvaSimpleCalculator::class),
+            $c->get(DdjjSimpleRepository::class),
         ));
         $c->singleton(LibroIvaController::class, fn () => new LibroIvaController($c->get(LibroIvaService::class)));
 

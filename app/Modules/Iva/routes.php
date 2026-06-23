@@ -50,6 +50,10 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/libro-iva', [LibroIvaController::class, 'detalle']);
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/ddjj', [LibroIvaController::class, 'ddjj']);
     $router->get('/empresas/{empresaId}/periodos/{periodoId}/iva-simple', [LibroIvaController::class, 'ivaSimple']);
+    $router->post(
+        '/empresas/{empresaId}/periodos/{periodoId}/iva-simple',
+        [LibroIvaController::class, 'presentarIvaSimple'],
+    );
 
     // Reportes: subdiario / libro IVA (listado de comprobantes + totales)
     $router->get(
