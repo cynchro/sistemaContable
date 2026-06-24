@@ -134,7 +134,7 @@
           "description": "Aplicación web para el estudio. Hoy el sistema es una API; falta toda la capa de interfaz de usuario sobre los módulos ya construidos.",
           "tasks": [
             { "title": "Definir stack y arquitectura del frontend (React + Vite + TS + CoreUI)", "status": "completed", "tags": ["frontend", "analisis"] },
-            { "title": "Scaffolding del proyecto (Vite + React + TS + CoreUI + Docker/nginx)", "status": "in_progress", "tags": ["frontend", "infra"] },
+            { "title": "Scaffolding del proyecto (Vite + React + TS + CoreUI + Docker/nginx)", "status": "completed", "tags": ["frontend", "infra"] },
             { "title": "Login y gestión de sesión (JWT)", "status": "pending", "tags": ["frontend"] },
             { "title": "Tablero / inicio con indicadores", "status": "pending", "tags": ["frontend"] },
             { "title": "ABM de empresas/contribuyentes y períodos", "status": "pending", "tags": ["frontend"] },
