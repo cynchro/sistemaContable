@@ -23,7 +23,8 @@
             { "title": "Aplicar migraciones base y sembrar usuario admin", "status": "completed", "tags": ["infra", "db"] },
             { "title": "Smoke test de endpoints base (/health, /auth/login)", "status": "completed", "tags": ["backend"] },
             { "title": "Implementar kernel Decimal exacto con bcmath", "status": "completed", "tags": ["backend"] },
-            { "title": "Definir el patrón de calculadoras puras (sin DB) por módulo", "status": "completed", "tags": ["backend", "analisis"] }
+            { "title": "Definir el patrón de calculadoras puras (sin DB) por módulo", "status": "completed", "tags": ["backend", "analisis"] },
+            { "title": "Reestructurar el repositorio como monorepo (backend/ + frontend/)", "status": "completed", "tags": ["infra"] }
           ]
         },
         {
