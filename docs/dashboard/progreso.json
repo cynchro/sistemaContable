@@ -42,8 +42,8 @@
         },
         {
           "name": "Módulo IVA",
-          "status": "completed",
-          "description": "Ciclo completo de IVA: comprobantes, libro IVA, DDJJ, subdiario, percepciones, Libro IVA Digital y DDJJ IVA Simple.",
+          "status": "in_progress",
+          "description": "Ciclo completo de IVA: comprobantes, libro IVA, DDJJ, subdiario, percepciones, Libro IVA Digital y DDJJ IVA Simple. Núcleo completo; restan add-ons y dependencias externas.",
           "tasks": [
             { "title": "Analizar el legacy Visual IVA 6.10 (esquema, lógica y reportes)", "status": "completed", "tags": ["analisis"] },
             { "title": "Diseñar los módulos Compartido + IVA", "status": "completed", "tags": ["analisis"] },
@@ -65,7 +65,15 @@
             { "title": "RBAC por recurso: permisos por módulo (lectura/escritura) en las rutas de IVA", "status": "completed", "tags": ["backend"] },
             { "title": "Persistir el historial de DDJJ IVA Simple (arrastres automáticos del período anterior)", "status": "completed", "tags": ["backend", "db"] },
             { "title": "Exportador TXT configurable (formatos definidos por el estudio)", "status": "completed", "tags": ["backend", "db"] },
-            { "title": "Paginación y filtros en los listados de ventas y compras", "status": "completed", "tags": ["backend"] }
+            { "title": "Paginación y filtros en los listados de ventas y compras", "status": "completed", "tags": ["backend"] },
+            { "title": "Emisión de factura electrónica en producción (tramitar certificado AFIP)", "status": "pending", "tags": ["infra"] },
+            { "title": "Reportes en PDF (subdiario, libro IVA, DDJJ)", "status": "pending", "tags": ["frontend"] },
+            { "title": "Reportes secundarios (retenciones/percepciones y listados)", "status": "pending", "tags": ["backend"] },
+            { "title": "DDJJ de IVA para Monotributo", "status": "pending", "tags": ["backend"] },
+            { "title": "Exportación de asientos contables (integración con módulo Contable)", "status": "pending", "tags": ["backend"] },
+            { "title": "Régimen de información: archivo de comprobantes anulados (Libro IVA Digital)", "status": "pending", "tags": ["backend"] },
+            { "title": "Auditoría de operaciones (registro de cambios)", "status": "pending", "tags": ["backend"] },
+            { "title": "Retenciones/percepciones sufridas en la DDJJ IVA Simple (origen de datos)", "status": "pending", "tags": ["backend", "analisis"] }
           ]
         },
         {
@@ -118,6 +126,23 @@
             { "title": "Notas de crédito/débito (comprobantes asociados)", "status": "completed", "tags": ["backend", "db"] },
             { "title": "ABM de puntos de venta por empresa", "status": "completed", "tags": ["backend", "db"] },
             { "title": "Tramitar el certificado de homologación (CSR y asociar a los WS)", "status": "pending", "tags": ["infra"] }
+          ]
+        },
+        {
+          "name": "Interfaz Web (Frontend)",
+          "status": "not_started",
+          "description": "Aplicación web para el estudio. Hoy el sistema es una API; falta toda la capa de interfaz de usuario sobre los módulos ya construidos.",
+          "tasks": [
+            { "title": "Definir stack y arquitectura del frontend (SPA, build, consumo de la API)", "status": "pending", "tags": ["frontend", "analisis"] },
+            { "title": "Login y gestión de sesión (JWT)", "status": "pending", "tags": ["frontend"] },
+            { "title": "Tablero / inicio con indicadores", "status": "pending", "tags": ["frontend"] },
+            { "title": "ABM de empresas/contribuyentes y períodos", "status": "pending", "tags": ["frontend"] },
+            { "title": "IVA: carga de comprobantes (ventas/compras) con listados paginados", "status": "pending", "tags": ["frontend"] },
+            { "title": "IVA: libro IVA, DDJJ y descargas (Libro IVA Digital, exportaciones)", "status": "pending", "tags": ["frontend"] },
+            { "title": "AFIP: emisión de factura electrónica y consulta de padrón", "status": "pending", "tags": ["frontend"] },
+            { "title": "Sueldos: legajos, conceptos, liquidación y recibos", "status": "pending", "tags": ["frontend"] },
+            { "title": "Gestión del estudio: vencimientos, tareas y honorarios", "status": "pending", "tags": ["frontend"] },
+            { "title": "Administración: usuarios, roles y permisos (RBAC)", "status": "pending", "tags": ["frontend"] }
           ]
         }
       ]
