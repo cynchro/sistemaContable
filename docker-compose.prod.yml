@@ -20,14 +20,14 @@
 services:
   modux-backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: docker/Dockerfile
     container_name: moduxbackend
     restart: unless-stopped
     ports:
       - "${APP_PORT:-8080}:80"
     env_file:
-      - .env
+      - ./backend/.env
     environment:
       # Forzamos el host de DB al servicio interno, gane lo que gane el .env.
       DB_HOST: moduxdb
@@ -35,7 +35,7 @@ services:
     volumes:
       # La app exige que el archivo .env exista en disco (bootstrap/app.php).
       # Lo montamos read-only; el resto del código viene de la imagen.
-      - ./.env:/var/www/html/.env:ro
+      - ./backend/.env:/var/www/html/.env:ro
       # storage/ persistente (logs) fuera del ciclo de vida del contenedor.
       - app_storage:/var/www/html/storage
     networks:

@@ -5,13 +5,13 @@
 services:
   modux-backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: docker/Dockerfile
     container_name: moduxbackend
     ports:
       - "8080:80"
     volumes:
-      - .:/var/www/html
+      - ./backend:/var/www/html
     environment:
       DB_HOST: moduxdb
       DB_PORT: '3306'
