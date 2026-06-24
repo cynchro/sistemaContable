@@ -64,7 +64,8 @@
             { "title": "Soporte de tiques, FCE MiPyME y liquidaciones de servicios públicos en el Libro IVA Digital y la factura electrónica", "status": "completed", "tags": ["backend"] },
             { "title": "RBAC por recurso: permisos por módulo (lectura/escritura) en las rutas de IVA", "status": "completed", "tags": ["backend"] },
             { "title": "Persistir el historial de DDJJ IVA Simple (arrastres automáticos del período anterior)", "status": "completed", "tags": ["backend", "db"] },
-            { "title": "Exportador TXT configurable (formatos definidos por el estudio)", "status": "completed", "tags": ["backend", "db"] }
+            { "title": "Exportador TXT configurable (formatos definidos por el estudio)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Paginación y filtros en los listados de ventas y compras", "status": "completed", "tags": ["backend"] }
           ]
         },
         {
