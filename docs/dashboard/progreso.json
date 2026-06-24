@@ -18,12 +18,12 @@
           "status": "completed",
           "description": "Puesta en marcha del proyecto sobre el framework Modux y base de cálculo exacto.",
           "tasks": [
-            { "title": "Copiar el framework Modux y reiniciar git como proyecto propio", "status": "completed" },
-            { "title": "Levantar entorno Docker Compose (backend + MySQL)", "status": "completed" },
-            { "title": "Aplicar migraciones base y sembrar usuario admin", "status": "completed" },
-            { "title": "Smoke test de endpoints base (/health, /auth/login)", "status": "completed" },
-            { "title": "Implementar kernel Decimal exacto con bcmath", "status": "completed" },
-            { "title": "Definir el patrón de calculadoras puras (sin DB) por módulo", "status": "completed" }
+            { "title": "Copiar el framework Modux y reiniciar git como proyecto propio", "status": "completed", "tags": ["infra"] },
+            { "title": "Levantar entorno Docker Compose (backend + MySQL)", "status": "completed", "tags": ["infra"] },
+            { "title": "Aplicar migraciones base y sembrar usuario admin", "status": "completed", "tags": ["infra", "db"] },
+            { "title": "Smoke test de endpoints base (/health, /auth/login)", "status": "completed", "tags": ["backend"] },
+            { "title": "Implementar kernel Decimal exacto con bcmath", "status": "completed", "tags": ["backend"] },
+            { "title": "Definir el patrón de calculadoras puras (sin DB) por módulo", "status": "completed", "tags": ["backend", "analisis"] }
           ]
         },
         {
@@ -31,13 +31,13 @@
           "status": "completed",
           "description": "Entidad central (empresa = contribuyente), períodos, plan de cuentas y catálogos AFIP.",
           "tasks": [
-            { "title": "CRUD de empresas (tenant = estudio contable)", "status": "completed" },
-            { "title": "CRUD de períodos con cerrar/abrir y reglas de validación", "status": "completed" },
-            { "title": "CRUD del plan de cuentas por empresa", "status": "completed" },
-            { "title": "CRUD de rubros por estudio", "status": "completed" },
-            { "title": "Sembrar catálogos AFIP reales del legacy (idempotente)", "status": "completed" },
-            { "title": "Endpoint de catálogos de sólo lectura", "status": "completed" },
-            { "title": "ABM de tipos de retención propios (estándar AFIP read-only)", "status": "completed" }
+            { "title": "CRUD de empresas (tenant = estudio contable)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "CRUD de períodos con cerrar/abrir y reglas de validación", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "CRUD del plan de cuentas por empresa", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "CRUD de rubros por estudio", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Sembrar catálogos AFIP reales del legacy (idempotente)", "status": "completed", "tags": ["db"] },
+            { "title": "Endpoint de catálogos de sólo lectura", "status": "completed", "tags": ["backend"] },
+            { "title": "ABM de tipos de retención propios (estándar AFIP read-only)", "status": "completed", "tags": ["backend", "db"] }
           ]
         },
         {
@@ -45,23 +45,26 @@
           "status": "completed",
           "description": "Ciclo completo de IVA: comprobantes, libro IVA, DDJJ, subdiario, percepciones, Libro IVA Digital y DDJJ IVA Simple.",
           "tasks": [
-            { "title": "Analizar el legacy Visual IVA 6.10 (esquema, lógica y reportes)", "status": "completed" },
-            { "title": "Diseñar los módulos Compartido + IVA", "status": "completed" },
-            { "title": "CRUD de clientes de IVA", "status": "completed" },
-            { "title": "CRUD de proveedores de IVA", "status": "completed" },
-            { "title": "Motor de cálculo de comprobantes (IVA, total, discriminación)", "status": "completed" },
-            { "title": "CRUD de ventas por período (transaccional)", "status": "completed" },
-            { "title": "CRUD de compras con crédito fiscal computable", "status": "completed" },
-            { "title": "Totales de período derivados (saldo de IVA, notas de crédito con signo)", "status": "completed" },
-            { "title": "Libro IVA detallado por condición y alícuota", "status": "completed" },
-            { "title": "DDJJ de IVA F2002 (débito vs crédito fiscal computable)", "status": "completed" },
-            { "title": "Reportes de subdiario de ventas y compras", "status": "completed" },
-            { "title": "Exportación del subdiario a CSV/TXT descargable", "status": "completed" },
-            { "title": "Percepciones a nivel comprobante (base por estrategia, Perc. IVA por tramos)", "status": "completed" },
-            { "title": "Libro IVA Digital: generar los 4 archivos de ancho fijo (Portal IVA ARCA)", "status": "completed" },
-            { "title": "DDJJ IVA Simple (F.2051) con arrastre de saldo y retenciones/percepciones sufridas", "status": "completed" },
-            { "title": "Default Consumidor Final en emisión AFIP cuando no hay condición del receptor (RG 5616)", "status": "completed" },
-            { "title": "Soporte de tiques, FCE MiPyME y liquidaciones de servicios públicos en el Libro IVA Digital y la factura electrónica", "status": "completed" }
+            { "title": "Analizar el legacy Visual IVA 6.10 (esquema, lógica y reportes)", "status": "completed", "tags": ["analisis"] },
+            { "title": "Diseñar los módulos Compartido + IVA", "status": "completed", "tags": ["analisis"] },
+            { "title": "CRUD de clientes de IVA", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "CRUD de proveedores de IVA", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Motor de cálculo de comprobantes (IVA, total, discriminación)", "status": "completed", "tags": ["backend"] },
+            { "title": "CRUD de ventas por período (transaccional)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "CRUD de compras con crédito fiscal computable", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Totales de período derivados (saldo de IVA, notas de crédito con signo)", "status": "completed", "tags": ["backend"] },
+            { "title": "Libro IVA detallado por condición y alícuota", "status": "completed", "tags": ["backend"] },
+            { "title": "DDJJ de IVA F2002 (débito vs crédito fiscal computable)", "status": "completed", "tags": ["backend"] },
+            { "title": "Reportes de subdiario de ventas y compras", "status": "completed", "tags": ["backend"] },
+            { "title": "Exportación del subdiario a CSV/TXT descargable", "status": "completed", "tags": ["backend"] },
+            { "title": "Percepciones a nivel comprobante (base por estrategia, Perc. IVA por tramos)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Libro IVA Digital: generar los 4 archivos de ancho fijo (Portal IVA ARCA)", "status": "completed", "tags": ["backend"] },
+            { "title": "DDJJ IVA Simple (F.2051) con arrastre de saldo y retenciones/percepciones sufridas", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Default Consumidor Final en emisión AFIP cuando no hay condición del receptor (RG 5616)", "status": "completed", "tags": ["backend"] },
+            { "title": "Soporte de tiques, FCE MiPyME y liquidaciones de servicios públicos en el Libro IVA Digital y la factura electrónica", "status": "completed", "tags": ["backend"] },
+            { "title": "RBAC por recurso: permisos por módulo (lectura/escritura) en las rutas de IVA", "status": "completed", "tags": ["backend"] },
+            { "title": "Persistir el historial de DDJJ IVA Simple (arrastres automáticos del período anterior)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Exportador TXT configurable (formatos definidos por el estudio)", "status": "completed", "tags": ["backend", "db"] }
           ]
         },
         {
@@ -69,20 +72,20 @@
           "status": "in_progress",
           "description": "Liquidación de sueldos end-to-end: legajo, conceptos con fórmula, recibos, contribuciones, SAC y vacaciones.",
           "tasks": [
-            { "title": "Analizar el legacy de sueldos y diseñar el módulo", "status": "completed" },
-            { "title": "Catálogos de sueldos y configuración por empresa", "status": "completed" },
-            { "title": "CRUD de empleados y familiares", "status": "completed" },
-            { "title": "Evaluador de fórmulas (parser del lenguaje legacy)", "status": "completed" },
-            { "title": "CRUD de conceptos con fórmula", "status": "completed" },
-            { "title": "Motor de liquidación (evalúa conceptos en orden y calcula el neto)", "status": "completed" },
-            { "title": "Capa HTTP: novedades, liquidar y recibo", "status": "completed" },
-            { "title": "Snapshot histórico reproducible al liquidar", "status": "completed" },
-            { "title": "Calculador de contribuciones patronales + ABM de definiciones", "status": "completed" },
-            { "title": "Cálculo de SAC (aguinaldo, Ley 23.041)", "status": "completed" },
-            { "title": "Cálculo de vacaciones (Ley 20.744)", "status": "completed" },
-            { "title": "Impuesto a las ganancias 4ta categoría (tablas anuales)", "status": "pending" },
-            { "title": "Exportación LSD / SICOSS (formato AFIP)", "status": "pending" },
-            { "title": "Recibo de sueldo en PDF", "status": "pending" }
+            { "title": "Analizar el legacy de sueldos y diseñar el módulo", "status": "completed", "tags": ["analisis"] },
+            { "title": "Catálogos de sueldos y configuración por empresa", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "CRUD de empleados y familiares", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Evaluador de fórmulas (parser del lenguaje legacy)", "status": "completed", "tags": ["backend"] },
+            { "title": "CRUD de conceptos con fórmula", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Motor de liquidación (evalúa conceptos en orden y calcula el neto)", "status": "completed", "tags": ["backend"] },
+            { "title": "Capa HTTP: novedades, liquidar y recibo", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Snapshot histórico reproducible al liquidar", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Calculador de contribuciones patronales + ABM de definiciones", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Cálculo de SAC (aguinaldo, Ley 23.041)", "status": "completed", "tags": ["backend"] },
+            { "title": "Cálculo de vacaciones (Ley 20.744)", "status": "completed", "tags": ["backend"] },
+            { "title": "Impuesto a las ganancias 4ta categoría (tablas anuales)", "status": "pending", "tags": ["backend", "analisis"] },
+            { "title": "Exportación LSD / SICOSS (formato AFIP)", "status": "pending", "tags": ["backend"] },
+            { "title": "Recibo de sueldo en PDF", "status": "pending", "tags": ["frontend"] }
           ]
         },
         {
@@ -90,15 +93,15 @@
           "status": "in_progress",
           "description": "Gestión interna del estudio contable, unificada con la entidad canónica Contribuyente = Empresa.",
           "tasks": [
-            { "title": "Analizar el sistema legacy y unificar el modelo (Contribuyente = Empresa)", "status": "completed" },
-            { "title": "Módulo Fiscal: tributos y vencimientos con workflow de estado", "status": "completed" },
-            { "title": "Requerimientos con plazos y estados", "status": "completed" },
-            { "title": "Módulo Tareas del estudio (tipos, comentarios, historial)", "status": "completed" },
-            { "title": "Módulo Honorarios (servicios UC + factores de complejidad + cálculo)", "status": "completed" },
-            { "title": "CRM del contribuyente: datos de contacto y socios", "status": "completed" },
-            { "title": "Credenciales de acceso cifradas en reposo (AES-256-GCM)", "status": "completed" },
-            { "title": "Subida de documentación del contribuyente", "status": "pending" },
-            { "title": "Integraciones de ingesta (BCRA, ARCA, DFE)", "status": "pending" }
+            { "title": "Analizar el sistema legacy y unificar el modelo (Contribuyente = Empresa)", "status": "completed", "tags": ["analisis"] },
+            { "title": "Módulo Fiscal: tributos y vencimientos con workflow de estado", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Requerimientos con plazos y estados", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Módulo Tareas del estudio (tipos, comentarios, historial)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Módulo Honorarios (servicios UC + factores de complejidad + cálculo)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "CRM del contribuyente: datos de contacto y socios", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Credenciales de acceso cifradas en reposo (AES-256-GCM)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Subida de documentación del contribuyente", "status": "pending", "tags": ["backend", "frontend"] },
+            { "title": "Integraciones de ingesta (BCRA, ARCA, DFE)", "status": "pending", "tags": ["backend", "analisis"] }
           ]
         },
         {
@@ -106,14 +109,14 @@
           "status": "in_progress",
           "description": "Integración con los web services de ARCA: autenticación, padrón, emisión de CAE y notas de crédito/débito.",
           "tasks": [
-            { "title": "WSAA: firma CMS y cache del ticket de acceso", "status": "completed" },
-            { "title": "Padrón: consulta de contribuyentes por CUIT (ws_sr_padron_a5)", "status": "completed" },
-            { "title": "Autocompletar alta de cliente/proveedor con datos del padrón", "status": "completed" },
-            { "title": "WSFEv1: numeración y solicitud de CAE", "status": "completed" },
-            { "title": "Validación en vivo contra homologación (FEDummy)", "status": "completed" },
-            { "title": "Notas de crédito/débito (comprobantes asociados)", "status": "completed" },
-            { "title": "ABM de puntos de venta por empresa", "status": "completed" },
-            { "title": "Tramitar el certificado de homologación (CSR y asociar a los WS)", "status": "pending" }
+            { "title": "WSAA: firma CMS y cache del ticket de acceso", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Padrón: consulta de contribuyentes por CUIT (ws_sr_padron_a5)", "status": "completed", "tags": ["backend"] },
+            { "title": "Autocompletar alta de cliente/proveedor con datos del padrón", "status": "completed", "tags": ["backend"] },
+            { "title": "WSFEv1: numeración y solicitud de CAE", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Validación en vivo contra homologación (FEDummy)", "status": "completed", "tags": ["backend", "infra"] },
+            { "title": "Notas de crédito/débito (comprobantes asociados)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "ABM de puntos de venta por empresa", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "Tramitar el certificado de homologación (CSR y asociar a los WS)", "status": "pending", "tags": ["infra"] }
           ]
         }
       ]
