@@ -16,10 +16,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SNAPSHOT="${SNAPSHOT:-$SCRIPT_DIR/progreso.json}"
 
-# Si IMPORT_TOKEN no viene por entorno, lo tomamos del .env de la raíz del repo
-# (gitignored). Permite correr ./sync.sh sin exportar nada a mano.
+# Si IMPORT_TOKEN no viene por entorno, lo tomamos del .env del backend
+# (gitignored; el repo es monorepo y el .env vive en backend/). Permite correr
+# ./sync.sh sin exportar nada a mano.
 if [[ -z "${IMPORT_TOKEN:-}" ]]; then
-  ENV_FILE="$SCRIPT_DIR/../../.env"
+  ENV_FILE="$SCRIPT_DIR/../../backend/.env"
   if [[ -f "$ENV_FILE" ]]; then
     IMPORT_TOKEN="$(sed -n 's/^[[:space:]]*IMPORT_TOKEN[[:space:]]*=[[:space:]]*//p' "$ENV_FILE" | tail -n1)"
   fi
