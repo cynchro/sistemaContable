@@ -96,8 +96,16 @@
         letra porque ya identifican la clase). Lo usa tanto el Libro IVA Digital como WSFE. Tests en
         `WsfeResolversTest`. Pendiente menor: tipos no-exportables / informes (TZ, TI, RE, LI, PC, CR,
         OT, DI) siguen sin mapear a propósito (lanzan); revisar con dato real si el estudio carga el Z.
-- [ ] **Exportador TXT configurable** (réplica de `EXPOTXT_ARCHIVOS` /
-      `EXPOTXT_CAMPOS` del legacy): archivos y campos definidos como datos.
+- [x] **Exportador TXT configurable** (HECHO, réplica funcional de `EXPOTXT_ARCHIVOS` /
+      `EXPOTXT_CAMPOS`). Migración 0034 (`iva_export_formatos` + `iva_export_formato_campos`).
+      El tenant define formatos (delimitado o ancho fijo) eligiendo campos del subdiario, su
+      orden y formato (longitud/relleno/alineación/decimales/fecha). A diferencia del legacy,
+      los campos son una **lista blanca** en código (`Export/ExportCampoCatalogo`) sobre el
+      subdiario de `ReporteIvaRepository` — sin SQL dinámico ni columnas arbitrarias.
+      `Export/ExportTxtConfigurableWriter` (puro) + `ExportFormatoRepository`/`Service`/
+      `Controller`. Endpoints: `/iva/export-formatos` (CRUD, tenant) y
+      `GET …/exportar-config/{formatoId}?tipo=ventas|compras` (descarga). RBAC `iva.libro`.
+      Tests: `ExportTxtConfigurableWriterTest` (unit), `ExportConfigurableTest` (feature).
 - [ ] **Exportación a Contable** (`EXPOVCONTA`): generar asientos / mapeo de cuentas
       hacia el módulo Contable del ecosistema. ⚠️ depende del módulo Contable.
 - [ ] `EXPORECE` (retenciones export).

@@ -43,7 +43,11 @@ use App\Modules\Iva\Repositories\LibroIvaRepository;
 use App\Modules\Iva\Repositories\DdjjSimpleRepository;
 use App\Modules\Iva\Repositories\ReporteIvaRepository;
 use App\Modules\Iva\Repositories\LibroIvaDigitalRepository;
+use App\Modules\Iva\Repositories\ExportFormatoRepository;
 use App\Modules\Iva\Export\LibroIvaDigitalWriter;
+use App\Modules\Iva\Export\ExportTxtConfigurableWriter;
+use App\Modules\Iva\Services\ExportFormatoService;
+use App\Modules\Iva\Controllers\ExportFormatoController;
 use App\Modules\Iva\Services\LibroIvaDigitalService;
 use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Services\IvaClienteService;
@@ -156,6 +160,22 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             ReporteIvaController::class,
             fn () => new ReporteIvaController($c->get(ReporteIvaService::class)),
+        );
+
+        // Exportador TXT configurable: formatos definidos por el tenant (campos/orden/formato).
+        $c->singleton(ExportTxtConfigurableWriter::class, fn () => new ExportTxtConfigurableWriter());
+        $c->singleton(ExportFormatoRepository::class, fn () => new ExportFormatoRepository($c->get(PDO::class)));
+        $c->singleton(ExportFormatoService::class, fn () => new ExportFormatoService(
+            $c->get(ExportFormatoRepository::class),
+            $c->get(ReporteIvaRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+            $c->get(ExportTxtConfigurableWriter::class),
+            $c->get(DB::class),
+        ));
+        $c->singleton(
+            ExportFormatoController::class,
+            fn () => new ExportFormatoController($c->get(ExportFormatoService::class)),
         );
 
         // Libro IVA Digital (Portal IVA): exportación de los archivos de ancho fijo de ARCA.

@@ -10,6 +10,7 @@ use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Controllers\PadronController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
+use App\Modules\Iva\Controllers\ExportFormatoController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
@@ -83,6 +84,17 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get(
         "{$bajoPeriodo}/libro-iva-digital/{archivo}",
         [LibroIvaDigitalController::class, 'exportar'],
+        [$perm('iva.libro')],
+    );
+
+    // Exportador TXT configurable: formatos por tenant + descarga del subdiario con un formato
+    $router->get('/iva/export-formatos', [ExportFormatoController::class, 'index'], [$perm('iva.libro')]);
+    $router->post('/iva/export-formatos', [ExportFormatoController::class, 'create'], [$pw('iva.libro')]);
+    $router->get('/iva/export-formatos/{id}', [ExportFormatoController::class, 'show'], [$perm('iva.libro')]);
+    $router->delete('/iva/export-formatos/{id}', [ExportFormatoController::class, 'delete'], [$pw('iva.libro')]);
+    $router->get(
+        "{$bajoPeriodo}/exportar-config/{formatoId}",
+        [ExportFormatoController::class, 'exportar'],
         [$perm('iva.libro')],
     );
 
