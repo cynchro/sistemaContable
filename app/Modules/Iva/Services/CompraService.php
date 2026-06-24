@@ -35,12 +35,31 @@ class CompraService
     ) {
     }
 
-    /** @return list<array<string, mixed>> */
-    public function list(int $empresaId, int $periodoId, string $tenantId): array
-    {
+    /**
+     * Listado paginado y filtrado de comprobantes del período.
+     *
+     * @param array{
+     *   fecha_desde?: ?string, fecha_hasta?: ?string, proveedor_id?: ?int,
+     *   cuit?: ?string, letra?: ?string
+     * } $filtros
+     * @return array<string, mixed>
+     */
+    public function list(
+        int $empresaId,
+        int $periodoId,
+        string $tenantId,
+        array $filtros = [],
+        int $page = 1,
+        int $perPage = 50,
+    ): array {
         $this->assertPeriodo($empresaId, $periodoId, $tenantId);
 
-        return $this->compras->findAllByPeriodo($periodoId);
+        return $this->compras->findPaginado(
+            $periodoId,
+            $filtros,
+            max(1, $page),
+            min(max(1, $perPage), 200),
+        );
     }
 
     /** @return array<string, mixed> */

@@ -4,6 +4,7 @@ namespace App\Modules\Iva\Repositories;
 
 use PDO;
 use App\Exceptions\NotFoundException;
+use App\Helpers\PaginatorHelper;
 
 /**
  * Persistencia del agregado Venta = cabecera + discriminaciones + percepciones.
@@ -41,6 +42,40 @@ class VentaRepository
         $stmt->execute([$periodoId]);
 
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Listado paginado y filtrado del período. Los nombres de columna del WHERE son
+     * literales del código; los valores van por placeholders (sin inyección).
+     *
+     * @param  array{fecha_desde?: ?string, fecha_hasta?: ?string, cliente_id?: ?int, letra?: ?string} $filtros
+     * @return array<string, mixed> total / cantidad_por_pagina / pagina / results
+     */
+    public function findPaginado(int $periodoId, array $filtros, int $page, int $perPage): array
+    {
+        $where  = ['periodo_id = ?'];
+        $params = [$periodoId];
+
+        if (!empty($filtros['fecha_desde'])) {
+            $where[]  = 'fecha >= ?';
+            $params[] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $where[]  = 'fecha <= ?';
+            $params[] = $filtros['fecha_hasta'];
+        }
+        if (!empty($filtros['cliente_id'])) {
+            $where[]  = 'cliente_id = ?';
+            $params[] = (int) $filtros['cliente_id'];
+        }
+        if (!empty($filtros['letra'])) {
+            $where[]  = 'letra = ?';
+            $params[] = $filtros['letra'];
+        }
+
+        $query = 'SELECT * FROM ventas WHERE ' . implode(' AND ', $where) . ' ORDER BY fecha, id';
+
+        return (new PaginatorHelper($this->pdo, $query, $page, $perPage, true, $params))->getPaginatedResults();
     }
 
     /** @return array<string, mixed> Cabecera con discriminaciones y sus retenciones. */

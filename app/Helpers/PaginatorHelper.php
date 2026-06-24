@@ -35,10 +35,18 @@ class PaginatorHelper
     public function getPaginatedResults(): array
     {
         if ($this->paginate) {
-            $offset     = ($this->page - 1) * $this->perPage;
-            $stmt       = $this->connection->prepare("{$this->query} LIMIT ? OFFSET ?");
-            $allParams  = array_merge($this->params, [$this->perPage, $offset]);
-            $stmt->execute($allParams);
+            $offset = ($this->page - 1) * $this->perPage;
+            $stmt   = $this->connection->prepare("{$this->query} LIMIT ? OFFSET ?");
+            // LIMIT/OFFSET deben bindearse como enteros: con emulación de prepares
+            // desactivada, MySQL rechaza `LIMIT '10'` (string). Los params propios de
+            // la query mantienen su binding por defecto (string).
+            $pos = 1;
+            foreach ($this->params as $param) {
+                $stmt->bindValue($pos++, $param);
+            }
+            $stmt->bindValue($pos++, $this->perPage, \PDO::PARAM_INT);
+            $stmt->bindValue($pos, $offset, \PDO::PARAM_INT);
+            $stmt->execute();
         } else {
             $stmt = $this->connection->prepare($this->query);
             $stmt->execute($this->params);

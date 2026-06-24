@@ -21,6 +21,15 @@ class CompraController
             (int) $request->route('empresaId'),
             (int) $request->route('periodoId'),
             (string) $request->tenantId(),
+            [
+                'fecha_desde'  => $request->input('fecha_desde'),
+                'fecha_hasta'  => $request->input('fecha_hasta'),
+                'proveedor_id' => $request->input('proveedor_id'),
+                'cuit'         => $request->input('cuit'),
+                'letra'        => $request->input('letra'),
+            ],
+            (int) $request->input('page', 1),
+            (int) $request->input('per_page', 50),
         ));
     }
 

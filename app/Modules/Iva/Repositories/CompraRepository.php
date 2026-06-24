@@ -4,6 +4,7 @@ namespace App\Modules\Iva\Repositories;
 
 use PDO;
 use App\Exceptions\NotFoundException;
+use App\Helpers\PaginatorHelper;
 
 /**
  * Persistencia del agregado Compra = cabecera + discriminaciones + percepciones.
@@ -39,6 +40,47 @@ class CompraRepository
         $stmt->execute([$periodoId]);
 
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Listado paginado y filtrado del período. Los nombres de columna del WHERE son
+     * literales del código; los valores van por placeholders (sin inyección).
+     *
+     * @param array{
+     *   fecha_desde?: ?string, fecha_hasta?: ?string, proveedor_id?: ?int,
+     *   cuit?: ?string, letra?: ?string
+     * } $filtros
+     * @return array<string, mixed> total / cantidad_por_pagina / pagina / results
+     */
+    public function findPaginado(int $periodoId, array $filtros, int $page, int $perPage): array
+    {
+        $where  = ['periodo_id = ?'];
+        $params = [$periodoId];
+
+        if (!empty($filtros['fecha_desde'])) {
+            $where[]  = 'fecha >= ?';
+            $params[] = $filtros['fecha_desde'];
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $where[]  = 'fecha <= ?';
+            $params[] = $filtros['fecha_hasta'];
+        }
+        if (!empty($filtros['proveedor_id'])) {
+            $where[]  = 'proveedor_id = ?';
+            $params[] = (int) $filtros['proveedor_id'];
+        }
+        if (!empty($filtros['cuit'])) {
+            $where[]  = 'cuit = ?';
+            $params[] = $filtros['cuit'];
+        }
+        if (!empty($filtros['letra'])) {
+            $where[]  = 'letra = ?';
+            $params[] = $filtros['letra'];
+        }
+
+        $query = 'SELECT * FROM compras WHERE ' . implode(' AND ', $where) . ' ORDER BY fecha, id';
+
+        return (new PaginatorHelper($this->pdo, $query, $page, $perPage, true, $params))->getPaginatedResults();
     }
 
     /** @return array<string, mixed> Cabecera con discriminaciones y percepciones. */

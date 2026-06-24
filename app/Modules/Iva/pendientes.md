@@ -156,8 +156,13 @@
       tenant. Hoy el campo se conserva pero las consultas filtran por empresa.
 
 ## G) Otros / infraestructura
-- [ ] Paginación y filtros en los listados de comprobantes (fecha, cliente/proveedor)
-      — el manual menciona filtros por fecha y búsqueda; hoy se listan completos.
+- [x] **Paginación y filtros en los listados de comprobantes** (HECHO). `GET …/ventas` y
+      `GET …/compras` aceptan `page`/`per_page` (default 50, máx 200) y filtros por query:
+      `fecha_desde`, `fecha_hasta`, `letra` y `cliente_id` (ventas) / `proveedor_id`+`cuit` (compras).
+      Repositorios con `findPaginado` (WHERE con placeholders, sin SQL dinámico de valores) vía
+      `PaginatorHelper`. Respuesta paginada `{ total, cantidad_por_pagina, pagina, results }`.
+      Se corrigió un bug del `PaginatorHelper` (bindear `LIMIT`/`OFFSET` como int; MySQL rechaza
+      `LIMIT '10'` con emulación de prepares desactivada). Tests: `VentaListadoTest`.
 - [ ] Manejo de `tipo_moneda` / `tipo_cambio` en reportes en moneda extranjera.
 - [ ] Auditoría (el legacy tenía tabla `LOG`): usar el Logger / eventos del framework.
 

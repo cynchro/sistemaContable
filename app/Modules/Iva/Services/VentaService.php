@@ -38,12 +38,28 @@ class VentaService
     ) {
     }
 
-    /** @return list<array<string, mixed>> */
-    public function list(int $empresaId, int $periodoId, string $tenantId): array
-    {
+    /**
+     * Listado paginado y filtrado de comprobantes del período.
+     *
+     * @param  array{fecha_desde?: ?string, fecha_hasta?: ?string, cliente_id?: ?int, letra?: ?string} $filtros
+     * @return array<string, mixed>
+     */
+    public function list(
+        int $empresaId,
+        int $periodoId,
+        string $tenantId,
+        array $filtros = [],
+        int $page = 1,
+        int $perPage = 50,
+    ): array {
         $this->assertPeriodo($empresaId, $periodoId, $tenantId);
 
-        return $this->ventas->findAllByPeriodo($periodoId);
+        return $this->ventas->findPaginado(
+            $periodoId,
+            $filtros,
+            max(1, $page),
+            min(max(1, $perPage), 200),
+        );
     }
 
     /** @return array<string, mixed> */
