@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useNavigate } from 'react-router-dom'
 import {
   CSidebar,
   CSidebarHeader,
@@ -8,15 +8,25 @@ import {
   CNavItem,
   CHeader,
   CHeaderBrand,
+  CButton,
   CContainer,
 } from '@coreui/react'
+import { useAuth } from '../auth/AuthContext'
 
 /**
- * Layout base del back-office (CoreUI): sidebar de navegación por módulo + header,
- * y el contenido de cada ruta en el <Outlet />. Los ítems apuntan a placeholders
- * hasta que se construya cada pantalla (tasks del feature Frontend).
+ * Layout base del back-office (CoreUI): sidebar de navegación por módulo + header
+ * con la sesión, y el contenido de cada ruta en el <Outlet />. Los ítems apuntan a
+ * placeholders hasta que se construya cada pantalla (tasks del feature Frontend).
  */
 export default function DefaultLayout() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const onLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <div className="d-flex">
       <CSidebar className="border-end" colorScheme="dark">
@@ -41,6 +51,12 @@ export default function DefaultLayout() {
       <div className="d-flex flex-column flex-grow-1">
         <CHeader className="border-bottom px-4">
           <CHeaderBrand>Sistema Contable</CHeaderBrand>
+          <div className="ms-auto d-flex align-items-center gap-3">
+            <span className="text-body-secondary small">Usuario #{user?.sub}</span>
+            <CButton color="secondary" variant="outline" size="sm" onClick={onLogout}>
+              Salir
+            </CButton>
+          </div>
         </CHeader>
         <main className="flex-grow-1 bg-body-tertiary">
           <CContainer fluid className="py-4">

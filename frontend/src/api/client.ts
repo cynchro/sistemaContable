@@ -17,4 +17,22 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Sesión expirada/inválida: limpiamos y mandamos al login (salvo en endpoints de
+// auth, donde el error lo maneja la propia pantalla de login).
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    const url: string = error.config?.url ?? ''
+    if (status === 401 && !url.includes('/auth/')) {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
 export default api
