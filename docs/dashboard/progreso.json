@@ -136,7 +136,7 @@
           "tasks": [
             { "title": "Definir stack y arquitectura del frontend (React + Vite + TS + CoreUI)", "status": "completed", "tags": ["frontend", "analisis"] },
             { "title": "Scaffolding del proyecto (Vite + React + TS + CoreUI + Docker/nginx)", "status": "completed", "tags": ["frontend", "infra"] },
-            { "title": "Login y gestión de sesión (JWT)", "status": "pending", "tags": ["frontend"] },
+            { "title": "Login y gestión de sesión (JWT)", "status": "in_progress", "tags": ["frontend"] },
             { "title": "Tablero / inicio con indicadores", "status": "pending", "tags": ["frontend"] },
             { "title": "ABM de empresas/contribuyentes y períodos", "status": "pending", "tags": ["frontend"] },
             { "title": "IVA: carga de comprobantes (ventas/compras) con listados paginados", "status": "pending", "tags": ["frontend"] },
