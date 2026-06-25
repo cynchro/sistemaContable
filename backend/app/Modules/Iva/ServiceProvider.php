@@ -50,6 +50,10 @@ use App\Modules\Iva\Services\ExportFormatoService;
 use App\Modules\Iva\Controllers\ExportFormatoController;
 use App\Modules\Iva\Services\LibroIvaDigitalService;
 use App\Modules\Iva\Controllers\LibroIvaDigitalController;
+use App\Modules\Iva\Repositories\DjIvaSimpleRepository;
+use App\Modules\Iva\Export\DjIvaSimpleWriter;
+use App\Modules\Iva\Services\DjIvaSimpleService;
+use App\Modules\Iva\Controllers\DjIvaSimpleController;
 use App\Modules\Iva\Services\IvaClienteService;
 use App\Modules\Iva\Services\IvaProveedorService;
 use App\Modules\Iva\Services\VentaService;
@@ -190,6 +194,20 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             LibroIvaDigitalController::class,
             fn () => new LibroIvaDigitalController($c->get(LibroIvaDigitalService::class)),
+        );
+
+        // DJ IVA Simple (Portal IVA): apertura de otros conceptos por actividad (4 CSV).
+        $c->singleton(DjIvaSimpleRepository::class, fn () => new DjIvaSimpleRepository($c->get(PDO::class)));
+        $c->singleton(DjIvaSimpleWriter::class, fn () => new DjIvaSimpleWriter());
+        $c->singleton(DjIvaSimpleService::class, fn () => new DjIvaSimpleService(
+            $c->get(DjIvaSimpleRepository::class),
+            $c->get(DjIvaSimpleWriter::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+        ));
+        $c->singleton(
+            DjIvaSimpleController::class,
+            fn () => new DjIvaSimpleController($c->get(DjIvaSimpleService::class)),
         );
 
         // AFIP / WSAA: autenticación con certificado (TA cacheado en DB).

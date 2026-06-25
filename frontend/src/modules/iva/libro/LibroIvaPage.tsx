@@ -32,6 +32,7 @@ import {
   presentarIvaSimple,
   descargarSubdiario,
   descargarLibroIvaDigital,
+  descargarDjIvaSimple,
   type DetalleAlicuota,
 } from '../../../api/libroIva'
 
@@ -362,6 +363,25 @@ function Descargas({ eId, pId }: { eId: number; pId: number }) {
         </CButton>
         <CButton color="success" variant="outline" onClick={() => run(() => descargarLibroIvaDigital(eId, pId, 'compras-alicuotas'))}>
           Compras — alícuotas
+        </CButton>
+      </div>
+
+      <h6 className="mt-4">DJ IVA Simple — apertura de otros conceptos por actividad</h6>
+      <div className="text-body-secondary small mb-2">
+        Distribuye la operatoria del período a la actividad principal de la empresa (v1).
+      </div>
+      <div className="d-flex flex-wrap gap-2">
+        <CButton color="info" variant="outline" onClick={() => run(() => descargarDjIvaSimple(eId, pId, 'debito-fiscal'))}>
+          Débito fiscal
+        </CButton>
+        <CButton color="info" variant="outline" onClick={() => run(() => descargarDjIvaSimple(eId, pId, 'restitucion-debito'))}>
+          Restitución de débito
+        </CButton>
+        <CButton color="info" variant="outline" onClick={() => run(() => descargarDjIvaSimple(eId, pId, 'credito-fiscal'))}>
+          Crédito fiscal
+        </CButton>
+        <CButton color="info" variant="outline" onClick={() => run(() => descargarDjIvaSimple(eId, pId, 'restitucion-credito'))}>
+          Restitución de crédito
         </CButton>
       </div>
     </>

@@ -132,3 +132,14 @@ export function descargarLibroIvaDigital(
 ): Promise<void> {
   return descargar(`${base(empresaId, periodoId)}/libro-iva-digital/${archivo}`)
 }
+
+/** Archivos de la DJ IVA Simple (apertura de otros conceptos por actividad, CSV de ARCA). */
+export type ArchivoDj = 'debito-fiscal' | 'restitucion-debito' | 'credito-fiscal' | 'restitucion-credito'
+
+export function descargarDjIvaSimple(
+  empresaId: number,
+  periodoId: number,
+  archivo: ArchivoDj,
+): Promise<void> {
+  return descargar(`${base(empresaId, periodoId)}/dj-iva-simple/${archivo}`)
+}

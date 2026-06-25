@@ -66,6 +66,7 @@
             { "title": "RBAC por recurso: permisos por módulo (lectura/escritura) en las rutas de IVA", "status": "completed", "tags": ["backend"] },
             { "title": "Persistir el historial de DDJJ IVA Simple (arrastres automáticos del período anterior)", "status": "completed", "tags": ["backend", "db"] },
             { "title": "Exportador TXT configurable (formatos definidos por el estudio)", "status": "completed", "tags": ["backend", "db"] },
+            { "title": "DJ IVA Simple: apertura de otros conceptos por actividad (4 CSV de ARCA)", "status": "completed", "tags": ["backend"] },
             { "title": "Paginación y filtros en los listados de ventas y compras", "status": "completed", "tags": ["backend"] },
             { "title": "Emisión de factura electrónica en producción (tramitar certificado AFIP)", "status": "pending", "tags": ["infra"] },
             { "title": "Reportes en PDF (subdiario, libro IVA, DDJJ)", "status": "pending", "tags": ["frontend"] },

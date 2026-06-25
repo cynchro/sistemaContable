@@ -159,6 +159,26 @@ Ganancias, Bienes Personales, anticipos) se hacen **por fuera** en el **"Sistema
 Tributarias" de ARCA**; al formulario llega el saldo **"neto de usos"**. Confirma nuestro supuesto:
 los importes arrastrados llegan ya netos y el sistema **no** calcula compensaciones ni restituciones.
 
+### A15. 🔴 DJ IVA Simple — apertura de otros conceptos por actividad (CSV de ARCA)
+**Contexto:** ARCA permite importar la apertura de la DJ IVA Simple en 4 CSV (débito fiscal,
+restitución de débito, crédito fiscal, restitución de crédito). Spec en
+`docs/ingenieria-inversa/dj-iva-simple-actividad.md`. Implementamos un exporter **v1** con supuestos.
+**Preguntas:**
+1. **Actividad por comprobante**: ¿las empresas del estudio operan **una sola actividad** (entonces
+   imputar todo a la actividad principal es correcto), o hay empresas multi-actividad donde cada
+   comprobante debería llevar su propio código de actividad? (Si es lo segundo, hay que capturar la
+   actividad al cargar ventas/compras.)
+2. **Venta de Bienes de Uso** (tipo de operación 2 del débito): ¿la registran? Hoy todo lo gravado
+   se informa como tipo 1 (venta de cosas muebles/servicios). ¿Hace falta distinguir bienes de uso?
+3. **Concepto del crédito fiscal** (compras): la DJ pide clasificar cada compra en 1 Bienes /
+   2 Locaciones / 3 Servicios / 4 Inversiones de Bienes de Uso. Hoy informamos todo como
+   **1 (Compras de Bienes)**. ¿Necesitan la apertura real por concepto?
+4. **Débito Fiscal por Dación en Pago** (campo O.D.P.): ¿alguna vez tienen operaciones de dación en
+   pago? Hoy lo informamos en 0.
+**Hoy asumimos:** monoactividad (actividad principal de la empresa), sin bienes de uso, crédito
+fiscal concepto 1, dación en pago 0, exportaciones excluidas.
+**Respuesta:**
+
 ---
 
 ## B) Sueldos (liquidación)

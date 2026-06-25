@@ -7,6 +7,7 @@ use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Modules\Iva\Controllers\LibroIvaDigitalController;
+use App\Modules\Iva\Controllers\DjIvaSimpleController;
 use App\Modules\Iva\Controllers\PadronController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
@@ -84,6 +85,14 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     $router->get(
         "{$bajoPeriodo}/libro-iva-digital/{archivo}",
         [LibroIvaDigitalController::class, 'exportar'],
+        [$perm('iva.libro')],
+    );
+
+    // DJ IVA Simple (apertura de otros conceptos por actividad, CSV de ARCA)
+    // archivo: debito-fiscal | restitucion-debito | credito-fiscal | restitucion-credito
+    $router->get(
+        "{$bajoPeriodo}/dj-iva-simple/{archivo}",
+        [DjIvaSimpleController::class, 'exportar'],
         [$perm('iva.libro')],
     );
 
