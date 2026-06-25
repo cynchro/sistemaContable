@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useNavigate, NavLink } from 'react-router-dom'
 import {
   CSidebar,
   CSidebarHeader,
@@ -35,8 +35,12 @@ export default function DefaultLayout() {
         </CSidebarHeader>
         <CSidebarNav>
           <CNavTitle>General</CNavTitle>
-          <CNavItem href="#/">Inicio</CNavItem>
-          <CNavItem href="#/empresas">Empresas / Contribuyentes</CNavItem>
+          <CNavItem as={NavLink} to="/" end>
+            Inicio
+          </CNavItem>
+          <CNavItem as={NavLink} to="/empresas">
+            Empresas / Contribuyentes
+          </CNavItem>
           <CNavTitle>IVA</CNavTitle>
           <CNavItem href="#/iva/comprobantes">Comprobantes</CNavItem>
           <CNavItem href="#/iva/libro">Libro IVA y DDJJ</CNavItem>
