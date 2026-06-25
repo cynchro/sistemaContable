@@ -139,7 +139,7 @@
             { "title": "Scaffolding del proyecto (Vite + React + TS + CoreUI + Docker/nginx)", "status": "completed", "tags": ["frontend", "infra"] },
             { "title": "Layout con CoreUI Admin Template (sidebar colapsable, header con dark mode y perfil, breadcrumb, footer)", "status": "completed", "tags": ["frontend"] },
             { "title": "Login y gestión de sesión (JWT)", "status": "completed", "tags": ["frontend"] },
-            { "title": "Tablero / inicio con indicadores", "status": "pending", "tags": ["frontend"] },
+            { "title": "Tablero / inicio con indicadores", "status": "completed", "tags": ["frontend"] },
             { "title": "ABM de empresas/contribuyentes y períodos", "status": "completed", "tags": ["frontend"] },
             { "title": "IVA: ABM de clientes y proveedores", "status": "completed", "tags": ["frontend"] },
             { "title": "IVA: listado de ventas con filtros y paginación", "status": "completed", "tags": ["frontend"] },
