@@ -125,6 +125,14 @@ class Router
 
     public function dispatch(Request $request, Pipeline $globalPipeline): Response
     {
+        // El pipeline global envuelve TODO el ruteo (no sólo la ruta matcheada), para
+        // que middlewares como CORS puedan responder un preflight OPTIONS antes de que
+        // el matching lo rechace con 405 (las rutas se registran por método concreto).
+        return $globalPipeline->run($request, fn (Request $req): Response => $this->route($req));
+    }
+
+    private function route(Request $request): Response
+    {
         $method = $request->method();
         $path   = rtrim($request->uri(), '/') ?: '/';
 
@@ -136,7 +144,8 @@ class Router
             $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
             $request->setRouteParams($params);
 
-            $pipeline = $globalPipeline;
+            // Sólo los middlewares de la ruta: el pipeline global ya corrió en dispatch().
+            $pipeline = new Pipeline();
 
             foreach ($route['middlewares'] as $middlewareSpec) {
                 $middleware = $this->resolveMiddleware($middlewareSpec);
