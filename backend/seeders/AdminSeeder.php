@@ -30,11 +30,26 @@ $username   = $argv[1] ?? 'admin@example.com';
 $password   = $argv[2] ?? bin2hex(random_bytes(8));
 $tenantName = $argv[3] ?? 'Default';
 
+// Asegura el rol Administrador (id 1) con el super-permiso 'Acceso Total' (idempotente).
+// El RBAC (PermissionMiddleware) le da acceso total a las rutas protegidas vía este permiso;
+// sin esto, el admin recibe 403 en los módulos con permisos (p. ej. IVA).
+$pdo->exec("INSERT IGNORE INTO roles (id, nombre, estado) VALUES (1, 'Administrador', 'activo')");
+$pdo->exec(
+    "INSERT INTO permisos (`key`, estado) SELECT 'Acceso Total', 2 FROM DUAL
+     WHERE NOT EXISTS (SELECT 1 FROM permisos WHERE `key` = 'Acceso Total')"
+);
+$permisoId = (int) $pdo->query("SELECT id FROM permisos WHERE `key` = 'Acceso Total'")->fetchColumn();
+$pdo->prepare(
+    "INSERT INTO roles_permisos (rol, permiso, estado) SELECT 1, ?, 2 FROM DUAL
+     WHERE NOT EXISTS (SELECT 1 FROM roles_permisos WHERE rol = 1 AND permiso = ?)"
+)->execute([$permisoId, $permisoId]);
+echo "Rol Administrador (1) con 'Acceso Total' asegurado.\n";
+
 $stmt = $pdo->prepare('SELECT COUNT(*) FROM usuarios WHERE rol = 1');
 $stmt->execute();
 if ($stmt->fetchColumn() > 0) {
-    echo "An administrator already exists. Aborting.\n";
-    exit(1);
+    echo "Ya existe un administrador (rol 1); el rol y 'Acceso Total' quedaron asegurados. Nada más que hacer.\n";
+    exit(0);
 }
 
 // Generate UUID v4 in PHP to avoid relying on DB-generated value
