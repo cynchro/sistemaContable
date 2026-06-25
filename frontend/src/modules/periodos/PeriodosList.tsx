@@ -117,6 +117,15 @@ export default function PeriodosList() {
                         >
                           Compras
                         </CButton>
+                        <CButton
+                          color="info"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => navigate(`/empresas/${id}/periodos/${p.id}/libro-iva`)}
+                        >
+                          Libro IVA
+                        </CButton>
                         {cerrado ? (
                           <CButton
                             color="warning"

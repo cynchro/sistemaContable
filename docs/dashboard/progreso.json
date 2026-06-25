@@ -143,7 +143,7 @@
             { "title": "IVA: ABM de clientes y proveedores", "status": "completed", "tags": ["frontend"] },
             { "title": "IVA: listado de ventas con filtros y paginación", "status": "completed", "tags": ["frontend"] },
             { "title": "IVA: carga de comprobantes (ventas/compras) con listados paginados", "status": "completed", "tags": ["frontend"] },
-            { "title": "IVA: libro IVA, DDJJ y descargas (Libro IVA Digital, exportaciones)", "status": "pending", "tags": ["frontend"] },
+            { "title": "IVA: libro IVA, DDJJ y descargas (Libro IVA Digital, exportaciones)", "status": "completed", "tags": ["frontend"] },
             { "title": "AFIP: emisión de factura electrónica y consulta de padrón", "status": "pending", "tags": ["frontend"] },
             { "title": "Sueldos: legajos, conceptos, liquidación y recibos", "status": "pending", "tags": ["frontend"] },
             { "title": "Gestión del estudio: vencimientos, tareas y honorarios", "status": "pending", "tags": ["frontend"] },
