@@ -141,6 +141,7 @@
             { "title": "Tablero / inicio con indicadores", "status": "pending", "tags": ["frontend"] },
             { "title": "ABM de empresas/contribuyentes y períodos", "status": "completed", "tags": ["frontend"] },
             { "title": "IVA: ABM de clientes y proveedores", "status": "completed", "tags": ["frontend"] },
+            { "title": "IVA: listado de ventas con filtros y paginación", "status": "completed", "tags": ["frontend"] },
             { "title": "IVA: carga de comprobantes (ventas/compras) con listados paginados", "status": "pending", "tags": ["frontend"] },
             { "title": "IVA: libro IVA, DDJJ y descargas (Libro IVA Digital, exportaciones)", "status": "pending", "tags": ["frontend"] },
             { "title": "AFIP: emisión de factura electrónica y consulta de padrón", "status": "pending", "tags": ["frontend"] },

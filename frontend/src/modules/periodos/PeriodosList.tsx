@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard,
@@ -31,6 +31,7 @@ export default function PeriodosList() {
   const { empresaId } = useParams()
   const id = Number(empresaId)
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
 
   const { data: periodos, isLoading, isError } = useQuery({
@@ -98,6 +99,15 @@ export default function PeriodosList() {
                         </CBadge>
                       </CTableDataCell>
                       <CTableDataCell className="text-end">
+                        <CButton
+                          color="primary"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => navigate(`/empresas/${id}/periodos/${p.id}/ventas`)}
+                        >
+                          Ventas
+                        </CButton>
                         {cerrado ? (
                           <CButton
                             color="warning"
