@@ -23,6 +23,21 @@ services:
     depends_on:
       - moduxdb
 
+  # SPA (React + CoreUI) servida como estáticos por nginx. Se sirve en localhost:5173
+  # (origen permitido por el CORS del backend). La app consume la API en localhost:8080
+  # (VITE_API_URL por defecto). Para desarrollo con hot-reload usar `npm run dev` en frontend/.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: moduxfrontend
+    ports:
+      - "5173:80"
+    networks:
+      - app-network
+    depends_on:
+      - modux-backend
+
   moduxdb:
     image: mysql:8.0
     container_name: moduxdb
