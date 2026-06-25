@@ -108,6 +108,15 @@ export default function PeriodosList() {
                         >
                           Ventas
                         </CButton>
+                        <CButton
+                          color="primary"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => navigate(`/empresas/${id}/periodos/${p.id}/compras`)}
+                        >
+                          Compras
+                        </CButton>
                         {cerrado ? (
                           <CButton
                             color="warning"

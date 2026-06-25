@@ -20,6 +20,57 @@ export interface VentasFiltros {
   letra?: string
 }
 
+/** Línea de discriminación de IVA: neto gravado a una alícuota. */
+export interface DiscriminacionInput {
+  neto_gravado: string
+  iva_alicuota: string
+}
+
+/** Cabecera de la venta enviada al backend (las líneas/total los calcula el motor). */
+export interface VentaInput {
+  fecha: string
+  tipo_comprobante_id?: number | null
+  tipo_operacion_venta_id?: number | null
+  condicion_iva_id?: number | null
+  provincia_id?: number | null
+  cliente_id?: number | null
+  cliente_nombre?: string | null
+  cuit?: string | null
+  letra?: string | null
+  punto_venta?: string | null
+  numero?: string | null
+  neto_no_grav?: string | null
+  exento?: string | null
+  imp_interno?: string | null
+  discriminaciones: DiscriminacionInput[]
+}
+
+/** Venta completa (cabecera + líneas) tal como la devuelve el backend para editar. */
+export interface VentaDetalle {
+  id: number
+  fecha: string | null
+  tipo_comprobante_id: number | null
+  tipo_operacion_venta_id: number | null
+  condicion_iva_id: number | null
+  provincia_id: number | null
+  cliente_id: number | null
+  cliente_nombre: string | null
+  cuit: string | null
+  letra: string | null
+  punto_venta: number | string | null
+  numero: number | string | null
+  neto_no_grav: string | null
+  exento: string | null
+  imp_interno: string | null
+  total: string
+  discriminaciones: Array<{
+    id: number
+    neto_gravado: string
+    iva_alicuota: string
+    iva_importe: string
+  }>
+}
+
 /** Página estándar del backend (PaginatorHelper). */
 export interface Pagina<T> {
   total: number
@@ -43,6 +94,30 @@ export async function listVentas(
 
   const { data } = await api.get(`/empresas/${empresaId}/periodos/${periodoId}/ventas`, { params })
   return data.data as Pagina<Venta>
+}
+
+export async function getVenta(empresaId: number, periodoId: number, id: number): Promise<VentaDetalle> {
+  const { data } = await api.get(`/empresas/${empresaId}/periodos/${periodoId}/ventas/${id}`)
+  return data.data as VentaDetalle
+}
+
+export async function createVenta(
+  empresaId: number,
+  periodoId: number,
+  input: VentaInput,
+): Promise<VentaDetalle> {
+  const { data } = await api.post(`/empresas/${empresaId}/periodos/${periodoId}/ventas`, input)
+  return data.data as VentaDetalle
+}
+
+export async function updateVenta(
+  empresaId: number,
+  periodoId: number,
+  id: number,
+  input: VentaInput,
+): Promise<VentaDetalle> {
+  const { data } = await api.put(`/empresas/${empresaId}/periodos/${periodoId}/ventas/${id}`, input)
+  return data.data as VentaDetalle
 }
 
 export async function deleteVenta(empresaId: number, periodoId: number, id: number): Promise<void> {

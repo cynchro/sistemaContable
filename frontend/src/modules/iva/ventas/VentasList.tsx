@@ -19,7 +19,27 @@ import {
   CSpinner,
   CAlert,
 } from '@coreui/react'
-import { listVentas, deleteVenta, type Venta, type VentasFiltros } from '../../../api/ventas'
+import {
+  listVentas,
+  deleteVenta,
+  createVenta,
+  updateVenta,
+  type Venta,
+  type VentasFiltros,
+  type VentaInput,
+} from '../../../api/ventas'
+import VentaFormModal from './VentaFormModal'
+
+/** Mensaje de error de la API (422 con detalle de validación o 409 de conflicto). */
+function apiError(e: unknown): string {
+  const err = e as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+  const data = err.response?.data
+  if (data?.errors) {
+    const first = Object.values(data.errors)[0]
+    if (first?.[0]) return first[0]
+  }
+  return data?.message ?? 'No se pudo guardar el comprobante.'
+}
 
 const PER_PAGE = 50
 
@@ -46,6 +66,10 @@ export default function VentasList() {
   const [filtros, setFiltros] = useState<VentasFiltros>({})
   const [page, setPage] = useState(1)
 
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+
   const queryKey = ['ventas', eId, pId, filtros, page]
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey,
@@ -57,6 +81,34 @@ export default function VentasList() {
     mutationFn: (id: number) => deleteVenta(eId, pId, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ventas', eId, pId] }),
   })
+
+  const closeModal = () => {
+    setModalOpen(false)
+    setEditingId(null)
+    setFormError(null)
+  }
+
+  const saveM = useMutation({
+    mutationFn: (v: VentaInput) =>
+      editingId == null ? createVenta(eId, pId, v) : updateVenta(eId, pId, editingId, v),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['ventas', eId, pId] })
+      closeModal()
+    },
+    onError: (e) => setFormError(apiError(e)),
+  })
+
+  const nuevaVenta = () => {
+    setEditingId(null)
+    setFormError(null)
+    setModalOpen(true)
+  }
+
+  const editarVenta = (id: number) => {
+    setEditingId(id)
+    setFormError(null)
+    setModalOpen(true)
+  }
 
   const aplicarFiltros = (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,6 +138,7 @@ export default function VentasList() {
   const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
 
   return (
+    <>
     <CCard>
       <CCardHeader className="d-flex justify-content-between align-items-center">
         <div>
@@ -95,7 +148,7 @@ export default function VentasList() {
           <strong className="ms-2">Ventas</strong>
           {isFetching && <CSpinner size="sm" className="ms-2" />}
         </div>
-        <CButton color="primary" size="sm" disabled title="Ficha de carga en construcción">
+        <CButton color="primary" size="sm" onClick={nuevaVenta}>
           Nueva venta
         </CButton>
       </CCardHeader>
@@ -157,6 +210,15 @@ export default function VentasList() {
                       {v.cae ? <CBadge color="success">CAE</CBadge> : <CBadge color="secondary">—</CBadge>}
                     </CTableDataCell>
                     <CTableDataCell className="text-end">
+                      <CButton
+                        color="secondary"
+                        variant="outline"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => editarVenta(v.id)}
+                      >
+                        Editar
+                      </CButton>
                       <CButton color="danger" variant="outline" size="sm" onClick={() => onDelete(v)}>
                         Eliminar
                       </CButton>
@@ -203,5 +265,17 @@ export default function VentasList() {
         )}
       </CCardBody>
     </CCard>
+
+    <VentaFormModal
+      visible={modalOpen}
+      empresaId={eId}
+      periodoId={pId}
+      ventaId={editingId}
+      saving={saveM.isPending}
+      errorMsg={formError}
+      onClose={closeModal}
+      onSubmit={(v) => saveM.mutate(v)}
+    />
+    </>
   )
 }

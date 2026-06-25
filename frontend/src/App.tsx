@@ -8,6 +8,7 @@ import PeriodosList from './modules/periodos/PeriodosList'
 import EnConstruccion from './components/EnConstruccion'
 import SujetosList from './modules/iva/sujetos/SujetosList'
 import VentasList from './modules/iva/ventas/VentasList'
+import ComprasList from './modules/iva/compras/ComprasList'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="empresas/:empresaId/clientes" element={<SujetosList recurso="clientes" />} />
           <Route path="empresas/:empresaId/proveedores" element={<SujetosList recurso="proveedores" />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/ventas" element={<VentasList />} />
+          <Route path="empresas/:empresaId/periodos/:periodoId/compras" element={<ComprasList />} />
           <Route path="iva" element={<EnConstruccion titulo="Comprobantes de IVA" />} />
           <Route path="iva/libro" element={<EnConstruccion titulo="Libro IVA y DDJJ" />} />
           <Route path="afip" element={<EnConstruccion titulo="Factura electrónica" />} />
