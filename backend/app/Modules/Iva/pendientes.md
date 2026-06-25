@@ -58,14 +58,18 @@
         no las necesita. Tests: `IvaRbacTest` (sin permiso → 403; lectura no habilita escritura).
 
 ## C) Reportes (Fase 2) — falta presentación y reportes secundarios
-- [ ] **Render a PDF** de los reportes (los 64 `.fr3` mapeados en
-      `softContable/analisis/reportes_iva.{md,json}`). Hoy entregamos los **datos**
-      (subdiario ventas/compras + libro detallado + DDJJ). Falta el maquetado
-      (matriz de puntos / A4) — probablemente trabajo de frontend o un servicio PDF.
-- [ ] Reportes secundarios aún no hechos: **retenciones/percepciones**, listados
-      varios, detalle por cuenta, factura. (Categorías del análisis: 4 Retenciones,
-      6 Listados, 7 Detalle/cuentas, 1 Factura elec.)
-- [ ] **SIAP / DDJJ adicionales**: `IVASIAP.fr3`, `IVA_DDJJMonotributo.fr3`.
+- [x] **Render a PDF** (HECHO vía frontend). La página de Libro IVA tiene una pestaña
+      **Reportes** con el subdiario de ventas/compras (renglón por comprobante + totales) y las
+      percepciones por tipo, con botón **Imprimir / PDF** (print del navegador + CSS `@media print`
+      que oculta el chrome del layout). El maquetado fino de los `.fr3` no se replica; la impresión
+      a PDF cubre la necesidad operativa.
+- [x] **Reportes secundarios — retenciones/percepciones** (HECHO). `GET …/reportes/percepciones`
+      agrupa `venta_percepciones`/`compra_percepciones` por tipo (y provincia) con base, importe y
+      cantidad + totales. `ReporteIvaRepository::percepciones*` + `ReporteIvaService::percepciones`.
+      Tests: `ReportePercepcionesTest`. (Listados varios / detalle por cuenta siguen diferidos.)
+- [ ] **SIAP / DDJJ adicionales**: `IVASIAP.fr3`, `IVA_DDJJMonotributo.fr3`. **Monotributo**: los
+      monotributistas no presentan DJ de IVA → conceptualmente N/A; pendiente hasta que el contador
+      confirme un caso de uso y el layout.
 
 ## D) Exportaciones AFIP / Contable (Fase 3)
 - [x] **Libro IVA Digital / Portal IVA** (régimen vigente que reemplaza CITI/RG3685 — respuestas.md
@@ -164,7 +168,12 @@
       Se corrigió un bug del `PaginatorHelper` (bindear `LIMIT`/`OFFSET` como int; MySQL rechaza
       `LIMIT '10'` con emulación de prepares desactivada). Tests: `VentaListadoTest`.
 - [ ] Manejo de `tipo_moneda` / `tipo_cambio` en reportes en moneda extranjera.
-- [ ] Auditoría (el legacy tenía tabla `LOG`): usar el Logger / eventos del framework.
+- [x] **Auditoría de operaciones** (HECHO, registro de cambios — el legacy tenía tabla `LOG`).
+      Migración 0035 (`iva_audit_log`). `Audit/AuditMiddleware` (en el grupo de rutas de IVA)
+      registra cada escritura exitosa (POST/PUT/PATCH/DELETE, status < 400): tenant, user_id,
+      método, uri, route params y payload. Best-effort (nunca rompe la operación). Lectura
+      paginada `GET /iva/auditoria` (RBAC `iva.auditoria`). `AuditoriaRepository`/`Controller`.
+      Tests: `AuditoriaIvaTest`.
 
 ## H) DDJJ IVA Simple (F.2051) — arrastres como insumos
 La DDJJ IVA Simple (`GET …/iva-simple`, `IvaSimpleCalculator`, validada con el caso real
@@ -176,8 +185,10 @@ de `imagenes/pregunta4.jpeg`) calcula débito/crédito del período:
       `saldo_libre_disponibilidad_anterior` (= saldo de libre disponibilidad del período anterior)
       **automáticamente** de la DDJJ presentada; pasarlos por query los sobrescribe. `LibroIvaService.
       presentarIvaSimple` orquesta. Tests en `DdjjSimplePersistenciaTest`.
-- [ ] **Retenciones/percepciones/pagos a cuenta SUFRIDOS**: hoy es un insumo (`retenciones_
-      percepciones_pagos`). Definir de dónde salen (constancias de retención sufridas vs.
-      lo que el contribuyente practica). Las percepciones que ya modelamos integran el
-      total del comprobante (lado débito), no son "sufridas" → confirmar con el contador.
+- [x] **Retenciones/percepciones/pagos a cuenta SUFRIDOS** (RESUELTO por diseño, guía A13/A14):
+      salen de "Mis Retenciones" / SIFERE y de compensaciones del Sistema de Cuentas Tributarias
+      de ARCA, fuera del sistema; llegan **netas** y se ingresan como **insumo** del período
+      (`retenciones_percepciones_pagos` en el `GET/POST …/iva-simple`). No son las percepciones que
+      modelamos (ésas integran el total del comprobante, lado débito). No hay nada más que construir
+      en código; queda como entrada del usuario.
 - [ ] Restituciones / "neto de usos": hoy se asume que los montos ya vienen netos.

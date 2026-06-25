@@ -54,6 +54,9 @@ use App\Modules\Iva\Repositories\DjIvaSimpleRepository;
 use App\Modules\Iva\Export\DjIvaSimpleWriter;
 use App\Modules\Iva\Services\DjIvaSimpleService;
 use App\Modules\Iva\Controllers\DjIvaSimpleController;
+use App\Modules\Iva\Repositories\AuditoriaRepository;
+use App\Modules\Iva\Controllers\AuditoriaController;
+use App\Modules\Iva\Audit\AuditMiddleware;
 use App\Modules\Iva\Services\IvaClienteService;
 use App\Modules\Iva\Services\IvaProveedorService;
 use App\Modules\Iva\Services\VentaService;
@@ -208,6 +211,14 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             DjIvaSimpleController::class,
             fn () => new DjIvaSimpleController($c->get(DjIvaSimpleService::class)),
+        );
+
+        // Auditoría de operaciones (registro de cambios) — middleware + lectura paginada.
+        $c->singleton(AuditoriaRepository::class, fn () => new AuditoriaRepository($c->get(PDO::class)));
+        $c->singleton(AuditMiddleware::class, fn () => new AuditMiddleware($c->get(AuditoriaRepository::class)));
+        $c->singleton(
+            AuditoriaController::class,
+            fn () => new AuditoriaController($c->get(AuditoriaRepository::class)),
         );
 
         // AFIP / WSAA: autenticación con certificado (TA cacheado en DB).

@@ -8,6 +8,8 @@ use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Controllers\DjIvaSimpleController;
+use App\Modules\Iva\Controllers\AuditoriaController;
+use App\Modules\Iva\Audit\AuditMiddleware;
 use App\Modules\Iva\Controllers\PadronController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
@@ -17,7 +19,7 @@ use App\Http\Middleware\TenantMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
 
 /** @var \App\Support\Router $router (inyectado por bootstrap/app.php al cargar las rutas) */
-$router->group([AuthMiddleware::class, TenantMiddleware::class], function ($router) {
+$router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware::class], function ($router) {
     // RBAC por recurso: cada ruta exige un permiso (read = GET, write = POST/PUT/DELETE).
     // Un rol con el super-permiso 'Acceso Total' los cubre todos (ver PermissionChecker).
     $perm = static fn (string $p): string => PermissionMiddleware::class . ':' . $p;
@@ -67,6 +69,11 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
     // Reportes: subdiario / libro IVA (listado de comprobantes + totales)
     $router->get("{$bajoPeriodo}/reportes/ventas", [ReporteIvaController::class, 'ventas'], [$perm('iva.libro')]);
     $router->get("{$bajoPeriodo}/reportes/compras", [ReporteIvaController::class, 'compras'], [$perm('iva.libro')]);
+    $router->get(
+        "{$bajoPeriodo}/reportes/percepciones",
+        [ReporteIvaController::class, 'percepciones'],
+        [$perm('iva.libro')],
+    );
 
     // Exportaciones: descarga del subdiario como CSV/TXT (?formato=csv|txt)
     $router->get(
@@ -95,6 +102,9 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
         [DjIvaSimpleController::class, 'exportar'],
         [$perm('iva.libro')],
     );
+
+    // Auditoría de operaciones (registro de cambios) — lectura paginada por tenant
+    $router->get('/iva/auditoria', [AuditoriaController::class, 'index'], [$perm('iva.auditoria')]);
 
     // Exportador TXT configurable: formatos por tenant + descarga del subdiario con un formato
     $router->get('/iva/export-formatos', [ExportFormatoController::class, 'index'], [$perm('iva.libro')]);

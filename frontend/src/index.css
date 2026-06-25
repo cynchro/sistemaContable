@@ -4,3 +4,29 @@ body,
   margin: 0;
   min-height: 100vh;
 }
+
+/* Impresión / exportación a PDF: oculta el chrome del layout y todo lo marcado
+   .no-print, y deja sólo el contenido .print-area a ancho completo. */
+@media print {
+  .sidebar,
+  .header,
+  .footer,
+  .no-print {
+    display: none !important;
+  }
+
+  .body,
+  .wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-area {
+    width: 100% !important;
+  }
+
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

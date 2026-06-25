@@ -88,6 +88,31 @@ class ReporteIvaService
         return ['comprobantes' => $rows, 'totales' => $this->totalizar($rows, self::COLS_COMPRAS)];
     }
 
+    /**
+     * Reporte secundario de percepciones del período: agrupadas por tipo (y provincia)
+     * para ventas y compras, con sus totales de importe.
+     *
+     * @return array{
+     *   ventas: list<array<string, mixed>>, compras: list<array<string, mixed>>,
+     *   totales: array{ventas: string, compras: string}
+     * }
+     */
+    public function percepciones(int $empresaId, int $periodoId, string $tenantId): array
+    {
+        $this->assertPeriodo($empresaId, $periodoId, $tenantId);
+        $ventas  = $this->reportes->percepcionesVentas($periodoId);
+        $compras = $this->reportes->percepcionesCompras($periodoId);
+
+        return [
+            'ventas'  => $ventas,
+            'compras' => $compras,
+            'totales' => [
+                'ventas'  => $this->totalizar($ventas, ['importe'])['importe'],
+                'compras' => $this->totalizar($compras, ['importe'])['importe'],
+            ],
+        ];
+    }
+
     /** Exporta el subdiario de ventas a CSV/TXT delimitado. */
     public function exportarVentas(int $empresaId, int $periodoId, string $tenantId, string $delimitador): string
     {

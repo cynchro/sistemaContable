@@ -32,6 +32,16 @@ class ReporteIvaController
         ));
     }
 
+    /** Reporte secundario: percepciones del período agrupadas por tipo (ventas y compras). */
+    public function percepciones(Request $request): Response
+    {
+        return Response::success($this->service->percepciones(
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (string) $request->tenantId(),
+        ));
+    }
+
     /** Descarga el subdiario de ventas como CSV/TXT (?formato=csv|txt). */
     public function exportarVentas(Request $request): Response
     {

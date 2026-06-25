@@ -35,6 +35,12 @@ import {
   descargarDjIvaSimple,
   type DetalleAlicuota,
 } from '../../../api/libroIva'
+import {
+  getSubdiarioVentas,
+  getSubdiarioCompras,
+  getPercepciones,
+  type Subdiario,
+} from '../../../api/reportes'
 
 const money = (v?: string) => {
   const n = Number(v)
@@ -42,7 +48,7 @@ const money = (v?: string) => {
 }
 const pct = (v: string | null) => (v == null ? '—' : `${Number(v)}%`)
 
-type Tab = 'resumen' | 'ddjj' | 'simple' | 'descargas'
+type Tab = 'resumen' | 'ddjj' | 'simple' | 'reportes' | 'descargas'
 
 export default function LibroIvaPage() {
   const { empresaId, periodoId } = useParams()
@@ -69,11 +75,12 @@ export default function LibroIvaPage() {
           ← Empresas
         </Link>
         <strong className="ms-2">Libro IVA y DDJJ</strong>
-        <CNav variant="tabs" className="mt-3 border-bottom-0">
+        <CNav variant="tabs" className="mt-3 border-bottom-0 no-print">
           {([
             ['resumen', 'Resumen'],
             ['ddjj', 'DDJJ (F2002)'],
             ['simple', 'IVA Simple (F2051)'],
+            ['reportes', 'Reportes'],
             ['descargas', 'Descargas'],
           ] as [Tab, string][]).map(([k, label]) => (
             <CNavItem key={k}>
@@ -88,6 +95,7 @@ export default function LibroIvaPage() {
         {tab === 'resumen' && <Resumen eId={eId} pId={pId} condNombre={condNombre} />}
         {tab === 'ddjj' && <DdjjF2002 eId={eId} pId={pId} condNombre={condNombre} />}
         {tab === 'simple' && <IvaSimpleTab eId={eId} pId={pId} qc={qc} />}
+        {tab === 'reportes' && <Reportes eId={eId} pId={pId} />}
         {tab === 'descargas' && <Descargas eId={eId} pId={pId} />}
       </CCardBody>
     </CCard>
@@ -315,6 +323,151 @@ function IvaSimpleTab({ eId, pId, qc }: { eId: number; pId: number; qc: ReturnTy
           </div>
         )}
       </div>
+    </>
+  )
+}
+
+/** Tabla del subdiario (ventas o compras): renglón por comprobante + fila de totales. */
+function TablaSubdiario({ data, sujeto, conCf }: { data: Subdiario; sujeto: string; conCf?: boolean }) {
+  const t = data.totales
+  return (
+    <CTable small bordered responsive align="middle" className="mb-4">
+      <CTableHead>
+        <CTableRow>
+          <CTableHeaderCell>Fecha</CTableHeaderCell>
+          <CTableHeaderCell>Comprobante</CTableHeaderCell>
+          <CTableHeaderCell>{sujeto}</CTableHeaderCell>
+          <CTableHeaderCell>CUIT</CTableHeaderCell>
+          <CTableHeaderCell className="text-end">Neto gravado</CTableHeaderCell>
+          <CTableHeaderCell className="text-end">IVA</CTableHeaderCell>
+          {conCf && <CTableHeaderCell className="text-end">CF comp.</CTableHeaderCell>}
+          <CTableHeaderCell className="text-end">Percep.</CTableHeaderCell>
+          <CTableHeaderCell className="text-end">Total</CTableHeaderCell>
+        </CTableRow>
+      </CTableHead>
+      <CTableBody>
+        {data.comprobantes.map((c, i) => (
+          <CTableRow key={i}>
+            <CTableDataCell>{c.fecha ?? '—'}</CTableDataCell>
+            <CTableDataCell>
+              {`${c.letra ?? ''} ${c.punto_venta ?? ''}-${c.numero ?? ''}`.trim()}
+            </CTableDataCell>
+            <CTableDataCell>{(sujeto === 'Proveedor' ? c.proveedor_nombre : c.cliente_nombre) ?? '—'}</CTableDataCell>
+            <CTableDataCell>{c.cuit ?? '—'}</CTableDataCell>
+            <CTableDataCell className="text-end">{money(String(c.neto_gravado ?? '0'))}</CTableDataCell>
+            <CTableDataCell className="text-end">{money(String(c.iva ?? '0'))}</CTableDataCell>
+            {conCf && <CTableDataCell className="text-end">{money(String(c.cf_computable ?? '0'))}</CTableDataCell>}
+            <CTableDataCell className="text-end">{money(String(c.percepcion ?? '0'))}</CTableDataCell>
+            <CTableDataCell className="text-end">{money(String(c.total ?? '0'))}</CTableDataCell>
+          </CTableRow>
+        ))}
+        {data.comprobantes.length === 0 && (
+          <CTableRow>
+            <CTableDataCell colSpan={conCf ? 9 : 8} className="text-center text-body-secondary py-3">
+              Sin comprobantes.
+            </CTableDataCell>
+          </CTableRow>
+        )}
+      </CTableBody>
+      {data.comprobantes.length > 0 && (
+        <CTableHead>
+          <CTableRow className="fw-semibold">
+            <CTableDataCell colSpan={4} className="text-end">Totales</CTableDataCell>
+            <CTableDataCell className="text-end">{money(t.neto_gravado)}</CTableDataCell>
+            <CTableDataCell className="text-end">{money(t.iva)}</CTableDataCell>
+            {conCf && <CTableDataCell className="text-end">{money(t.cf_computable)}</CTableDataCell>}
+            <CTableDataCell className="text-end">{money(t.percepcion)}</CTableDataCell>
+            <CTableDataCell className="text-end">{money(t.total)}</CTableDataCell>
+          </CTableRow>
+        </CTableHead>
+      )}
+    </CTable>
+  )
+}
+
+function Reportes({ eId, pId }: { eId: number; pId: number }) {
+  const ventas = useQuery({ queryKey: ['subdiario-ventas', eId, pId], queryFn: () => getSubdiarioVentas(eId, pId) })
+  const compras = useQuery({ queryKey: ['subdiario-compras', eId, pId], queryFn: () => getSubdiarioCompras(eId, pId) })
+  const percep = useQuery({ queryKey: ['percepciones', eId, pId], queryFn: () => getPercepciones(eId, pId) })
+
+  if (ventas.isLoading || compras.isLoading || percep.isLoading) return <CSpinner />
+  if (ventas.isError || compras.isError || percep.isError) {
+    return <CAlert color="danger">No se pudieron cargar los reportes.</CAlert>
+  }
+
+  return (
+    <>
+      <div className="d-flex justify-content-end mb-3 no-print">
+        <CButton color="primary" variant="outline" onClick={() => window.print()}>
+          Imprimir / PDF
+        </CButton>
+      </div>
+      <div className="print-area">
+        <h6>Subdiario de ventas</h6>
+        <TablaSubdiario data={ventas.data!} sujeto="Cliente" />
+
+        <h6>Subdiario de compras</h6>
+        <TablaSubdiario data={compras.data!} sujeto="Proveedor" conCf />
+
+        <h6>Percepciones por tipo</h6>
+        <TablaPercepciones titulo="Ventas" grupos={percep.data!.ventas} total={percep.data!.totales.ventas} />
+        <TablaPercepciones titulo="Compras" grupos={percep.data!.compras} total={percep.data!.totales.compras} />
+      </div>
+    </>
+  )
+}
+
+function TablaPercepciones({
+  titulo,
+  grupos,
+  total,
+}: {
+  titulo: string
+  grupos: import('../../../api/reportes').PercepcionGrupo[]
+  total: string
+}) {
+  return (
+    <>
+      <div className="small text-body-secondary mt-2">{titulo}</div>
+      <CTable small bordered responsive align="middle" className="mb-3">
+        <CTableHead>
+          <CTableRow>
+            <CTableHeaderCell>Tipo</CTableHeaderCell>
+            <CTableHeaderCell>Cód. AFIP</CTableHeaderCell>
+            <CTableHeaderCell>Provincia</CTableHeaderCell>
+            <CTableHeaderCell className="text-end">Cantidad</CTableHeaderCell>
+            <CTableHeaderCell className="text-end">Base</CTableHeaderCell>
+            <CTableHeaderCell className="text-end">Importe</CTableHeaderCell>
+          </CTableRow>
+        </CTableHead>
+        <CTableBody>
+          {grupos.map((g, i) => (
+            <CTableRow key={i}>
+              <CTableDataCell>{g.tipo_nombre ?? '—'}</CTableDataCell>
+              <CTableDataCell>{g.tipo_cod_afip ?? '—'}</CTableDataCell>
+              <CTableDataCell>{g.provincia_nombre ?? '—'}</CTableDataCell>
+              <CTableDataCell className="text-end">{g.cantidad}</CTableDataCell>
+              <CTableDataCell className="text-end">{money(g.base)}</CTableDataCell>
+              <CTableDataCell className="text-end">{money(g.importe)}</CTableDataCell>
+            </CTableRow>
+          ))}
+          {grupos.length === 0 && (
+            <CTableRow>
+              <CTableDataCell colSpan={6} className="text-center text-body-secondary py-3">
+                Sin percepciones.
+              </CTableDataCell>
+            </CTableRow>
+          )}
+        </CTableBody>
+        {grupos.length > 0 && (
+          <CTableHead>
+            <CTableRow className="fw-semibold">
+              <CTableDataCell colSpan={5} className="text-end">Total {titulo.toLowerCase()}</CTableDataCell>
+              <CTableDataCell className="text-end">{money(total)}</CTableDataCell>
+            </CTableRow>
+          </CTableHead>
+        )}
+      </CTable>
     </>
   )
 }

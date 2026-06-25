@@ -79,4 +79,48 @@ class ReporteIvaRepository
 
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * Percepciones de ventas agrupadas por tipo (y provincia), con base e importe.
+     * Reporte secundario de retenciones/percepciones del período.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function percepcionesVentas(int $periodoId): array
+    {
+        return $this->percepciones($periodoId, 'venta_percepciones', 'venta_id', 'ventas');
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function percepcionesCompras(int $periodoId): array
+    {
+        return $this->percepciones($periodoId, 'compra_percepciones', 'compra_id', 'compras');
+    }
+
+    /**
+     * @param  'venta_percepciones'|'compra_percepciones' $tabla
+     * @param  'venta_id'|'compra_id'                      $fk
+     * @param  'ventas'|'compras'                          $comprobantes
+     * @return list<array<string, mixed>>
+     */
+    private function percepciones(int $periodoId, string $tabla, string $fk, string $comprobantes): array
+    {
+        // $tabla/$fk/$comprobantes son literales fijos (no input de usuario): sin riesgo de inyección.
+        $stmt = $this->pdo->prepare(
+            "SELECT p.tipo_retencion_id,
+                    tr.nombre AS tipo_nombre, tr.cod_afip AS tipo_cod_afip, tr.tipo_rg3685,
+                    pr.nombre AS provincia_nombre,
+                    COUNT(*) AS cantidad, SUM(p.base) AS base, SUM(p.importe) AS importe
+               FROM {$tabla} p
+               JOIN {$comprobantes} cmp ON p.{$fk} = cmp.id
+               LEFT JOIN tipos_retencion tr ON p.tipo_retencion_id = tr.id
+               LEFT JOIN provincias      pr ON p.provincia_id      = pr.id
+              WHERE cmp.periodo_id = ?
+              GROUP BY p.tipo_retencion_id, tr.nombre, tr.cod_afip, tr.tipo_rg3685, pr.nombre
+              ORDER BY tr.nombre, pr.nombre"
+        );
+        $stmt->execute([$periodoId]);
+
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
