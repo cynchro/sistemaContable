@@ -138,7 +138,7 @@
             { "title": "Scaffolding del proyecto (Vite + React + TS + CoreUI + Docker/nginx)", "status": "completed", "tags": ["frontend", "infra"] },
             { "title": "Login y gestión de sesión (JWT)", "status": "completed", "tags": ["frontend"] },
             { "title": "Tablero / inicio con indicadores", "status": "pending", "tags": ["frontend"] },
-            { "title": "ABM de empresas/contribuyentes y períodos", "status": "in_progress", "tags": ["frontend"] },
+            { "title": "ABM de empresas/contribuyentes y períodos", "status": "completed", "tags": ["frontend"] },
             { "title": "IVA: carga de comprobantes (ventas/compras) con listados paginados", "status": "pending", "tags": ["frontend"] },
             { "title": "IVA: libro IVA, DDJJ y descargas (Libro IVA Digital, exportaciones)", "status": "pending", "tags": ["frontend"] },
             { "title": "AFIP: emisión de factura electrónica y consulta de padrón", "status": "pending", "tags": ["frontend"] },

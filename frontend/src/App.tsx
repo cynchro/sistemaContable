@@ -4,6 +4,7 @@ import DefaultLayout from './layout/DefaultLayout'
 import LoginPage from './modules/auth/LoginPage'
 import Dashboard from './modules/dashboard/Dashboard'
 import EmpresasList from './modules/empresas/EmpresasList'
+import PeriodosList from './modules/periodos/PeriodosList'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/" element={<DefaultLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="empresas" element={<EmpresasList />} />
+          <Route path="empresas/:empresaId/periodos" element={<PeriodosList />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

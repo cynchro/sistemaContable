@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard,
@@ -26,6 +27,7 @@ import EmpresaFormModal from './EmpresaFormModal'
 
 export default function EmpresasList() {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const { data: empresas, isLoading, isError } = useQuery({
     queryKey: ['empresas'],
     queryFn: listEmpresas,
@@ -97,6 +99,15 @@ export default function EmpresasList() {
                     <CTableDataCell>{e.email ?? '—'}</CTableDataCell>
                     <CTableDataCell>{e.localidad ?? '—'}</CTableDataCell>
                     <CTableDataCell className="text-end">
+                      <CButton
+                        color="primary"
+                        variant="outline"
+                        size="sm"
+                        className="me-2"
+                        onClick={() => navigate(`/empresas/${e.id}/periodos`)}
+                      >
+                        Períodos
+                      </CButton>
                       <CButton
                         color="secondary"
                         variant="outline"
