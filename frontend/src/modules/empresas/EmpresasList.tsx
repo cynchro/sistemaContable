@@ -14,6 +14,10 @@ import {
   CTableDataCell,
   CSpinner,
   CAlert,
+  CDropdown,
+  CDropdownToggle,
+  CDropdownMenu,
+  CDropdownItem,
 } from '@coreui/react'
 import {
   listEmpresas,
@@ -99,15 +103,22 @@ export default function EmpresasList() {
                     <CTableDataCell>{e.email ?? '—'}</CTableDataCell>
                     <CTableDataCell>{e.localidad ?? '—'}</CTableDataCell>
                     <CTableDataCell className="text-end">
-                      <CButton
-                        color="primary"
-                        variant="outline"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => navigate(`/empresas/${e.id}/periodos`)}
-                      >
-                        Períodos
-                      </CButton>
+                      <CDropdown variant="btn-group" className="me-2">
+                        <CDropdownToggle color="primary" variant="outline" size="sm">
+                          Abrir
+                        </CDropdownToggle>
+                        <CDropdownMenu>
+                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/periodos`)}>
+                            Períodos
+                          </CDropdownItem>
+                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/clientes`)}>
+                            Clientes
+                          </CDropdownItem>
+                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/proveedores`)}>
+                            Proveedores
+                          </CDropdownItem>
+                        </CDropdownMenu>
+                      </CDropdown>
                       <CButton
                         color="secondary"
                         variant="outline"
