@@ -7,6 +7,7 @@ import {
   CSidebarFooter,
   CSidebarToggler,
   CNavItem,
+  CNavLink,
   CNavTitle,
   CCloseButton,
 } from '@coreui/react'
@@ -35,9 +36,11 @@ export default function AppSidebar() {
           entry.type === 'title' ? (
             <CNavTitle key={i}>{entry.name}</CNavTitle>
           ) : (
-            <CNavItem key={i} as={NavLink} to={entry.to} end={entry.to === '/'}>
-              <CIcon customClassName="nav-icon" icon={entry.icon} />
-              {entry.name}
+            <CNavItem key={i}>
+              <CNavLink as={NavLink} to={entry.to} end={entry.to === '/'}>
+                <CIcon customClassName="nav-icon" icon={entry.icon} />
+                {entry.name}
+              </CNavLink>
             </CNavItem>
           ),
         )}
