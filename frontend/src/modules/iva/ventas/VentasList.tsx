@@ -28,6 +28,7 @@ import {
   type VentasFiltros,
   type VentaInput,
 } from '../../../api/ventas'
+import { emitirCae } from '../../../api/afip'
 import VentaFormModal from './VentaFormModal'
 
 /** Mensaje de error de la API (422 con detalle de validación o 409 de conflicto). */
@@ -80,6 +81,16 @@ export default function VentasList() {
   const deleteM = useMutation({
     mutationFn: (id: number) => deleteVenta(eId, pId, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ventas', eId, pId] }),
+  })
+
+  const [caeMsg, setCaeMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const caeM = useMutation({
+    mutationFn: (id: number) => emitirCae(eId, pId, id),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['ventas', eId, pId] })
+      setCaeMsg({ ok: true, text: `CAE ${r.cae} obtenido (vence ${r.cae_vto ?? '—'}).` })
+    },
+    onError: (e) => setCaeMsg({ ok: false, text: apiError(e) }),
   })
 
   const closeModal = () => {
@@ -153,6 +164,11 @@ export default function VentasList() {
         </CButton>
       </CCardHeader>
       <CCardBody>
+        {caeMsg && (
+          <CAlert color={caeMsg.ok ? 'success' : 'danger'} dismissible onClose={() => setCaeMsg(null)}>
+            {caeMsg.text}
+          </CAlert>
+        )}
         <CForm className="row g-2 align-items-end mb-3" onSubmit={aplicarFiltros}>
           <div className="col-auto">
             <CFormLabel className="small mb-1">Desde</CFormLabel>
@@ -210,6 +226,22 @@ export default function VentasList() {
                       {v.cae ? <CBadge color="success">CAE</CBadge> : <CBadge color="secondary">—</CBadge>}
                     </CTableDataCell>
                     <CTableDataCell className="text-end">
+                      {!v.cae && (
+                        <CButton
+                          color="success"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                          disabled={caeM.isPending}
+                          onClick={() => {
+                            setCaeMsg(null)
+                            caeM.mutate(v.id)
+                          }}
+                          title="Solicitar CAE a ARCA (WSFEv1)"
+                        >
+                          Emitir CAE
+                        </CButton>
+                      )}
                       <CButton
                         color="secondary"
                         variant="outline"

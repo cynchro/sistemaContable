@@ -1,8 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   CModal,
   CModalHeader,
@@ -16,6 +16,7 @@ import {
   CButton,
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
+import { sugerenciaPadron } from '../../../api/afip'
 import type { Sujeto, SujetoInput } from '../../../api/sujetos'
 
 const schema = z.object({
@@ -56,8 +57,31 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
     register,
     handleSubmit,
     reset,
+    setValue,
+    getValues,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
+
+  const [padronError, setPadronError] = useState<string | null>(null)
+  const padron = useMutation({
+    mutationFn: (cuit: string) => sugerenciaPadron(cuit),
+    onSuccess: (s) => {
+      setPadronError(null)
+      if (s.nombre) setValue('nombre', s.nombre)
+      if (s.domicilio) setValue('domicilio', s.domicilio)
+      if (s.localidad) setValue('localidad', s.localidad)
+    },
+    onError: (e) => {
+      const err = e as { response?: { data?: { message?: string } } }
+      setPadronError(err.response?.data?.message ?? 'No se pudo consultar el padrón (¿certificado de ARCA?).')
+    },
+  })
+
+  const traerDePadron = () => {
+    const cuit = (getValues('cuit') ?? '').replace(/\D/g, '')
+    if (cuit.length === 11) padron.mutate(cuit)
+    else setPadronError('Ingresá un CUIT de 11 dígitos para consultar el padrón.')
+  }
 
   useEffect(() => {
     if (visible) {
@@ -101,7 +125,20 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
           <div className="row">
             <div className="col-md-4 mb-3">
               <CFormLabel htmlFor="cuit">CUIT</CFormLabel>
-              <CFormInput id="cuit" {...register('cuit')} />
+              <div className="d-flex gap-2">
+                <CFormInput id="cuit" {...register('cuit')} />
+                <CButton
+                  type="button"
+                  color="info"
+                  variant="outline"
+                  disabled={padron.isPending}
+                  onClick={traerDePadron}
+                  title="Autocompletar con el padrón de ARCA"
+                >
+                  {padron.isPending ? '…' : 'AFIP'}
+                </CButton>
+              </div>
+              {padronError && <div className="text-danger small mt-1">{padronError}</div>}
             </div>
             <div className="col-md-4 mb-3">
               <CFormLabel htmlFor="condicion_iva_id">Condición IVA</CFormLabel>
