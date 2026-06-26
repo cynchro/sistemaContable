@@ -43,6 +43,23 @@ services:
     depends_on:
       - moduxdb
 
+  # SPA buildeada (estática) servida por nginx. La URL de la API se hornea en el
+  # bundle al buildear: definí FRONTEND_API_URL en .env (p. ej. https://api.tu-dominio).
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${FRONTEND_API_URL:-http://localhost:8080}
+    container_name: moduxfrontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    networks:
+      - app-network
+    depends_on:
+      - modux-backend
+
   moduxdb:
     image: mysql:8.0
     container_name: moduxdb

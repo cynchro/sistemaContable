@@ -9,7 +9,7 @@ framework propio **Modux** (monolito modular, PHP 8.2+). Monorepo:
 
 El contexto técnico vivo de la sesión está en [`CLAUDE.md`](CLAUDE.md).
 
-## Levantar el entorno
+## Levantar el entorno (desarrollo)
 
 ```bash
 docker compose up -d
@@ -19,9 +19,25 @@ docker compose exec modux-backend composer install
 
 | Servicio        | URL / puerto                | Notas                                              |
 |-----------------|-----------------------------|----------------------------------------------------|
-| Frontend (SPA)  | http://localhost:5173       | nginx; consume la API en `localhost:8080`          |
+| Frontend (SPA)  | http://localhost:5173       | **Vite dev server con hot-reload (HMR)**           |
 | Backend (API)   | http://localhost:8080       | `GET /health` para smoke test                      |
 | MySQL (externo) | `127.0.0.1:3308`            | user/pass/db: `modux` / `modux` / `modux`          |
+
+> 🔁 **El frontend corre en modo desarrollo**: el `docker compose up` levanta el **Vite dev
+> server** con el código montado por bind-mount, así **los cambios se ven al instante sin
+> buildear**. (La primera vez instala dependencias dentro del contenedor; tarda un minuto.)
+> Para trabajar el front fuera de Docker: `cd frontend && npm install && npm run dev` (parando antes
+> el contenedor `frontend` para liberar el puerto 5173).
+
+### Producción
+
+El build estático (servido por nginx) **no** está en `docker compose up`; vive en
+`docker-compose.prod.yml`:
+
+```bash
+# La URL de la API se hornea en el bundle: definí FRONTEND_API_URL en .env.
+docker compose -f docker-compose.prod.yml up -d --build
+```
 
 ## 🔑 Usuarios para ingresar al sistema
 
