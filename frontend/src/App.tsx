@@ -13,6 +13,7 @@ import LibroIvaPage from './modules/iva/libro/LibroIvaPage'
 import AfipPage from './modules/afip/AfipPage'
 import SueldosPage from './modules/sueldos/SueldosPage'
 import GestionPage from './modules/gestion/GestionPage'
+import AdminPage from './modules/admin/AdminPage'
 
 function App() {
   return (
@@ -33,7 +34,7 @@ function App() {
           <Route path="afip" element={<AfipPage />} />
           <Route path="sueldos" element={<SueldosPage />} />
           <Route path="gestion" element={<GestionPage />} />
-          <Route path="admin" element={<EnConstruccion titulo="Administración" />} />
+          <Route path="admin" element={<AdminPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

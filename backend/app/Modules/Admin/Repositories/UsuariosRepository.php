@@ -15,20 +15,25 @@ class UsuariosRepository
     {
     }
 
+    /**
+     * Columnas seguras: NUNCA exponer `clave` (hash de la contraseña) ni `token` por la API.
+     */
+    private const COLUMNS = 'id, usuario, rol, desarrollador, tenant_id';
+
     /** @return array<string, mixed> */
     public function find(int $page = 1, int $perPage = 10, ?string $tenantId = null): array
     {
         if ($tenantId !== null) {
             $paginator = new PaginatorHelper(
                 $this->pdo,
-                'SELECT * FROM usuarios WHERE tenant_id = ?',
+                'SELECT ' . self::COLUMNS . ' FROM usuarios WHERE tenant_id = ?',
                 $page,
                 $perPage,
                 true,
                 [$tenantId],
             );
         } else {
-            $paginator = new PaginatorHelper($this->pdo, 'SELECT * FROM usuarios', $page, $perPage);
+            $paginator = new PaginatorHelper($this->pdo, 'SELECT ' . self::COLUMNS . ' FROM usuarios', $page, $perPage);
         }
 
         return $paginator->getPaginatedResults();
