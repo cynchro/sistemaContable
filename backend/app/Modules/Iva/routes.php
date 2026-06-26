@@ -8,6 +8,7 @@ use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Controllers\DjIvaSimpleController;
+use App\Modules\Iva\Controllers\EmpresaActividadController;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
 use App\Modules\Iva\Controllers\PadronController;
@@ -101,6 +102,26 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         "{$bajoPeriodo}/dj-iva-simple/{archivo}",
         [DjIvaSimpleController::class, 'exportar'],
         [$perm('iva.libro')],
+    );
+
+    // Actividades (NAES) por empresa + mapa {punto de venta → actividad} (apertura DJ por actividad)
+    $router->get("{$base}/actividades", [EmpresaActividadController::class, 'index'], [$perm('iva.libro')]);
+    $router->post("{$base}/actividades", [EmpresaActividadController::class, 'create'], [$pw('iva.libro')]);
+    $router->delete("{$base}/actividades/{id}", [EmpresaActividadController::class, 'delete'], [$pw('iva.libro')]);
+    $router->get(
+        "{$base}/actividades-punto-venta",
+        [EmpresaActividadController::class, 'indexPuntosVenta'],
+        [$perm('iva.libro')],
+    );
+    $router->post(
+        "{$base}/actividades-punto-venta",
+        [EmpresaActividadController::class, 'setPuntoVenta'],
+        [$pw('iva.libro')],
+    );
+    $router->delete(
+        "{$base}/actividades-punto-venta/{id}",
+        [EmpresaActividadController::class, 'deletePuntoVenta'],
+        [$pw('iva.libro')],
     );
 
     // Auditoría de operaciones (registro de cambios) — lectura paginada por tenant

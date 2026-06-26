@@ -57,6 +57,9 @@ use App\Modules\Iva\Controllers\DjIvaSimpleController;
 use App\Modules\Iva\Repositories\AuditoriaRepository;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
+use App\Modules\Iva\Repositories\EmpresaActividadRepository;
+use App\Modules\Iva\Services\EmpresaActividadService;
+use App\Modules\Iva\Controllers\EmpresaActividadController;
 use App\Modules\Iva\Services\IvaClienteService;
 use App\Modules\Iva\Services\IvaProveedorService;
 use App\Modules\Iva\Services\VentaService;
@@ -205,12 +208,24 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(DjIvaSimpleService::class, fn () => new DjIvaSimpleService(
             $c->get(DjIvaSimpleRepository::class),
             $c->get(DjIvaSimpleWriter::class),
+            $c->get(EmpresaActividadRepository::class),
             $c->get(EmpresaRepository::class),
             $c->get(PeriodoRepository::class),
         ));
         $c->singleton(
             DjIvaSimpleController::class,
             fn () => new DjIvaSimpleController($c->get(DjIvaSimpleService::class)),
+        );
+
+        // Actividades por empresa (NAES) + mapa de puntos de venta (apertura DJ por actividad).
+        $c->singleton(EmpresaActividadRepository::class, fn () => new EmpresaActividadRepository($c->get(PDO::class)));
+        $c->singleton(EmpresaActividadService::class, fn () => new EmpresaActividadService(
+            $c->get(EmpresaActividadRepository::class),
+            $c->get(EmpresaRepository::class),
+        ));
+        $c->singleton(
+            EmpresaActividadController::class,
+            fn () => new EmpresaActividadController($c->get(EmpresaActividadService::class)),
         );
 
         // Auditoría de operaciones (registro de cambios) — middleware + lectura paginada.

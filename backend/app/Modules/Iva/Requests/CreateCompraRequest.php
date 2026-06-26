@@ -34,6 +34,8 @@ class CreateCompraRequest extends FormRequest
             'concepto'                 => 'nullable|integer',
             'cai'                      => 'nullable|string|max:15',
             'fecha_cai'                => 'nullable|date:Y-m-d',
+            'actividad_id'             => 'nullable|integer',
+            'concepto_dj'              => 'nullable|integer',
             'discriminaciones'         => 'nullable|array',
             'percepciones'             => 'nullable|array',
         ];

@@ -31,7 +31,7 @@ class DjIvaSimpleWriterTest extends UnitTestCase
             ['condicion_iva_id' => 1, 'alicuota' => '10.500', 'neto' => '50',  'iva' => '5.25'],   // RI 10,5%
         ];
 
-        $out = $this->writer->debitoFiscal('620100', $gravado, '1234.56');
+        $out = $this->writer->debitoFiscal('620100', $gravado, [], '1234.56');
 
         $this->assertSame(
             "620100;1;1;5;100;21;0;\r\n" .
@@ -50,9 +50,39 @@ class DjIvaSimpleWriterTest extends UnitTestCase
             ['condicion_iva_id' => 1, 'alicuota' => '21.000', 'neto' => '500', 'iva' => '105'],
         ];
 
-        $out = $this->writer->debitoFiscal('620100', $gravado, '0');
+        $out = $this->writer->debitoFiscal('620100', $gravado, [], '0');
 
         $this->assertSame("620100;1;1;5;500;105;0;\r\n", $out);
+    }
+
+    public function test_debito_fiscal_bienes_de_uso_van_tipo_op_2(): void
+    {
+        $normal  = [['condicion_iva_id' => 1, 'alicuota' => '21.000', 'neto' => '1000', 'iva' => '210']];
+        $bienUso = [['condicion_iva_id' => 1, 'alicuota' => '21.000', 'neto' => '500', 'iva' => '105']];
+
+        $out = $this->writer->debitoFiscal('620100', $normal, $bienUso, '0');
+
+        $this->assertSame(
+            "620100;1;1;5;1000;210;0;\r\n" .   // venta común → tipo op 1
+            "620100;2;1;5;500;105;0;\r\n",     // bien de uso → tipo op 2
+            $out,
+        );
+    }
+
+    public function test_credito_fiscal_usa_el_concepto_de_la_compra(): void
+    {
+        $out = $this->writer->creditoFiscal([
+            ['concepto' => 3, 'alicuota' => '21.000', 'neto' => '100', 'iva' => '21', 'cf' => '21'], // servicios
+            ['concepto' => 4, 'alicuota' => '21.000', 'neto' => '200', 'iva' => '42', 'cf' => '42'], // inv. BU
+            ['alicuota' => '21.000', 'neto' => '50', 'iva' => '10.5', 'cf' => '10.5'], // sin concepto → 1
+        ]);
+
+        $this->assertSame(
+            "3;5;100;21;21\r\n" .
+            "4;5;200;42;42\r\n" .
+            "1;5;50;10,5;10,5\r\n",
+            $out,
+        );
     }
 
     public function test_restitucion_debito_usa_tipo_op_1_y_2(): void

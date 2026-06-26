@@ -36,6 +36,8 @@ class UpdateVentaRequest extends FormRequest
             'concepto'                => 'nullable|integer',
             'cai'                     => 'nullable|string|max:15',
             'fecha_cai'               => 'nullable|date:Y-m-d',
+            'actividad_id'            => 'nullable|integer',
+            'es_bien_uso'             => 'nullable|in:S,N',
             'discriminaciones'        => 'nullable|array',
             'percepciones'            => 'nullable|array',
             'comprobantes_asociados'  => 'nullable|array',

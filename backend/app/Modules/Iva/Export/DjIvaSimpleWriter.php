@@ -79,31 +79,47 @@ class DjIvaSimpleWriter
     }
 
     /**
-     * 1) Operaciones que generan Débito Fiscal (8 campos). Las filas gravadas se
-     * reagrupan por tipo de sujeto + alícuota; lo exento/no gravado va en una fila
-     * tipo de operación 3 (campos intermedios vacíos).
+     * 1) Operaciones que generan Débito Fiscal (8 campos). Tipo de operación: 1 = venta
+     * de cosas muebles/obras/locaciones/servicios; 2 = venta de bienes de uso; 3 = no
+     * gravado/exento. Las filas gravadas se reagrupan por tipo de sujeto + alícuota.
      *
-     * @param  list<array{condicion_iva_id: ?int, alicuota: ?string, neto: string, iva: string}> $gravado
+     * @param  list<array{condicion_iva_id: ?int, alicuota: ?string, neto: string, iva: string}> $gravadoNormal
+     * @param  list<array{condicion_iva_id: ?int, alicuota: ?string, neto: string, iva: string}> $gravadoBienUso
      * @param  string $noGravado total exento + no gravado del período (lado positivo)
      */
-    public function debitoFiscal(string $actividad, array $gravado, string $noGravado): string
+    public function debitoFiscal(
+        string $actividad,
+        array $gravadoNormal,
+        array $gravadoBienUso,
+        string $noGravado,
+    ): string {
+        $out  = $this->lineasGravadoDebito($actividad, $gravadoNormal, '1');
+        $out .= $this->lineasGravadoDebito($actividad, $gravadoBienUso, '2');
+
+        if (!Decimal::of($noGravado)->isZero()) {
+            $out .= $this->linea([$actividad, '3', '', '', '', '', '', $this->monto($noGravado)]);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<array{condicion_iva_id: ?int, alicuota: ?string, neto: string, iva: string}> $gravado
+     */
+    private function lineasGravadoDebito(string $actividad, array $gravado, string $tipoOp): string
     {
         $out = '';
         foreach ($this->agruparPorSujeto($gravado) as $g) {
             $out .= $this->linea([
                 $actividad,
-                '1',                              // Venta de Cosas Muebles/Obras/Locaciones/Servicios
+                $tipoOp,
                 (string) $g['tipo_sujeto'],
                 (string) $g['alicuota_cod'],
                 $this->monto($g['neto']),
                 $this->monto($g['iva']),
-                $this->monto('0'),                // Débito Fiscal Dación en Pago (no modelado)
+                $this->monto('0'),                // Débito Fiscal Dación en Pago (no aplica)
                 '',
             ]);
-        }
-
-        if (!Decimal::of($noGravado)->isZero()) {
-            $out .= $this->linea([$actividad, '3', '', '', '', '', '', $this->monto($noGravado)]);
         }
 
         return $out;
@@ -138,17 +154,17 @@ class DjIvaSimpleWriter
     }
 
     /**
-     * 3) Operaciones que generan Crédito Fiscal (5 campos). Concepto 1 = compras de
-     * bienes (supuesto v1). Sin actividad (la spec no la pide acá).
+     * 3) Operaciones que generan Crédito Fiscal (5 campos). Concepto por compra:
+     * 1 bienes / 2 locaciones / 3 servicios / 4 inversiones de bienes de uso (default 1).
      *
-     * @param  list<array{alicuota: ?string, neto: string, iva: string, cf: string}> $gravado
+     * @param  list<array{concepto?: ?int, alicuota: ?string, neto: string, iva: string, cf: string}> $gravado
      */
     public function creditoFiscal(array $gravado): string
     {
         $out = '';
         foreach ($gravado as $g) {
             $out .= $this->linea([
-                '1',                              // Compras de Bienes (excepto Bienes de Uso)
+                $this->concepto($g['concepto'] ?? null),
                 (string) $this->codigoAlicuota($g['alicuota']),
                 $this->monto($g['neto']),
                 $this->monto($g['iva']),          // Crédito Fiscal Facturado
@@ -163,14 +179,14 @@ class DjIvaSimpleWriter
      * 4) Operaciones que generan Restitución de Crédito Fiscal (4 campos) — notas de
      * crédito de compras.
      *
-     * @param  list<array{alicuota: ?string, neto: string, iva: string, cf: string}> $gravado
+     * @param  list<array{concepto?: ?int, alicuota: ?string, neto: string, iva: string, cf: string}> $gravado
      */
     public function restitucionCredito(array $gravado): string
     {
         $out = '';
         foreach ($gravado as $g) {
             $out .= $this->linea([
-                '1',
+                $this->concepto($g['concepto'] ?? null),
                 (string) $this->codigoAlicuota($g['alicuota']),
                 $this->monto($g['neto']),
                 $this->monto($g['iva']),          // Crédito Fiscal Facturado
@@ -178,6 +194,12 @@ class DjIvaSimpleWriter
         }
 
         return $out;
+    }
+
+    /** Concepto del crédito fiscal (1..4); default 1 (compras de bienes). */
+    private function concepto(?int $concepto): string
+    {
+        return (string) ($concepto !== null && $concepto >= 1 && $concepto <= 4 ? $concepto : 1);
     }
 
     /**
