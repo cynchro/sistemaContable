@@ -147,7 +147,7 @@
             { "title": "IVA: libro IVA, DDJJ y descargas (Libro IVA Digital, exportaciones)", "status": "completed", "tags": ["frontend"] },
             { "title": "AFIP: emisión de factura electrónica y consulta de padrón", "status": "completed", "tags": ["frontend"] },
             { "title": "Sueldos: legajos, conceptos, liquidación y recibos", "status": "completed", "tags": ["frontend"] },
-            { "title": "Gestión del estudio: vencimientos, tareas y honorarios", "status": "pending", "tags": ["frontend"] },
+            { "title": "Gestión del estudio: vencimientos, tareas y honorarios", "status": "completed", "tags": ["frontend"] },
             { "title": "Administración: usuarios, roles y permisos (RBAC)", "status": "pending", "tags": ["frontend"] }
           ]
         }
