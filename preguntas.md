@@ -10,8 +10,10 @@
 > una tabla/instructivo oficial que no tenemos; ✅ = ya respondida (se conserva como registro).
 >
 > **Organización:** dentro de cada módulo, primero las **RESPONDIDAS** (con la fecha de la
-> respuesta) y después las **PENDIENTES** (con la fecha en que se plantearon). Lo único abierto
-> hoy en IVA es **A15** (planteada 2026-06-25). El resto de IVA ya está respondido.
+> respuesta) y después las **PENDIENTES** (con la fecha en que se plantearon). **IVA está
+> completamente respondido** (A1–A15 + A11-bis; última tanda 2026-06-26). Queda **implementar A15**
+> (apertura por actividad — ver `docs/ingenieria-inversa/dj-iva-simple-actividad.md`). Lo abierto
+> ahora son las preguntas de **Sueldos (B)**, **Honorarios (C)** y **Fiscal (D)**.
 
 ---
 
@@ -87,35 +89,43 @@ Con la guía (puntos 19-22): las compensaciones se hacen por fuera en el "Sistem
 de ARCA; al formulario llega el saldo **neto de usos**. Confirma el supuesto: los arrastres llegan netos
 y el sistema no calcula compensaciones ni restituciones.
 
-### A.2) PENDIENTES (abiertas)
+### A.2) RESPONDIDAS (tanda 2 — 2026-06-26)
 
-#### A15. 🔴 DJ IVA Simple — apertura de otros conceptos por actividad (CSV de ARCA) — PLANTEADA (2026-06-25)
-**Contexto:** ARCA permite importar la apertura de la DJ IVA Simple en 4 CSV (débito fiscal, restitución
-de débito, crédito fiscal, restitución de crédito). Spec en
-`docs/ingenieria-inversa/dj-iva-simple-actividad.md`. Implementamos un exporter **v1** con supuestos.
-**Preguntas:**
-1. **Actividad por comprobante**: ¿las empresas del estudio operan **una sola actividad** (entonces
-   imputar todo a la actividad principal es correcto), o hay empresas multi-actividad donde cada
-   comprobante debería llevar su propio código de actividad? (Si es lo segundo, hay que capturar la
-   actividad al cargar ventas/compras → migración + cambio en los formularios.)
-2. **Venta de Bienes de Uso** (tipo de operación 2 del débito): ¿la registran? Hoy todo lo gravado
-   se informa como tipo 1 (venta de cosas muebles/servicios). ¿Hace falta distinguir bienes de uso?
-3. **Concepto del crédito fiscal** (compras): la DJ pide clasificar cada compra en 1 Bienes /
-   2 Locaciones / 3 Servicios / 4 Inversiones de Bienes de Uso. Hoy informamos todo como
-   **1 (Compras de Bienes)**. ¿Necesitan la apertura real por concepto?
-4. **Débito Fiscal por Dación en Pago** (campo O.D.P.): ¿alguna vez tienen operaciones de dación en
-   pago? Hoy lo informamos en 0.
-**Hoy asumimos:** monoactividad (actividad principal de la empresa), sin bienes de uso, crédito
-fiscal concepto 1, dación en pago 0, exportaciones excluidas.
-**Respuesta:**
+#### A15. ✅ DJ IVA Simple — apertura por actividad — RESPONDIDA (2026-06-26)
+**Respuesta del contador** (con ejemplos en `softContable/preguntas2/`: NAES PDF + 3 Excel reales).
+Análisis y diseño detallado: `docs/ingenieria-inversa/dj-iva-simple-actividad.md`.
 
-#### A11-bis. 🟢 Libro IVA Digital — archivo de comprobantes de VENTAS ANULADOS — PLANTEADA (2026-06-20)
-**Contexto:** el diseño de registro incluye un 5º archivo, `LIBRO_IVA_DIGITAL_CBTES_VENTAS_ANULADOS`
-(44 posiciones). Comentaste que el sistema viejo (Visual) **no lo generaba**. Nosotros sí registramos
-comprobantes anulados, así que podríamos generarlo.
-**Pregunta:** ¿lo necesitan / lo presentan? ¿Vale la pena que el sistema genere ese archivo?
-**Hoy asumimos:** no se genera (igual que el Visual). Lo agregamos si lo usan.
-**Respuesta:**
+1. **MULTI-actividad** (código NAES). Separar ventas por actividad **no afecta el IVA**, pero **sí**
+   determina la alícuota de **IIBB provincial** y **tasa municipal**. La actividad de cada venta se
+   resuelve por **distintas estrategias según el cliente** (un cliente puede combinar varias):
+   - **Por punto de venta** (la más común): ciertos PV están atados a un local/actividad. Mapa
+     `{punto_venta → actividad}`. (Ej. MAFAP, ANCASTI — ver Excel.)
+   - **Por alícuota de IVA** (construcción): 10,5% → residencial (410011); 21% → no residencial (410021).
+   - **Porcentajes fijos**: coeficientes `{actividad → %}` (suman 1) aplicados al neto del período
+     (cuando un solo PV vende de todo y no hay sistema de gestión). (Ej. Acevedo — ver Excel.)
+   - **Factura por factura / manual**: actividad cargada por comprobante (clientes con pocas facturas
+     y varias actividades). (Ej. Bruno Vega.)
+   - **Por receptor (CUIT del cliente)**: mapa `{cliente → actividad}` (ej. todo lo facturado a
+     Minera Galaxy Lithium → "Servicios de apoyo a la minería" 99000).
+2. **Bienes de uso: SÍ** (poco frecuente). El cliente debe **informar** que vende un bien de uso y
+   discriminarlo en la factura. Se separa en la DDJJ porque **no paga IIBB ni tasa municipal** y en
+   Ganancias va aparte. Única forma de detectarlo: que el cliente avise → **flag por comprobante**.
+3. **Compras — concepto: SÍ, discriminar**: **servicios** (luz/agua/gas/internet/teléfono, 27% y
+   parte 21%), **alquiler de locales comerciales** (se ve por factura / por proveedor) y **bienes de
+   uso** (máquinas, vehículos, mobiliario, PC… se identifican por proveedor + preguntando al cliente;
+   se archiva la factura física). Importa para Ganancias/balances (amortización). → clasificación por
+   compra (mapea a los 4 conceptos de la DJ: 1 bienes / 2 locaciones / 3 servicios / 4 inversiones BU).
+4. **Dación en pago: NO** (nunca se vio). Confirma el supuesto: O.D.P. = 0.
+
+**Estado:** pendiente de implementar (reemplazar el exporter v1 monoactividad por el modelo real).
+Plan en el doc de ingeniería inversa.
+
+#### A11-bis. ✅ Libro IVA Digital — comprobantes ANULADOS — RESUELTA (2026-06-26): NO se implementa
+**Respuesta del contador:** los únicos "anulados" que el Visual mandaba a esa solapa eran
+**comprobantes emitidos en cero** (total = 0; ej. cliente Reymundo Frías). Cargados desde el propio
+portal de ARCA aparecen junto al resto sin diferencia, y el **efecto sobre el impuesto es nulo**. La
+forma correcta de anular un comprobante con monto gravado es una **nota de crédito**. → **No tiene
+sentido generar el archivo de anulados**; queda descartado (igual que el Visual).
 
 ---
 
