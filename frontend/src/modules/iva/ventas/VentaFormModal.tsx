@@ -25,6 +25,7 @@ import {
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
 import { listSujetos } from '../../../api/sujetos'
+import { listActividades } from '../../../api/actividades'
 import { getVenta, type VentaInput } from '../../../api/ventas'
 
 /** Alícuotas habilitadas por AFIP (id WSFE → %). El motor usa el %. */
@@ -50,6 +51,8 @@ const schema = z.object({
   neto_no_grav: z.string().optional(),
   exento: z.string().optional(),
   imp_interno: z.string().optional(),
+  actividad_id: z.string().optional(),
+  es_bien_uso: z.boolean().optional(),
   discriminaciones: z.array(lineaSchema).min(1, 'Agregá al menos una línea de IVA'),
 })
 type FormValues = z.infer<typeof schema>
@@ -69,6 +72,8 @@ const VACIO: FormValues = {
   neto_no_grav: '',
   exento: '',
   imp_interno: '',
+  actividad_id: '',
+  es_bien_uso: false,
   discriminaciones: [{ neto_gravado: '', iva_alicuota: '21' }],
 }
 
@@ -117,6 +122,11 @@ export default function VentaFormModal({
     queryFn: () => listSujetos('clientes', empresaId),
     enabled: visible,
   })
+  const { data: actividades } = useQuery({
+    queryKey: ['actividades', empresaId],
+    queryFn: () => listActividades(empresaId),
+    enabled: visible,
+  })
 
   // Al editar, traemos la venta completa (cabecera + líneas) para precargar.
   const {
@@ -161,6 +171,8 @@ export default function VentaFormModal({
         neto_no_grav: detalle.neto_no_grav ?? '',
         exento: detalle.exento ?? '',
         imp_interno: detalle.imp_interno ?? '',
+        actividad_id: detalle.actividad_id != null ? String(detalle.actividad_id) : '',
+        es_bien_uso: detalle.es_bien_uso === 'S',
         discriminaciones:
           detalle.discriminaciones.length > 0
             ? detalle.discriminaciones.map((d) => ({
@@ -220,6 +232,8 @@ export default function VentaFormModal({
       neto_no_grav: str(v.neto_no_grav),
       exento: str(v.exento),
       imp_interno: str(v.imp_interno),
+      actividad_id: v.actividad_id ? Number(v.actividad_id) : null,
+      es_bien_uso: v.es_bien_uso ? 'S' : 'N',
       discriminaciones: v.discriminaciones.map((d) => ({
         neto_gravado: d.neto_gravado,
         iva_alicuota: d.iva_alicuota,
@@ -286,6 +300,31 @@ export default function VentaFormModal({
                       </option>
                     ))}
                   </CFormSelect>
+                </div>
+              </div>
+
+              <div className="row align-items-end">
+                <div className="col-md-8 mb-3">
+                  <CFormLabel htmlFor="actividad_id">Actividad (IVA / IIBB)</CFormLabel>
+                  <CFormSelect id="actividad_id" {...register('actividad_id')}>
+                    <option value="">— Por punto de venta —</option>
+                    {actividades?.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.codigo} — {a.descripcion}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                  <div className="text-body-secondary small mt-1">
+                    Vacío = se resuelve por el punto de venta; elegí una para forzarla en este comprobante.
+                  </div>
+                </div>
+                <div className="col-md-4 mb-3">
+                  <div className="form-check">
+                    <input className="form-check-input" type="checkbox" id="es_bien_uso" {...register('es_bien_uso')} />
+                    <label className="form-check-label" htmlFor="es_bien_uso">
+                      Es venta de bien de uso
+                    </label>
+                  </div>
                 </div>
               </div>
 

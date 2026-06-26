@@ -42,6 +42,8 @@ export interface VentaInput {
   neto_no_grav?: string | null
   exento?: string | null
   imp_interno?: string | null
+  actividad_id?: number | null
+  es_bien_uso?: string | null
   discriminaciones: DiscriminacionInput[]
 }
 
@@ -62,6 +64,8 @@ export interface VentaDetalle {
   neto_no_grav: string | null
   exento: string | null
   imp_interno: string | null
+  actividad_id: number | null
+  es_bien_uso: string | null
   total: string
   discriminaciones: Array<{
     id: number

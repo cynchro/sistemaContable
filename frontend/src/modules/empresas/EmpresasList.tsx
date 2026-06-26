@@ -117,6 +117,9 @@ export default function EmpresasList() {
                           <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/proveedores`)}>
                             Proveedores
                           </CDropdownItem>
+                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/actividades`)}>
+                            Actividades (IVA)
+                          </CDropdownItem>
                         </CDropdownMenu>
                       </CDropdown>
                       <CButton

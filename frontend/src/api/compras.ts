@@ -43,6 +43,8 @@ export interface CompraInput {
   neto_no_grav?: string | null
   exento?: string | null
   imp_interno?: string | null
+  actividad_id?: number | null
+  concepto_dj?: number | null
   discriminaciones: CompraDiscriminacionInput[]
 }
 
@@ -63,6 +65,8 @@ export interface CompraDetalle {
   neto_no_grav: string | null
   exento: string | null
   imp_interno: string | null
+  actividad_id: number | null
+  concepto_dj: number | null
   total: string
   discriminaciones: Array<{
     id: number

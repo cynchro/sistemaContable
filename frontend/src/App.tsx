@@ -10,6 +10,7 @@ import SujetosList from './modules/iva/sujetos/SujetosList'
 import VentasList from './modules/iva/ventas/VentasList'
 import ComprasList from './modules/iva/compras/ComprasList'
 import LibroIvaPage from './modules/iva/libro/LibroIvaPage'
+import ActividadesPage from './modules/iva/actividades/ActividadesPage'
 import AfipPage from './modules/afip/AfipPage'
 import SueldosPage from './modules/sueldos/SueldosPage'
 import GestionPage from './modules/gestion/GestionPage'
@@ -26,6 +27,7 @@ function App() {
           <Route path="empresas/:empresaId/periodos" element={<PeriodosList />} />
           <Route path="empresas/:empresaId/clientes" element={<SujetosList recurso="clientes" />} />
           <Route path="empresas/:empresaId/proveedores" element={<SujetosList recurso="proveedores" />} />
+          <Route path="empresas/:empresaId/actividades" element={<ActividadesPage />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/ventas" element={<VentasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/compras" element={<ComprasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/libro-iva" element={<LibroIvaPage />} />

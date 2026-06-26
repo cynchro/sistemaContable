@@ -25,6 +25,7 @@ import {
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
 import { listSujetos } from '../../../api/sujetos'
+import { listActividades } from '../../../api/actividades'
 import { getCompra, type CompraInput } from '../../../api/compras'
 
 /** Alícuotas habilitadas por AFIP (%). El motor usa el %. */
@@ -51,6 +52,8 @@ const schema = z.object({
   neto_no_grav: z.string().optional(),
   exento: z.string().optional(),
   imp_interno: z.string().optional(),
+  actividad_id: z.string().optional(),
+  concepto_dj: z.string().optional(),
   discriminaciones: z.array(lineaSchema).min(1, 'Agregá al menos una línea de IVA'),
 })
 type FormValues = z.infer<typeof schema>
@@ -70,6 +73,8 @@ const VACIO: FormValues = {
   neto_no_grav: '',
   exento: '',
   imp_interno: '',
+  actividad_id: '',
+  concepto_dj: '',
   discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', cf_computable: '' }],
 }
 
@@ -118,6 +123,11 @@ export default function CompraFormModal({
     queryFn: () => listSujetos('proveedores', empresaId),
     enabled: visible,
   })
+  const { data: actividades } = useQuery({
+    queryKey: ['actividades', empresaId],
+    queryFn: () => listActividades(empresaId),
+    enabled: visible,
+  })
 
   const { data: detalle, isLoading: cargando } = useQuery({
     queryKey: ['compra', empresaId, periodoId, compraId],
@@ -158,6 +168,8 @@ export default function CompraFormModal({
         neto_no_grav: detalle.neto_no_grav ?? '',
         exento: detalle.exento ?? '',
         imp_interno: detalle.imp_interno ?? '',
+        actividad_id: detalle.actividad_id != null ? String(detalle.actividad_id) : '',
+        concepto_dj: detalle.concepto_dj != null ? String(detalle.concepto_dj) : '',
         discriminaciones:
           detalle.discriminaciones.length > 0
             ? detalle.discriminaciones.map((d) => ({
@@ -216,6 +228,8 @@ export default function CompraFormModal({
       neto_no_grav: str(v.neto_no_grav),
       exento: str(v.exento),
       imp_interno: str(v.imp_interno),
+      actividad_id: v.actividad_id ? Number(v.actividad_id) : null,
+      concepto_dj: v.concepto_dj ? Number(v.concepto_dj) : null,
       discriminaciones: v.discriminaciones.map((d) => ({
         neto_gravado: d.neto_gravado,
         iva_alicuota: d.iva_alicuota,
@@ -329,6 +343,29 @@ export default function CompraFormModal({
                         {p.nombre}
                       </option>
                     ))}
+                  </CFormSelect>
+                </div>
+              </div>
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <CFormLabel htmlFor="actividad_id">Actividad (IIBB)</CFormLabel>
+                  <CFormSelect id="actividad_id" {...register('actividad_id')}>
+                    <option value="">— Por punto de venta —</option>
+                    {actividades?.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.codigo} — {a.descripcion}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+                <div className="col-md-6 mb-3">
+                  <CFormLabel htmlFor="concepto_dj">Concepto (DJ IVA)</CFormLabel>
+                  <CFormSelect id="concepto_dj" {...register('concepto_dj')}>
+                    <option value="">— Bienes (default) —</option>
+                    <option value="1">1 — Compras de bienes</option>
+                    <option value="2">2 — Locaciones (alquileres)</option>
+                    <option value="3">3 — Servicios (luz/agua/gas/tel.)</option>
+                    <option value="4">4 — Inversiones en bienes de uso</option>
                   </CFormSelect>
                 </div>
               </div>
