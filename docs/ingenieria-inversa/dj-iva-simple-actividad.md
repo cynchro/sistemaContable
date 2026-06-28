@@ -118,7 +118,11 @@ Un cliente puede combinar varias; el sistema debe soportarlas y permitir overrid
 - **UI**: ABM de actividades por empresa, config de estrategia + mapeos, y los campos nuevos
   (actividad / bien de uso / concepto) en la carga de ventas y compras.
 
-**Fase 1 sugerida** (cubre a la mayoría): catálogo de actividades por empresa + **por punto de
-venta** + **manual/override** + flag bien de uso + concepto de compras + reescritura del exporter.
-**Fase 2**: por alícuota (construcción) y por receptor. **Fase 3**: porcentajes fijos (distribución
-a nivel período).
+**Fase 1 (HECHA)**: catálogo de actividades por empresa + **por punto de venta** + **manual/override**
++ flag bien de uso + concepto de compras + reescritura del exporter (migración 0036).
+**Fase 2 (HECHA)**: **por alícuota** (construcción, resuelta por línea) y **por receptor** (cliente/CUIT).
+Migración 0037 (`actividad_alicuota`, `actividad_receptor`). Precedencia de resolución:
+**override del comprobante → receptor → punto de venta → alícuota → primera actividad**. ABM en la
+página de Actividades. Tests: `DjIvaSimpleActividadFase2Test`.
+**Fase 3 (pendiente)**: porcentajes fijos (distribución a nivel período por coeficientes que suman 1,
+tipo Acevedo) — es la única estrategia que NO es por comprobante.

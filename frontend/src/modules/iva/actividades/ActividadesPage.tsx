@@ -28,7 +28,14 @@ import {
   listPuntosVenta,
   setPuntoVenta,
   deletePuntoVenta,
+  listAlicuotas,
+  setAlicuota,
+  deleteAlicuota,
+  listReceptores,
+  setReceptor,
+  deleteReceptor,
 } from '../../../api/actividades'
+import { listSujetos } from '../../../api/sujetos'
 
 function apiError(e: unknown, fallback: string): string {
   const err = e as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
@@ -47,11 +54,18 @@ export default function ActividadesPage() {
 
   const actividades = useQuery({ queryKey: ['actividades', eId], queryFn: () => listActividades(eId) })
   const puntos = useQuery({ queryKey: ['actividades-pv', eId], queryFn: () => listPuntosVenta(eId) })
+  const alicuotas = useQuery({ queryKey: ['actividades-alic', eId], queryFn: () => listAlicuotas(eId) })
+  const receptores = useQuery({ queryKey: ['actividades-rec', eId], queryFn: () => listReceptores(eId) })
+  const clientes = useQuery({ queryKey: ['clientes', eId], queryFn: () => listSujetos('clientes', eId) })
 
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
   const [pv, setPv] = useState('')
   const [actividadId, setActividadId] = useState('')
+  const [alic, setAlic] = useState('')
+  const [alicAct, setAlicAct] = useState('')
+  const [clienteId, setClienteId] = useState('')
+  const [recAct, setRecAct] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const crearAct = useMutation({
@@ -84,6 +98,34 @@ export default function ActividadesPage() {
   const borrarPv = useMutation({
     mutationFn: (id: number) => deletePuntoVenta(eId, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['actividades-pv', eId] }),
+  })
+  const mapearAlic = useMutation({
+    mutationFn: () => setAlicuota(eId, alic.trim(), Number(alicAct)),
+    onSuccess: () => {
+      setAlic('')
+      setAlicAct('')
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['actividades-alic', eId] })
+    },
+    onError: (e) => setError(apiError(e, 'No se pudo guardar el mapeo por alícuota.')),
+  })
+  const borrarAlic = useMutation({
+    mutationFn: (id: number) => deleteAlicuota(eId, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['actividades-alic', eId] }),
+  })
+  const mapearRec = useMutation({
+    mutationFn: () => setReceptor(eId, Number(clienteId), Number(recAct)),
+    onSuccess: () => {
+      setClienteId('')
+      setRecAct('')
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['actividades-rec', eId] })
+    },
+    onError: (e) => setError(apiError(e, 'No se pudo guardar el mapeo por receptor.')),
+  })
+  const borrarRec = useMutation({
+    mutationFn: (id: number) => deleteReceptor(eId, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['actividades-rec', eId] }),
   })
 
   return (
@@ -218,6 +260,149 @@ export default function ActividadesPage() {
                     <CTableRow>
                       <CTableDataCell colSpan={3} className="text-center text-body-secondary py-3">
                         Sin mapeos de punto de venta.
+                      </CTableDataCell>
+                    </CTableRow>
+                  )}
+                </CTableBody>
+              </CTable>
+            )}
+          </CCol>
+        </CRow>
+
+        <hr />
+        <div className="text-body-secondary small mb-3">
+          Precedencia al resolver la actividad de una venta: <strong>actividad del comprobante</strong> →
+          <strong> receptor</strong> → <strong>punto de venta</strong> → <strong>alícuota</strong> → primera actividad.
+        </div>
+
+        <CRow>
+          <CCol md={6}>
+            <h6>Por alícuota (construcción)</h6>
+            <div className="text-body-secondary small mb-2">Ej.: 10,5% → residencial, 21% → no residencial.</div>
+            <CForm
+              className="row g-2 align-items-end mb-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (alic.trim() && alicAct) mapearAlic.mutate()
+              }}
+            >
+              <div className="col-auto">
+                <CFormLabel className="small mb-1">Alícuota %</CFormLabel>
+                <CFormInput style={{ width: 100 }} inputMode="decimal" value={alic} onChange={(e) => setAlic(e.target.value)} />
+              </div>
+              <div className="col">
+                <CFormLabel className="small mb-1">Actividad</CFormLabel>
+                <CFormSelect value={alicAct} onChange={(e) => setAlicAct(e.target.value)}>
+                  <option value="">—</option>
+                  {actividades.data?.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.codigo} — {a.descripcion}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <div className="col-auto">
+                <CButton type="submit" color="primary" disabled={mapearAlic.isPending || !alic.trim() || !alicAct}>
+                  Mapear
+                </CButton>
+              </div>
+            </CForm>
+            {alicuotas.data && (
+              <CTable small hover responsive align="middle">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>Alícuota</CTableHeaderCell>
+                    <CTableHeaderCell>Actividad</CTableHeaderCell>
+                    <CTableHeaderCell />
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {alicuotas.data.map((a) => (
+                    <CTableRow key={a.id}>
+                      <CTableDataCell>{Number(a.alicuota)}%</CTableDataCell>
+                      <CTableDataCell>{a.actividad_codigo} — {a.actividad_descripcion}</CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        <CButton color="danger" variant="ghost" size="sm" onClick={() => borrarAlic.mutate(a.id)}>
+                          ✕
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                  {alicuotas.data.length === 0 && (
+                    <CTableRow>
+                      <CTableDataCell colSpan={3} className="text-center text-body-secondary py-3">
+                        Sin mapeos por alícuota.
+                      </CTableDataCell>
+                    </CTableRow>
+                  )}
+                </CTableBody>
+              </CTable>
+            )}
+          </CCol>
+
+          <CCol md={6}>
+            <h6>Por receptor (cliente)</h6>
+            <div className="text-body-secondary small mb-2">Ej.: todo lo facturado a un CUIT va a una actividad.</div>
+            <CForm
+              className="row g-2 align-items-end mb-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (clienteId && recAct) mapearRec.mutate()
+              }}
+            >
+              <div className="col">
+                <CFormLabel className="small mb-1">Cliente</CFormLabel>
+                <CFormSelect value={clienteId} onChange={(e) => setClienteId(e.target.value)}>
+                  <option value="">—</option>
+                  {clientes.data?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <div className="col">
+                <CFormLabel className="small mb-1">Actividad</CFormLabel>
+                <CFormSelect value={recAct} onChange={(e) => setRecAct(e.target.value)}>
+                  <option value="">—</option>
+                  {actividades.data?.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.codigo} — {a.descripcion}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <div className="col-auto">
+                <CButton type="submit" color="primary" disabled={mapearRec.isPending || !clienteId || !recAct}>
+                  Mapear
+                </CButton>
+              </div>
+            </CForm>
+            {receptores.data && (
+              <CTable small hover responsive align="middle">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>Cliente</CTableHeaderCell>
+                    <CTableHeaderCell>Actividad</CTableHeaderCell>
+                    <CTableHeaderCell />
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {receptores.data.map((r) => (
+                    <CTableRow key={r.id}>
+                      <CTableDataCell>{r.cliente_nombre ?? `#${r.cliente_id}`}</CTableDataCell>
+                      <CTableDataCell>{r.actividad_codigo} — {r.actividad_descripcion}</CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        <CButton color="danger" variant="ghost" size="sm" onClick={() => borrarRec.mutate(r.id)}>
+                          ✕
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                  {receptores.data.length === 0 && (
+                    <CTableRow>
+                      <CTableDataCell colSpan={3} className="text-center text-body-secondary py-3">
+                        Sin mapeos por receptor.
                       </CTableDataCell>
                     </CTableRow>
                   )}

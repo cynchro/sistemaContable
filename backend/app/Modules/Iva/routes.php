@@ -123,6 +123,38 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         [EmpresaActividadController::class, 'deletePuntoVenta'],
         [$pw('iva.libro')],
     );
+    // Estrategia por alícuota (construcción)
+    $router->get(
+        "{$base}/actividades-alicuota",
+        [EmpresaActividadController::class, 'indexAlicuotas'],
+        [$perm('iva.libro')],
+    );
+    $router->post(
+        "{$base}/actividades-alicuota",
+        [EmpresaActividadController::class, 'setAlicuota'],
+        [$pw('iva.libro')],
+    );
+    $router->delete(
+        "{$base}/actividades-alicuota/{id}",
+        [EmpresaActividadController::class, 'deleteAlicuota'],
+        [$pw('iva.libro')],
+    );
+    // Estrategia por receptor (cliente / CUIT)
+    $router->get(
+        "{$base}/actividades-receptor",
+        [EmpresaActividadController::class, 'indexReceptores'],
+        [$perm('iva.libro')],
+    );
+    $router->post(
+        "{$base}/actividades-receptor",
+        [EmpresaActividadController::class, 'setReceptor'],
+        [$pw('iva.libro')],
+    );
+    $router->delete(
+        "{$base}/actividades-receptor/{id}",
+        [EmpresaActividadController::class, 'deleteReceptor'],
+        [$pw('iva.libro')],
+    );
 
     // Auditoría de operaciones (registro de cambios) — lectura paginada por tenant
     $router->get('/iva/auditoria', [AuditoriaController::class, 'index'], [$perm('iva.auditoria')]);

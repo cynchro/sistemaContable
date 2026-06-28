@@ -68,6 +68,7 @@
             { "title": "Exportador TXT configurable (formatos definidos por el estudio)", "status": "completed", "tags": ["backend", "db"] },
             { "title": "DJ IVA Simple: apertura de otros conceptos por actividad (4 CSV de ARCA)", "status": "completed", "tags": ["backend"] },
             { "title": "DJ IVA Simple por actividad real — Fase 1 (actividades NAES por empresa, mapa de puntos de venta, override manual, bien de uso, concepto de compra)", "status": "completed", "tags": ["backend", "frontend", "db"] },
+            { "title": "DJ IVA Simple por actividad real — Fase 2 (estrategias por alícuota/construcción y por receptor/CUIT, con precedencia de resolución)", "status": "completed", "tags": ["backend", "frontend", "db"] },
             { "title": "Paginación y filtros en los listados de ventas y compras", "status": "completed", "tags": ["backend"] },
             { "title": "Emisión de factura electrónica en producción (tramitar certificado AFIP)", "status": "pending", "tags": ["infra"] },
             { "title": "Reportes en PDF (subdiario, libro IVA, DDJJ)", "status": "completed", "tags": ["frontend"] },

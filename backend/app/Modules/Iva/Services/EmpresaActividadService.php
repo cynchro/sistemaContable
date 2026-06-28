@@ -72,4 +72,56 @@ class EmpresaActividadService
         $this->empresas->findById($empresaId, $tenantId);
         $this->repo->deletePuntoVenta($id, $empresaId);
     }
+
+    /** @return list<array<string, mixed>> */
+    public function listAlicuotas(int $empresaId, string $tenantId): array
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+
+        return $this->repo->alicuotas($empresaId);
+    }
+
+    public function setAlicuota(int $empresaId, array $data, string $tenantId): void
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $alicuota    = trim((string) ($data['alicuota'] ?? ''));
+        $actividadId = (int) ($data['actividad_id'] ?? 0);
+        if ($alicuota === '' || !is_numeric($alicuota) || $actividadId === 0) {
+            throw new ValidationException(['alicuota' => ['Indicá la alícuota (numérica) y la actividad.']]);
+        }
+        $this->repo->find($actividadId, $empresaId);
+        $this->repo->setAlicuota($empresaId, $alicuota, $actividadId);
+    }
+
+    public function deleteAlicuota(int $empresaId, int $id, string $tenantId): void
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $this->repo->deleteAlicuota($id, $empresaId);
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function listReceptores(int $empresaId, string $tenantId): array
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+
+        return $this->repo->receptores($empresaId);
+    }
+
+    public function setReceptor(int $empresaId, array $data, string $tenantId): void
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $clienteId   = (int) ($data['cliente_id'] ?? 0);
+        $actividadId = (int) ($data['actividad_id'] ?? 0);
+        if ($clienteId === 0 || $actividadId === 0) {
+            throw new ValidationException(['cliente_id' => ['Indicá el cliente y la actividad.']]);
+        }
+        $this->repo->find($actividadId, $empresaId);
+        $this->repo->setReceptor($empresaId, $clienteId, $actividadId);
+    }
+
+    public function deleteReceptor(int $empresaId, int $id, string $tenantId): void
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $this->repo->deleteReceptor($id, $empresaId);
+    }
 }

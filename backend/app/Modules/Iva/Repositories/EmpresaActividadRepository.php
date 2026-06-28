@@ -87,6 +87,67 @@ class EmpresaActividadRepository
         $stmt->execute([$id, $empresaId]);
     }
 
+    /** Mapa {alícuota → actividad} (estrategia construcción). @return list<array<string,mixed>> */
+    public function alicuotas(int $empresaId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT aa.id, aa.alicuota, aa.actividad_id, ea.codigo AS actividad_codigo,
+                    ea.descripcion AS actividad_descripcion
+               FROM actividad_alicuota aa
+               JOIN empresa_actividades ea ON ea.id = aa.actividad_id
+              WHERE aa.empresa_id = ? ORDER BY aa.alicuota'
+        );
+        $stmt->execute([$empresaId]);
+
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function setAlicuota(int $empresaId, string $alicuota, int $actividadId): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO actividad_alicuota (empresa_id, alicuota, actividad_id) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE actividad_id = VALUES(actividad_id)'
+        );
+        $stmt->execute([$empresaId, $alicuota, $actividadId]);
+    }
+
+    public function deleteAlicuota(int $id, int $empresaId): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM actividad_alicuota WHERE id = ? AND empresa_id = ?');
+        $stmt->execute([$id, $empresaId]);
+    }
+
+    /** Mapa {cliente → actividad} (estrategia por receptor). @return list<array<string,mixed>> */
+    public function receptores(int $empresaId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT ar.id, ar.cliente_id, c.nombre AS cliente_nombre, c.cuit AS cliente_cuit,
+                    ar.actividad_id, ea.codigo AS actividad_codigo, ea.descripcion AS actividad_descripcion
+               FROM actividad_receptor ar
+               JOIN empresa_actividades ea ON ea.id = ar.actividad_id
+               LEFT JOIN iva_clientes c ON c.id = ar.cliente_id
+              WHERE ar.empresa_id = ? ORDER BY c.nombre'
+        );
+        $stmt->execute([$empresaId]);
+
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function setReceptor(int $empresaId, int $clienteId, int $actividadId): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO actividad_receptor (empresa_id, cliente_id, actividad_id) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE actividad_id = VALUES(actividad_id)'
+        );
+        $stmt->execute([$empresaId, $clienteId, $actividadId]);
+    }
+
+    public function deleteReceptor(int $id, int $empresaId): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM actividad_receptor WHERE id = ? AND empresa_id = ?');
+        $stmt->execute([$id, $empresaId]);
+    }
+
     /** Código de la primera actividad de la empresa (default para comprobantes sin resolver). */
     public function codigoDefault(int $empresaId): ?string
     {

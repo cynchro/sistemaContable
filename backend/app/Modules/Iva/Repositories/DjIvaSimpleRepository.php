@@ -10,8 +10,8 @@ use PDO;
  * Débito/Crédito Fiscal; signo < 0 (notas de crédito) alimenta las Restituciones.
  *
  * La **actividad** de cada venta se resuelve con precedencia: actividad cargada en el
- * comprobante (override manual) → mapa {punto_venta → actividad} de la empresa (estrategia
- * más común) → null (el Service aplica la actividad por defecto de la empresa). Las ventas
+ * comprobante (override manual) → por receptor (cliente) → por punto de venta → por alícuota
+ * (de la línea) → null (el Service aplica la actividad por defecto de la empresa). Las ventas
  * llevan además `es_bien_uso`; las compras `concepto_dj`. Ver
  * docs/ingenieria-inversa/dj-iva-simple-actividad.md (v2).
  */
@@ -21,17 +21,9 @@ class DjIvaSimpleRepository
     {
     }
 
-    /** SELECT del código de actividad resuelto (override del comprobante o mapa de PV). */
-    private const ACTIVIDAD_RESUELTA = 'COALESCE(vea.codigo, pvea.codigo)';
-
-    /** JOINs para resolver la actividad de una venta (alias de tabla `v`). */
-    private const JOIN_ACTIVIDAD =
-        'LEFT JOIN empresa_actividades vea ON vea.id = v.actividad_id
-         LEFT JOIN actividad_punto_venta pvm ON pvm.empresa_id = ? AND pvm.punto_venta = v.punto_venta
-         LEFT JOIN empresa_actividades pvea ON pvea.id = pvm.actividad_id';
-
     /**
      * Ventas gravadas (neto + IVA) por actividad, condición de IVA, bien de uso y alícuota.
+     * La actividad se resuelve por línea (incluye la estrategia por alícuota). Params: 3×empresaId, periodoId.
      *
      * @return list<array{actividad_codigo: ?string, condicion_iva_id: ?int, es_bien_uso: string,
      *                     alicuota: ?string, neto: string, iva: string}>
@@ -39,19 +31,23 @@ class DjIvaSimpleRepository
     public function ventasGravado(int $empresaId, int $periodoId, int $signo): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT ' . self::ACTIVIDAD_RESUELTA . ' AS actividad_codigo,
+            'SELECT rea.codigo AS actividad_codigo,
                     v.condicion_iva_id AS condicion_iva_id, v.es_bien_uso AS es_bien_uso,
                     vd.iva_alicuota AS alicuota,
                     SUM(vd.neto_gravado) AS neto, SUM(vd.iva_importe) AS iva
                FROM venta_discriminaciones vd
                JOIN ventas v ON vd.venta_id = v.id
                LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
-               ' . self::JOIN_ACTIVIDAD . '
+               LEFT JOIN actividad_receptor    ar  ON ar.empresa_id  = ? AND ar.cliente_id  = v.cliente_id
+               LEFT JOIN actividad_punto_venta pvm ON pvm.empresa_id = ? AND pvm.punto_venta = v.punto_venta
+               LEFT JOIN actividad_alicuota    aa  ON aa.empresa_id  = ? AND aa.alicuota     = vd.iva_alicuota
+               LEFT JOIN empresa_actividades rea
+                      ON rea.id = COALESCE(v.actividad_id, ar.actividad_id, pvm.actividad_id, aa.actividad_id)
               WHERE v.periodo_id = ? AND COALESCE(tc.signo, 1) ' . ($signo < 0 ? '<' : '>') . ' 0
                     AND vd.neto_gravado <> 0
               GROUP BY actividad_codigo, v.condicion_iva_id, v.es_bien_uso, vd.iva_alicuota'
         );
-        $stmt->execute([$empresaId, $periodoId]);
+        $stmt->execute([$empresaId, $empresaId, $empresaId, $periodoId]);
 
         $out = [];
         foreach ((array) $stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
@@ -75,17 +71,21 @@ class DjIvaSimpleRepository
      */
     public function ventasNoGravado(int $empresaId, int $periodoId, int $signo): array
     {
+        // Sin alícuota (es a nivel comprobante): override → receptor → punto de venta → default.
         $stmt = $this->pdo->prepare(
-            'SELECT ' . self::ACTIVIDAD_RESUELTA . ' AS actividad_codigo,
+            'SELECT rea.codigo AS actividad_codigo,
                     SUM(v.exento + v.neto_no_grav) AS monto
                FROM ventas v
                LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
-               ' . self::JOIN_ACTIVIDAD . '
+               LEFT JOIN actividad_receptor    ar  ON ar.empresa_id  = ? AND ar.cliente_id  = v.cliente_id
+               LEFT JOIN actividad_punto_venta pvm ON pvm.empresa_id = ? AND pvm.punto_venta = v.punto_venta
+               LEFT JOIN empresa_actividades rea
+                      ON rea.id = COALESCE(v.actividad_id, ar.actividad_id, pvm.actividad_id)
               WHERE v.periodo_id = ? AND COALESCE(tc.signo, 1) ' . ($signo < 0 ? '<' : '>') . ' 0
                     AND (v.exento + v.neto_no_grav) <> 0
               GROUP BY actividad_codigo'
         );
-        $stmt->execute([$empresaId, $periodoId]);
+        $stmt->execute([$empresaId, $empresaId, $periodoId]);
 
         $out = [];
         foreach ((array) $stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {

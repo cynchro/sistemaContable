@@ -69,4 +69,64 @@ class EmpresaActividadController
 
         return Response::success(['message' => 'Mapeo eliminado.']);
     }
+
+    public function indexAlicuotas(Request $request): Response
+    {
+        return Response::success($this->service->listAlicuotas(
+            (int) $request->route('empresaId'),
+            (string) $request->tenantId(),
+        ));
+    }
+
+    public function setAlicuota(Request $request): Response
+    {
+        $this->service->setAlicuota(
+            (int) $request->route('empresaId'),
+            $request->all(),
+            (string) $request->tenantId(),
+        );
+
+        return Response::success(['message' => 'Mapeo guardado.']);
+    }
+
+    public function deleteAlicuota(Request $request): Response
+    {
+        $this->service->deleteAlicuota(
+            (int) $request->route('empresaId'),
+            (int) $request->route('id'),
+            (string) $request->tenantId(),
+        );
+
+        return Response::success(['message' => 'Mapeo eliminado.']);
+    }
+
+    public function indexReceptores(Request $request): Response
+    {
+        return Response::success($this->service->listReceptores(
+            (int) $request->route('empresaId'),
+            (string) $request->tenantId(),
+        ));
+    }
+
+    public function setReceptor(Request $request): Response
+    {
+        $this->service->setReceptor(
+            (int) $request->route('empresaId'),
+            $request->all(),
+            (string) $request->tenantId(),
+        );
+
+        return Response::success(['message' => 'Mapeo guardado.']);
+    }
+
+    public function deleteReceptor(Request $request): Response
+    {
+        $this->service->deleteReceptor(
+            (int) $request->route('empresaId'),
+            (int) $request->route('id'),
+            (string) $request->tenantId(),
+        );
+
+        return Response::success(['message' => 'Mapeo eliminado.']);
+    }
 }
