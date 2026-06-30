@@ -129,4 +129,34 @@ class EmpresaActividadController
 
         return Response::success(['message' => 'Mapeo eliminado.']);
     }
+
+    public function indexCoeficientes(Request $request): Response
+    {
+        return Response::success($this->service->listCoeficientes(
+            (int) $request->route('empresaId'),
+            (string) $request->tenantId(),
+        ));
+    }
+
+    public function setCoeficiente(Request $request): Response
+    {
+        $this->service->setCoeficiente(
+            (int) $request->route('empresaId'),
+            $request->all(),
+            (string) $request->tenantId(),
+        );
+
+        return Response::success(['message' => 'Coeficiente guardado.']);
+    }
+
+    public function deleteCoeficiente(Request $request): Response
+    {
+        $this->service->deleteCoeficiente(
+            (int) $request->route('empresaId'),
+            (int) $request->route('id'),
+            (string) $request->tenantId(),
+        );
+
+        return Response::success(['message' => 'Coeficiente eliminado.']);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Modules\Iva\Services;
 
 use App\Exceptions\ValidationException;
+use App\Support\Calc\Decimal;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Iva\Export\DjIvaSimpleWriter;
@@ -68,6 +69,11 @@ class DjIvaSimpleService
      */
     private function debito(int $empresaId, int $periodoId, array $empresa, int $signo): string
     {
+        $coeficientes = $this->actividades->coeficientes($empresaId);
+        if ($coeficientes !== []) {
+            return $this->debitoPorCoeficientes($periodoId, $signo, $coeficientes);
+        }
+
         $default   = $this->actividadDefault($empresaId, $empresa);
         $gravado   = $this->datos->ventasGravado($empresaId, $periodoId, $signo);
         $noGravado = $this->datos->ventasNoGravado($empresaId, $periodoId, $signo);
@@ -107,6 +113,11 @@ class DjIvaSimpleService
      */
     private function restitucionDebito(int $empresaId, int $periodoId, array $empresa): string
     {
+        $coeficientes = $this->actividades->coeficientes($empresaId);
+        if ($coeficientes !== []) {
+            return $this->restitucionPorCoeficientes($periodoId, $coeficientes);
+        }
+
         $default   = $this->actividadDefault($empresaId, $empresa);
         $gravado   = $this->datos->ventasGravado($empresaId, $periodoId, -1);
         $noGravado = $this->datos->ventasNoGravado($empresaId, $periodoId, -1);
@@ -130,6 +141,84 @@ class DjIvaSimpleService
         }
 
         return $out;
+    }
+
+    /**
+     * Modo porcentajes fijos (Fase 3): reparte el débito del período entre las actividades
+     * según su coeficiente (neto×coef, IVA×coef). Bienes de uso → tipo op 2.
+     *
+     * @param list<array<string, mixed>> $coeficientes
+     */
+    private function debitoPorCoeficientes(int $periodoId, int $signo, array $coeficientes): string
+    {
+        $totales = $this->datos->ventasGravadoTotal($periodoId, $signo);
+        $noGrav  = $this->datos->ventasNoGravadoTotal($periodoId, $signo);
+
+        $out = '';
+        foreach ($coeficientes as $coef) {
+            $c = (string) $coef['coeficiente'];
+            $normal  = [];
+            $bienUso = [];
+            foreach ($totales as $row) {
+                $linea = [
+                    'condicion_iva_id' => $row['condicion_iva_id'],
+                    'alicuota'         => $row['alicuota'],
+                    'neto'             => $this->aplicar($row['neto'], $c),
+                    'iva'              => $this->aplicar($row['iva'], $c),
+                ];
+                if ($row['es_bien_uso'] === 'S') {
+                    $bienUso[] = $linea;
+                } else {
+                    $normal[] = $linea;
+                }
+            }
+            $out .= $this->writer->debitoFiscal(
+                (string) $coef['actividad_codigo'],
+                $normal,
+                $bienUso,
+                $this->aplicar($noGrav, $c),
+            );
+        }
+
+        return $out;
+    }
+
+    /**
+     * Modo porcentajes fijos para la restitución (NC de ventas). Sin separar bienes de uso.
+     *
+     * @param list<array<string, mixed>> $coeficientes
+     */
+    private function restitucionPorCoeficientes(int $periodoId, array $coeficientes): string
+    {
+        $totales = $this->datos->ventasGravadoTotal($periodoId, -1);
+        $noGrav  = $this->datos->ventasNoGravadoTotal($periodoId, -1);
+
+        $out = '';
+        foreach ($coeficientes as $coef) {
+            $c = (string) $coef['coeficiente'];
+            $gravado = [];
+            foreach ($totales as $row) {
+                $gravado[] = [
+                    'condicion_iva_id' => $row['condicion_iva_id'],
+                    'alicuota'         => $row['alicuota'],
+                    'neto'             => $this->aplicar($row['neto'], $c),
+                    'iva'              => $this->aplicar($row['iva'], $c),
+                ];
+            }
+            $out .= $this->writer->restitucionDebito(
+                (string) $coef['actividad_codigo'],
+                $gravado,
+                $this->aplicar($noGrav, $c),
+            );
+        }
+
+        return $out;
+    }
+
+    /** monto × coeficiente, redondeado a 2 decimales. */
+    private function aplicar(string $monto, string $coeficiente): string
+    {
+        return Decimal::of($monto)->mul(Decimal::of($coeficiente))->value(2);
     }
 
     /**

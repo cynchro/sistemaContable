@@ -155,6 +155,22 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         [EmpresaActividadController::class, 'deleteReceptor'],
         [$pw('iva.libro')],
     );
+    // Estrategia por porcentajes fijos (coeficientes a nivel período)
+    $router->get(
+        "{$base}/actividades-coeficiente",
+        [EmpresaActividadController::class, 'indexCoeficientes'],
+        [$perm('iva.libro')],
+    );
+    $router->post(
+        "{$base}/actividades-coeficiente",
+        [EmpresaActividadController::class, 'setCoeficiente'],
+        [$pw('iva.libro')],
+    );
+    $router->delete(
+        "{$base}/actividades-coeficiente/{id}",
+        [EmpresaActividadController::class, 'deleteCoeficiente'],
+        [$pw('iva.libro')],
+    );
 
     // Auditoría de operaciones (registro de cambios) — lectura paginada por tenant
     $router->get('/iva/auditoria', [AuditoriaController::class, 'index'], [$perm('iva.auditoria')]);

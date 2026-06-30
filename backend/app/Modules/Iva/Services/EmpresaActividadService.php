@@ -124,4 +124,30 @@ class EmpresaActividadService
         $this->empresas->findById($empresaId, $tenantId);
         $this->repo->deleteReceptor($id, $empresaId);
     }
+
+    /** @return list<array<string, mixed>> */
+    public function listCoeficientes(int $empresaId, string $tenantId): array
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+
+        return $this->repo->coeficientes($empresaId);
+    }
+
+    public function setCoeficiente(int $empresaId, array $data, string $tenantId): void
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $actividadId = (int) ($data['actividad_id'] ?? 0);
+        $coef        = (string) ($data['coeficiente'] ?? '');
+        if ($actividadId === 0 || !is_numeric($coef)) {
+            throw new ValidationException(['coeficiente' => ['Indicá la actividad y un coeficiente numérico.']]);
+        }
+        $this->repo->find($actividadId, $empresaId);
+        $this->repo->setCoeficiente($empresaId, $actividadId, $coef);
+    }
+
+    public function deleteCoeficiente(int $empresaId, int $id, string $tenantId): void
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $this->repo->deleteCoeficiente($id, $empresaId);
+    }
 }

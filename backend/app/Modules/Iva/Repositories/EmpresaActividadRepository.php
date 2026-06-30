@@ -148,6 +148,36 @@ class EmpresaActividadRepository
         $stmt->execute([$id, $empresaId]);
     }
 
+    /** Coeficientes {actividad → participación 0..1} (estrategia porcentajes fijos). @return list<array<string,mixed>> */
+    public function coeficientes(int $empresaId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT ac.id, ac.actividad_id, ac.coeficiente, ea.codigo AS actividad_codigo,
+                    ea.descripcion AS actividad_descripcion
+               FROM actividad_coeficiente ac
+               JOIN empresa_actividades ea ON ea.id = ac.actividad_id
+              WHERE ac.empresa_id = ? ORDER BY ea.codigo'
+        );
+        $stmt->execute([$empresaId]);
+
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function setCoeficiente(int $empresaId, int $actividadId, string $coeficiente): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO actividad_coeficiente (empresa_id, actividad_id, coeficiente) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE coeficiente = VALUES(coeficiente)'
+        );
+        $stmt->execute([$empresaId, $actividadId, $coeficiente]);
+    }
+
+    public function deleteCoeficiente(int $id, int $empresaId): void
+    {
+        $stmt = $this->pdo->prepare('DELETE FROM actividad_coeficiente WHERE id = ? AND empresa_id = ?');
+        $stmt->execute([$id, $empresaId]);
+    }
+
     /** Código de la primera actividad de la empresa (default para comprobantes sin resolver). */
     public function codigoDefault(int $empresaId): ?string
     {

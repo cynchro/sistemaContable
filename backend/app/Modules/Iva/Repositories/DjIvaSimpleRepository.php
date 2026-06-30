@@ -130,4 +130,54 @@ class DjIvaSimpleRepository
 
         return $out;
     }
+
+    /* ---- Modo "porcentajes fijos" (Fase 3): agregados SIN actividad ---- */
+
+    /**
+     * Ventas gravadas del período SIN resolver actividad (por condición, bien de uso y
+     * alícuota). Se usa cuando la empresa reparte por coeficientes.
+     *
+     * @return list<array{condicion_iva_id: ?int, es_bien_uso: string, alicuota: ?string, neto: string, iva: string}>
+     */
+    public function ventasGravadoTotal(int $periodoId, int $signo): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT v.condicion_iva_id AS condicion_iva_id, v.es_bien_uso AS es_bien_uso,
+                    vd.iva_alicuota AS alicuota, SUM(vd.neto_gravado) AS neto, SUM(vd.iva_importe) AS iva
+               FROM venta_discriminaciones vd
+               JOIN ventas v ON vd.venta_id = v.id
+               LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
+              WHERE v.periodo_id = ? AND COALESCE(tc.signo, 1) ' . ($signo < 0 ? '<' : '>') . ' 0
+                    AND vd.neto_gravado <> 0
+              GROUP BY v.condicion_iva_id, v.es_bien_uso, vd.iva_alicuota'
+        );
+        $stmt->execute([$periodoId]);
+
+        $out = [];
+        foreach ((array) $stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $out[] = [
+                'condicion_iva_id' => $r['condicion_iva_id'] !== null ? (int) $r['condicion_iva_id'] : null,
+                'es_bien_uso'      => (string) ($r['es_bien_uso'] ?? 'N'),
+                'alicuota'         => (string) ($r['alicuota'] ?? '0'),
+                'neto'             => (string) ($r['neto'] ?? '0'),
+                'iva'              => (string) ($r['iva'] ?? '0'),
+            ];
+        }
+
+        return $out;
+    }
+
+    /** Total exento + no gravado de ventas del período (sin actividad). */
+    public function ventasNoGravadoTotal(int $periodoId, int $signo): string
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT SUM(v.exento + v.neto_no_grav) AS monto
+               FROM ventas v
+               LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
+              WHERE v.periodo_id = ? AND COALESCE(tc.signo, 1) ' . ($signo < 0 ? '<' : '>') . ' 0'
+        );
+        $stmt->execute([$periodoId]);
+
+        return (string) ($stmt->fetchColumn() ?: '0');
+    }
 }

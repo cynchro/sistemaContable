@@ -124,5 +124,11 @@ Un cliente puede combinar varias; el sistema debe soportarlas y permitir overrid
 Migración 0037 (`actividad_alicuota`, `actividad_receptor`). Precedencia de resolución:
 **override del comprobante → receptor → punto de venta → alícuota → primera actividad**. ABM en la
 página de Actividades. Tests: `DjIvaSimpleActividadFase2Test`.
-**Fase 3 (pendiente)**: porcentajes fijos (distribución a nivel período por coeficientes que suman 1,
-tipo Acevedo) — es la única estrategia que NO es por comprobante.
+**Fase 3 (HECHA)**: **porcentajes fijos** (distribución a nivel período). Migración 0038
+(`actividad_coeficiente`). Si la empresa tiene coeficientes cargados, el exporter NO resuelve por
+comprobante: toma el neto del período (por condición/alícuota/bien de uso) y lo reparte por coeficiente
+(neto×coef, IVA×coef) por actividad. ABM en la página de Actividades (con control de suma = 100%).
+Tests: `DjIvaSimpleActividadFase3Test`.
+
+**✅ A15 COMPLETO** (Fases 1-2-3): las 5 estrategias del contador implementadas (por punto de venta,
+manual/override, por alícuota, por receptor, porcentajes fijos) + bienes de uso + concepto de compra.

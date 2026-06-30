@@ -78,3 +78,23 @@ export async function setReceptor(empresaId: number, clienteId: number, activida
 export async function deleteReceptor(empresaId: number, id: number): Promise<void> {
   await api.delete(`${base(empresaId)}-receptor/${id}`)
 }
+
+/* ---- Estrategia por porcentajes fijos (coeficientes a nivel período) ---- */
+export interface CoeficienteActividad {
+  id: number
+  actividad_id: number
+  coeficiente: string // 0..1
+  actividad_codigo: string
+  actividad_descripcion: string | null
+}
+export async function listCoeficientes(empresaId: number): Promise<CoeficienteActividad[]> {
+  const { data } = await api.get(`${base(empresaId)}-coeficiente`)
+  return data.data as CoeficienteActividad[]
+}
+/** `coeficiente` es la participación 0..1 (el front convierte desde %). */
+export async function setCoeficiente(empresaId: number, actividadId: number, coeficiente: string): Promise<void> {
+  await api.post(`${base(empresaId)}-coeficiente`, { actividad_id: actividadId, coeficiente })
+}
+export async function deleteCoeficiente(empresaId: number, id: number): Promise<void> {
+  await api.delete(`${base(empresaId)}-coeficiente/${id}`)
+}

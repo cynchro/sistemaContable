@@ -34,6 +34,9 @@ import {
   listReceptores,
   setReceptor,
   deleteReceptor,
+  listCoeficientes,
+  setCoeficiente,
+  deleteCoeficiente,
 } from '../../../api/actividades'
 import { listSujetos } from '../../../api/sujetos'
 
@@ -56,6 +59,7 @@ export default function ActividadesPage() {
   const puntos = useQuery({ queryKey: ['actividades-pv', eId], queryFn: () => listPuntosVenta(eId) })
   const alicuotas = useQuery({ queryKey: ['actividades-alic', eId], queryFn: () => listAlicuotas(eId) })
   const receptores = useQuery({ queryKey: ['actividades-rec', eId], queryFn: () => listReceptores(eId) })
+  const coefs = useQuery({ queryKey: ['actividades-coef', eId], queryFn: () => listCoeficientes(eId) })
   const clientes = useQuery({ queryKey: ['clientes', eId], queryFn: () => listSujetos('clientes', eId) })
 
   const [codigo, setCodigo] = useState('')
@@ -66,6 +70,8 @@ export default function ActividadesPage() {
   const [alicAct, setAlicAct] = useState('')
   const [clienteId, setClienteId] = useState('')
   const [recAct, setRecAct] = useState('')
+  const [coefAct, setCoefAct] = useState('')
+  const [coefPct, setCoefPct] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const crearAct = useMutation({
@@ -127,6 +133,22 @@ export default function ActividadesPage() {
     mutationFn: (id: number) => deleteReceptor(eId, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['actividades-rec', eId] }),
   })
+  const mapearCoef = useMutation({
+    // El usuario carga un porcentaje; se guarda como coeficiente (0..1).
+    mutationFn: () => setCoeficiente(eId, Number(coefAct), String(Number(coefPct) / 100)),
+    onSuccess: () => {
+      setCoefAct('')
+      setCoefPct('')
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['actividades-coef', eId] })
+    },
+    onError: (e) => setError(apiError(e, 'No se pudo guardar el coeficiente.')),
+  })
+  const borrarCoef = useMutation({
+    mutationFn: (id: number) => deleteCoeficiente(eId, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['actividades-coef', eId] }),
+  })
+  const sumaCoef = (coefs.data ?? []).reduce((a, c) => a + Number(c.coeficiente), 0)
 
   return (
     <CCard>
@@ -408,6 +430,82 @@ export default function ActividadesPage() {
                   )}
                 </CTableBody>
               </CTable>
+            )}
+          </CCol>
+        </CRow>
+
+        <hr />
+        <h6>Por porcentajes fijos (reparto a nivel período)</h6>
+        <div className="text-body-secondary small mb-2">
+          Caso de un solo punto de venta que vende de todo: el neto del período se reparte entre las
+          actividades por estos porcentajes. <strong>Si cargás coeficientes, esta estrategia tiene
+          prioridad</strong> sobre las anteriores. Deben sumar 100%.
+        </div>
+        <CRow>
+          <CCol md={7}>
+            <CForm
+              className="row g-2 align-items-end mb-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (coefAct && coefPct) mapearCoef.mutate()
+              }}
+            >
+              <div className="col">
+                <CFormLabel className="small mb-1">Actividad</CFormLabel>
+                <CFormSelect value={coefAct} onChange={(e) => setCoefAct(e.target.value)}>
+                  <option value="">—</option>
+                  {actividades.data?.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.codigo} — {a.descripcion}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <div className="col-auto">
+                <CFormLabel className="small mb-1">Participación %</CFormLabel>
+                <CFormInput style={{ width: 110 }} inputMode="decimal" value={coefPct} onChange={(e) => setCoefPct(e.target.value)} />
+              </div>
+              <div className="col-auto">
+                <CButton type="submit" color="primary" disabled={mapearCoef.isPending || !coefAct || !coefPct}>
+                  Guardar
+                </CButton>
+              </div>
+            </CForm>
+            {coefs.data && coefs.data.length > 0 && (
+              <CTable small hover responsive align="middle">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>Actividad</CTableHeaderCell>
+                    <CTableHeaderCell className="text-end">Participación</CTableHeaderCell>
+                    <CTableHeaderCell />
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {coefs.data.map((c) => (
+                    <CTableRow key={c.id}>
+                      <CTableDataCell>{c.actividad_codigo} — {c.actividad_descripcion}</CTableDataCell>
+                      <CTableDataCell className="text-end">{(Number(c.coeficiente) * 100).toFixed(2)}%</CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        <CButton color="danger" variant="ghost" size="sm" onClick={() => borrarCoef.mutate(c.id)}>
+                          ✕
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                  <CTableRow className="fw-semibold">
+                    <CTableDataCell className="text-end">Total</CTableDataCell>
+                    <CTableDataCell className={`text-end ${Math.abs(sumaCoef - 1) < 0.0001 ? 'text-success' : 'text-danger'}`}>
+                      {(sumaCoef * 100).toFixed(2)}%
+                    </CTableDataCell>
+                    <CTableDataCell />
+                  </CTableRow>
+                </CTableBody>
+              </CTable>
+            )}
+            {coefs.data && coefs.data.length > 0 && Math.abs(sumaCoef - 1) >= 0.0001 && (
+              <CAlert color="warning" className="small py-2">
+                Los porcentajes no suman 100% (suman {(sumaCoef * 100).toFixed(2)}%). Ajustá antes de generar la DJ.
+              </CAlert>
             )}
           </CCol>
         </CRow>
