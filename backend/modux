@@ -38,6 +38,8 @@ match ($command) {
     'afip:wsaa'        => afipWsaa($arg),
     'afip:padron'      => afipPadron($arg),
     'afip:wsfe-dummy'  => afipWsfeDummy(),
+    'afip:cert-key'    => afipCertKey($flags),
+    'afip:cert-csr'    => afipCertCsr($arg, $flags),
     default            => help(),
 };
 
@@ -566,6 +568,80 @@ function afipWsfeDummy(): void
     echo PHP_EOL;
 }
 
+function afipCertKey(array $flags = []): void
+{
+    buildApp(); // bootstrap del entorno (.env) para leer afip.key_path
+
+    $path = (string) (\App\Support\Config::get('afip.key_path') ?: BASE_PATH . '/storage/afip/private.key');
+
+    if (is_file($path) && !in_array('--force', $flags, true)) {
+        error("Ya existe la clave en {$path}. Usá --force para sobrescribir.");
+    }
+
+    $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+    if ($key === false || !openssl_pkey_export($key, $pem)) {
+        error('No se pudo generar la clave privada con openssl.');
+    }
+
+    @mkdir(dirname($path), 0770, true);
+    if (file_put_contents($path, $pem) === false) {
+        error("No se pudo escribir la clave en {$path}.");
+    }
+    @chmod($path, 0600);
+
+    line("<green>Clave privada RSA 2048 generada</green>: {$path}");
+    line('  Configurá <yellow>AFIP_KEY_PATH</yellow> en .env si aún no apunta ahí.');
+    line('  Siguiente: php modux afip:cert-csr "<Common Name>"');
+    echo PHP_EOL;
+}
+
+function afipCertCsr(?string $commonName, array $flags = []): void
+{
+    if (!$commonName) {
+        error('Usage: php modux afip:cert-csr "<Common Name>" [--org="<Organización>"] [--country=AR]');
+    }
+
+    buildApp(); // bootstrap del entorno (.env)
+
+    $keyPath = (string) (\App\Support\Config::get('afip.key_path') ?: BASE_PATH . '/storage/afip/private.key');
+    $cuit    = preg_replace('/\D/', '', (string) (\App\Support\Config::get('afip.cuit') ?? '')) ?? '';
+
+    if (!is_file($keyPath)) {
+        error("No existe la clave privada en {$keyPath}. Generala con: php modux afip:cert-key");
+    }
+    if (strlen($cuit) !== 11) {
+        error('AFIP_CUIT inválido o ausente en .env (deben ser 11 dígitos).');
+    }
+
+    $key = openssl_pkey_get_private((string) file_get_contents($keyPath));
+    if ($key === false) {
+        error("No se pudo leer la clave privada en {$keyPath}.");
+    }
+
+    // ARCA identifica al titular por el CUIT en el campo serialNumber del subject.
+    $dn = [
+        'countryName'      => strtoupper(flagValue($flags, '--country', 'AR')),
+        'organizationName' => flagValue($flags, '--org', $commonName),
+        'commonName'       => $commonName,
+        'serialNumber'     => "CUIT {$cuit}",
+    ];
+
+    $csr = openssl_csr_new($dn, $key, ['digest_alg' => 'sha256']);
+    if ($csr === false || !openssl_csr_export($csr, $pem)) {
+        error('No se pudo generar el CSR con openssl.');
+    }
+
+    $csrPath = dirname($keyPath) . '/request.csr';
+    if (file_put_contents($csrPath, $pem) === false) {
+        error("No se pudo escribir el CSR en {$csrPath}.");
+    }
+
+    line("<green>CSR generado</green>: {$csrPath}");
+    line('  Subilo al portal WSASS de ARCA y asociá los servicios (wsfe / ws_sr_padron_a5).');
+    line('  Guardá el certificado emitido en la ruta de <yellow>AFIP_CERT_PATH</yellow>.');
+    echo PHP_EOL;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildApp(): \App\Support\Container
@@ -624,6 +700,13 @@ function help(): void
     echo '    queue:retry <id>                              Retry a failed job' . PHP_EOL;
     echo '    queue:flush                                   Delete all failed jobs' . PHP_EOL;
     echo '    entitlements:roll-periods                     Advance expired quota cycles (safety net)' . PHP_EOL;
+    echo PHP_EOL;
+    echo '  AFIP / ARCA:' . PHP_EOL;
+    echo '    afip:cert-key [--force]                       Generate RSA 2048 private key (AFIP_KEY_PATH)' . PHP_EOL;
+    echo '    afip:cert-csr "<CN>" [--org=..] [--country=AR] Generate the CSR to submit to WSASS' . PHP_EOL;
+    echo '    afip:wsaa [service]                           Authenticate (WSAA) and cache the TA (default wsfe)' . PHP_EOL;
+    echo '    afip:wsfe-dummy                               WSFEv1 FEDummy health check' . PHP_EOL;
+    echo '    afip:padron <cuit>                            Padrón A5 lookup by CUIT' . PHP_EOL;
     echo PHP_EOL;
     echo '  Examples:' . PHP_EOL;
     echo '    php modux make:module Cliente' . PHP_EOL;
