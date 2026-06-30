@@ -10,23 +10,23 @@
 
 ---
 
-## 1. 🔴 Certificado de homologación de AFIP/ARCA (factura electrónica en vivo)
+## 1. 🟡 Certificado de AFIP/ARCA (factura electrónica) — HOMOLOGACIÓN HECHA, falta PRODUCCIÓN
 
-**Qué falta:** la emisión de CAE, el padrón y el WSAA están programados y validados contra el
-servidor de ARCA (FEDummy dio OK en homologación), pero para **emitir de verdad** hace falta un
-certificado. Hoy no podemos probar el circuito completo (numerar + pedir CAE) sin él.
+**Avance (2026-06):** ✅ ya hay **herramientas y guía** para el certificado y **está validado en vivo
+contra homologación** (CUIT 23321452639). Comandos CLI: `php modux afip:cert-key` (clave) y
+`php modux afip:cert-csr "<Razón Social>"` (CSR). Guía paso a paso en
+`backend/app/Modules/Iva/Afip/README.md`. El WSAA obtiene TA contra `wsfe` en homologación.
 
-**Qué necesito de vos:**
-1. **Tramitar el certificado de homologación** en el portal de ARCA:
-   - Generar el CSR (pedido de certificado) — te paso el comando exacto si querés.
-   - Subirlo a ARCA y **asociar el certificado a los web services** `wsfe` (factura electrónica) y
-     `ws_sr_padron_a5` (padrón).
-2. **Pasarme los 2 archivos** que genera el trámite: el **certificado** (`.crt`/`.pem`) y la **clave
-   privada** (`.key`), más el **CUIT del emisor** de prueba.
-3. (Después) repetir lo mismo con el certificado de **producción** cuando se vaya a usar real.
+**Lo que falta para PRODUCCIÓN:**
+1. **Tramitar el certificado de PRODUCCIÓN** en el WSASS de ARCA (subir el `request.csr`, descargar
+   el certificado y **autorizar los servicios** `wsfe` y, si se usa padrón, `ws_sr_padron_a5`).
+2. Apuntar el `.env` de producción a ese certificado (`AFIP_ENV=prod`, `AFIP_CUIT`, `AFIP_CERT_PATH`,
+   `AFIP_KEY_PATH`).
+3. **Emitir una factura real de prueba** (numerar + pedir CAE) y confirmar el circuito completo.
 
-**Con eso** configuro `AFIP_CUIT`, `AFIP_CERT_PATH`, `AFIP_KEY_PATH`, `AFIP_ENV` y probamos el
-circuito completo de factura electrónica en vivo.
+**Pendiente menor (homologación):** terminar de probar el **circuito completo de CAE** (no solo
+FEDummy/WSAA): emitir una venta de prueba con `POST …/ventas/{id}/cae` en homologación y verificar
+que devuelve CAE.
 
 ---
 
@@ -99,7 +99,7 @@ bloqueo. Si lo querés, lo hago.
 
 | # | Pendiente | Tipo | Bloquea |
 |---|-----------|------|---------|
-| 1 | Certificado de homologación AFIP | Trámite + archivos | Factura electrónica en vivo |
+| 1 | Certificado AFIP: ✅ homologación + tooling · falta **producción** + probar CAE completo | Trámite | Factura electrónica en producción |
 | 2 | Período real + resultado del contador | Insumo de datos | Validar DJ por actividad |
 | 3 | Subir un archivo generado al Portal IVA | Prueba operativa | Confirmar formato vs. ARCA |
 | 4 | ¿Se construye módulo Contable? | Decisión | Export a Contable |
