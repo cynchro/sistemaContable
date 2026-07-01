@@ -123,8 +123,12 @@
       + `POST /empresas/{id}/periodos/{pid}/ventas/{vid}/cae`. Migración 0029 (`puntos_venta`
       + columnas cae/cae_vto/afip_resultado/afip_obs/fch_serv_* en `ventas`). SOAP validado
       en vivo (FEDummy OK en homologación). CLI `php modux afip:wsfe-dummy`.
-- [ ] **Probar en vivo con certificado de homologación** (tramitar CSR + asociar a `wsfe` y
-      al padrón). Variables `.env`: `AFIP_CUIT`, `AFIP_CERT_PATH`, `AFIP_KEY_PATH`, `AFIP_ENV`.
+- [x] **Circuito CAE completo validado en vivo (homologación, 2026-07-01)**: cadena real
+      WSAA→wsfe + `FECompUltimoAutorizado` + `FECAESolicitar` (Factura B a Consumidor Final,
+      neto 100 + IVA 21 = 121) → ARCA devolvió CAE (resultado `A`, CAE `86260518505470`,
+      vto `2026-07-11`), sin observaciones ni errores. Certificado de homologación asociado a
+      `wsfe` (CUIT 23321452639). Variables `.env`: `AFIP_CUIT`, `AFIP_CERT_PATH`, `AFIP_KEY_PATH`,
+      `AFIP_ENV`. Falta solo el trámite del certificado de **producción** (fuera de código).
 - [x] **`CbtesAsoc`**: comprobantes asociados para NC/ND. Migración 0030
       (`venta_comprobantes_asociados`, parte del agregado venta); el alta/edición de venta
       acepta `comprobantes_asociados[]` (tipo_comprobante_id/letra/punto_venta/numero/cuit/fecha)

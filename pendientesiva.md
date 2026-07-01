@@ -24,38 +24,39 @@ contra homologación** (CUIT 23321452639). Comandos CLI: `php modux afip:cert-ke
    `AFIP_KEY_PATH`).
 3. **Emitir una factura real de prueba** (numerar + pedir CAE) y confirmar el circuito completo.
 
-**Pendiente menor (homologación):** terminar de probar el **circuito completo de CAE** (no solo
-FEDummy/WSAA): emitir una venta de prueba con `POST …/ventas/{id}/cae` en homologación y verificar
-que devuelve CAE.
+**✅ Circuito completo de CAE validado en homologación (2026-07-01):** no solo FEDummy/WSAA — se
+ejecutó la cadena real WSAA→wsfe + `FECompUltimoAutorizado` + `FECAESolicitar` con una Factura B a
+Consumidor Final (neto 100 + IVA 21 = 121) y **ARCA devolvió CAE** (resultado `A`, CAE
+`86260518505470`, vto `2026-07-11`), sin observaciones ni errores. Queda probado que el certificado,
+la firma CMS, el TA cacheado, la numeración y el mapper del `FeCAEReq` funcionan end-to-end. Lo único
+que falta para producción es el trámite del certificado de PRODUCCIÓN (abajo).
 
 ---
 
-## 2. 🟡 Validar la DJ por actividad contra un caso real del estudio
+## 2. 🟢 Validar la DJ por actividad contra un caso real del estudio — HECHO (construcción)
 
-**Qué falta:** implementamos las 5 formas de repartir por actividad (punto de venta, manual, por
-alícuota/construcción, por receptor, porcentajes fijos) y los validamos con tests, **pero contra
-ejemplos armados por nosotros**, no contra una presentación real.
+**Estado:** ✅ **validado END-TO-END** con un caso real del estudio. El contador pasó
+**GRUPO MAZZUCO ARQUITECTOS ASOCIADOS SRL** (constructora, mayo 2026, carpeta `preguntas01-08-2026/`),
+que combina **por receptor** (SANATORIO JUNÍN + DROGUERÍA MITRE → alquiler 681098) **y por alícuota**
+(resto → construcción 21%→410021 / 10,5%→410011), con precedencia receptor→alícuota. Se cargó en el
+sistema y se generó el CSV de la DJ IVA Simple por el código real: **coincide exacto** con la
+distribución manual del contador (`DISTRIBUCION IVA.xlsx`); neto construcción = débito − restitución =
+27.567.059,81. Test: `backend/tests/Feature/GrupoMazzucoDjE2ETest.php`.
 
-**Qué necesito de vos (idealmente del contador):** para **1 o 2 clientes** de cada tipo, un período
-real con:
-- los **datos de ventas y compras** de ese mes (o el subdiario/Libro IVA), y
-- el **resultado que ellos presentan hoy** (su Excel o los CSV que suben al Portal IVA).
-
-Casos que conviene cubrir (son los que ya analizamos): **MAFAP/ANCASTI** (por punto de venta),
-**ACEVEDO** (porcentajes fijos) y un cliente de **construcción** (por alícuota).
-
-**Para qué:** comparar **lo que genera el sistema vs. lo que presentan** y confirmar que coincide
-(o corregir diferencias finas de redondeo/criterio). Es el último paso para dar la apertura por
-actividad como "probada en producción".
+**Cobertura de las 5 estrategias:** por punto de venta (MAFAP/ANCASTI) y porcentajes fijos (ACEVEDO)
+ya estaban validadas con las planillas del contador; por alícuota + por receptor ahora validadas
+end-to-end con GRUPO MAZZUCO; la manual (factura por factura) no tiene algoritmo. **Nada pendiente
+acá salvo, si se quiere, sumar más casos reales de otros rubros.**
 
 ---
 
-## 3. 🟡 Probar la importación de un archivo generado en el Portal IVA
+## 3. 🟡 Probar la importación de un archivo generado en el Portal IVA (paso NUESTRO)
 
-**Qué necesito de vos:** que **suban al Portal IVA un archivo CSV generado por el sistema** (los 4
-de la DJ IVA Simple y/o los 4 TXT del Libro IVA Digital) con un período de prueba y confirmen que
-**ARCA los acepta sin error de formato**. Si algún campo no le gusta a ARCA, me pasás el mensaje y
-lo ajusto.
+**No es un pedido al contador** (él no tiene acceso al sistema nuevo, no puede generar ni subir un
+archivo del sistema). Es una **validación interna nuestra**, dependiente del punto 2: cuando carguemos
+un período real, el sistema genera el archivo (4 CSV de la DJ IVA Simple y/o 4 TXT del Libro IVA
+Digital) y **lo subimos nosotros al Portal IVA** (con la clave fiscal del estudio) para confirmar que
+**ARCA lo acepta sin error de formato**. Si algún campo no le gusta a ARCA, se ajusta.
 
 **Para qué:** validar el formato de los archivos contra el importador real de ARCA (no solo contra
 los ejemplos del instructivo).
@@ -99,9 +100,9 @@ bloqueo. Si lo querés, lo hago.
 
 | # | Pendiente | Tipo | Bloquea |
 |---|-----------|------|---------|
-| 1 | Certificado AFIP: ✅ homologación + tooling · falta **producción** + probar CAE completo | Trámite | Factura electrónica en producción |
-| 2 | Período real + resultado del contador | Insumo de datos | Validar DJ por actividad |
-| 3 | Subir un archivo generado al Portal IVA | Prueba operativa | Confirmar formato vs. ARCA |
+| 1 | Certificado AFIP: ✅ homologación + tooling + **circuito CAE validado en vivo** · falta solo el trámite de **producción** | Trámite | Factura electrónica en producción |
+| 2 | ✅ **HECHO** — DJ por actividad validada end-to-end con caso real (GRUPO MAZZUCO, construcción) | Insumo de datos | — |
+| 3 | Subir un archivo generado al Portal IVA (**paso nuestro**, sale del #2) | Prueba operativa | Confirmar formato vs. ARCA |
 | 4 | ¿Se construye módulo Contable? | Decisión | Export a Contable |
 | 5 | Acceso a la DB del Visual | Insumo de datos | Migración del histórico |
 | 6 | Sembrar NAES completo (opcional) | Decisión | Comodidad de carga |

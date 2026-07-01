@@ -42,6 +42,25 @@ Estados aceptados en el JSON (también se aceptan alias en español como
 - **Task**: `pending`, `in_progress`, `completed`
 - **Feature**: `not_started`, `in_progress`, `paused`, `completed`
 
+## Fecha de completado (`completed_at`)
+
+Cada task puede llevar `"completed_at": "YYYY-MM-DD"` (opcional). El dashboard la
+muestra en la tarjeta (columna Finalizado) y en el detalle. Reglas:
+
+- Solo tiene sentido en tasks `completed`. Si la task no está completada, se ignora
+  (y si estaba completada y pasa a otro estado, la fecha se limpia sola).
+- El import la **backfillea**: aunque la task ya esté completada en el tablero, si el
+  snapshot trae una `completed_at` distinta, la corrige (no hace falta cambiar el estado).
+- Si una task se completa y no se pasa fecha, el server estampa la fecha del sync.
+- Convención del proyecto: la fecha real sale del **historial de git** del commit que
+  implementó la task (por eso las históricas se pudieron rellenar con su fecha real).
+
+> ⚠️ **Requiere schema actualizado en el dashboard**: la columna `tasks.completed_at`
+> se agrega con la migración `backend/database/migrations/2026-07-01_add_task_completed_at.sql`
+> del repo `clientDashboard`. Correrla en la DB de producción **antes** de desplegar el
+> código nuevo. Si se sincroniza `progreso.json` con `completed_at` contra un dashboard
+> viejo (sin la columna), el campo simplemente se ignora (no rompe el import).
+
 ## Notas
 
 - El cliente que ve el tablero se define en `progreso.json` → `project.client`
