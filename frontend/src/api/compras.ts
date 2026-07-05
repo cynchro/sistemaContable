@@ -43,6 +43,9 @@ export interface CompraInput {
   neto_no_grav?: string | null
   exento?: string | null
   imp_interno?: string | null
+  tipo_moneda_id?: number | null
+  tipo_cambio?: string | null
+  campo_auxiliar?: string | null
   actividad_id?: number | null
   concepto_dj?: number | null
   discriminaciones: CompraDiscriminacionInput[]
@@ -65,6 +68,9 @@ export interface CompraDetalle {
   neto_no_grav: string | null
   exento: string | null
   imp_interno: string | null
+  tipo_moneda_id: number | null
+  tipo_cambio: string | null
+  campo_auxiliar: string | null
   actividad_id: number | null
   concepto_dj: number | null
   total: string
@@ -124,4 +130,16 @@ export async function updateCompra(
 
 export async function deleteCompra(empresaId: number, periodoId: number, id: number): Promise<void> {
   await api.delete(`${base(empresaId, periodoId)}/${id}`)
+}
+
+/** Mueve el comprobante a otro período de la misma empresa. */
+export async function moverCompra(
+  empresaId: number,
+  periodoId: number,
+  id: number,
+  periodoDestinoId: number,
+): Promise<void> {
+  await api.post(`${base(empresaId, periodoId)}/${id}/mover`, {
+    periodo_destino_id: periodoDestinoId,
+  })
 }

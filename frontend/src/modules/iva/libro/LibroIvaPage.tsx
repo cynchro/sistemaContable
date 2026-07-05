@@ -122,7 +122,7 @@ function TablaDetalle({
   return (
     <>
       <h6 className="mt-2">{titulo}</h6>
-      <CTable small bordered responsive align="middle" className="mb-4">
+      <CTable small bordered responsive align="middle" className="mb-4 ledger">
         <CTableHead>
           <CTableRow>
             <CTableHeaderCell>Condición IVA</CTableHeaderCell>
@@ -182,7 +182,7 @@ function Resumen({ eId, pId, condNombre }: SubProps) {
           </CCol>
         ))}
       </CRow>
-      <CCard color="light" className="mb-4">
+      <CCard className="mb-4 bg-body-tertiary">
         <CCardBody className="d-flex justify-content-between align-items-center">
           <strong>Saldo de IVA del período (débito − crédito)</strong>
           <span className="fs-4 fw-bold">{money(t.saldo_iva)}</span>
@@ -211,7 +211,7 @@ function DdjjF2002({ eId, pId, condNombre }: SubProps) {
         condNombre={condNombre}
         conCf
       />
-      <CCard color="light">
+      <CCard className="bg-body-tertiary">
         <CCardBody>
           <CRow>
             <CCol md={4}>
@@ -331,7 +331,7 @@ function IvaSimpleTab({ eId, pId, qc }: { eId: number; pId: number; qc: ReturnTy
 function TablaSubdiario({ data, sujeto, conCf }: { data: Subdiario; sujeto: string; conCf?: boolean }) {
   const t = data.totales
   return (
-    <CTable small bordered responsive align="middle" className="mb-4">
+    <CTable small bordered responsive align="middle" className="mb-4 ledger">
       <CTableHead>
         <CTableRow>
           <CTableHeaderCell>Fecha</CTableHeaderCell>
@@ -429,7 +429,7 @@ function TablaPercepciones({
   return (
     <>
       <div className="small text-body-secondary mt-2">{titulo}</div>
-      <CTable small bordered responsive align="middle" className="mb-3">
+      <CTable small bordered responsive align="middle" className="mb-3 ledger">
         <CTableHead>
           <CTableRow>
             <CTableHeaderCell>Tipo</CTableHeaderCell>

@@ -15,12 +15,14 @@ import {
   CTableHeaderCell,
   CTableBody,
   CTableDataCell,
+  CFormCheck,
   CSpinner,
   CAlert,
 } from '@coreui/react'
 import {
   listCompras,
   deleteCompra,
+  moverCompra,
   createCompra,
   updateCompra,
   type Compra,
@@ -28,6 +30,7 @@ import {
   type CompraInput,
 } from '../../../api/compras'
 import CompraFormModal from './CompraFormModal'
+import MoverComprobanteModal from '../MoverComprobanteModal'
 
 const PER_PAGE = 50
 
@@ -69,6 +72,10 @@ export default function ComprasList() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [moviendo, setMoviendo] = useState<Compra | null>(null)
+  const [moverError, setMoverError] = useState<string | null>(null)
+
   const queryKey = ['compras', eId, pId, filtros, page]
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey,
@@ -76,9 +83,29 @@ export default function ComprasList() {
     placeholderData: keepPreviousData,
   })
 
+  const invalidateCompras = () => qc.invalidateQueries({ queryKey: ['compras', eId, pId] })
+
   const deleteM = useMutation({
     mutationFn: (id: number) => deleteCompra(eId, pId, id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['compras', eId, pId] }),
+    onSuccess: invalidateCompras,
+  })
+
+  const bulkDeleteM = useMutation({
+    mutationFn: (ids: number[]) => Promise.all(ids.map((id) => deleteCompra(eId, pId, id))),
+    onSuccess: () => {
+      setSelected(new Set())
+      invalidateCompras()
+    },
+  })
+
+  const moverM = useMutation({
+    mutationFn: ({ id, destino }: { id: number; destino: number }) => moverCompra(eId, pId, id, destino),
+    onSuccess: () => {
+      setMoviendo(null)
+      setMoverError(null)
+      invalidateCompras()
+    },
+    onError: (e) => setMoverError(apiError(e)),
   })
 
   const closeModal = () => {
@@ -133,6 +160,33 @@ export default function ComprasList() {
     }
   }
 
+  const rows = data?.results ?? []
+  const toggleOne = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const allChecked = rows.length > 0 && rows.every((c) => selected.has(c.id))
+  const toggleAll = () =>
+    setSelected((prev) => {
+      if (rows.every((c) => prev.has(c.id))) {
+        const next = new Set(prev)
+        rows.forEach((c) => next.delete(c.id))
+        return next
+      }
+      const next = new Set(prev)
+      rows.forEach((c) => next.add(c.id))
+      return next
+    })
+  const onBulkDelete = () => {
+    const ids = [...selected]
+    if (ids.length && window.confirm(`¿Eliminar ${ids.length} comprobante(s) seleccionado(s)?`)) {
+      bulkDeleteM.mutate(ids)
+    }
+  }
+
   const total = data?.total ?? 0
   const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
 
@@ -147,9 +201,22 @@ export default function ComprasList() {
             <strong className="ms-2">Compras</strong>
             {isFetching && <CSpinner size="sm" className="ms-2" />}
           </div>
-          <CButton color="primary" size="sm" onClick={nuevaCompra}>
-            Nueva compra
-          </CButton>
+          <div className="d-flex gap-2">
+            {selected.size > 0 && (
+              <CButton
+                color="danger"
+                variant="outline"
+                size="sm"
+                disabled={bulkDeleteM.isPending}
+                onClick={onBulkDelete}
+              >
+                Eliminar seleccionados ({selected.size})
+              </CButton>
+            )}
+            <CButton color="primary" size="sm" onClick={nuevaCompra}>
+              Nueva compra
+            </CButton>
+          </div>
         </CCardHeader>
         <CCardBody>
           <CForm className="row g-2 align-items-end mb-3" onSubmit={aplicarFiltros}>
@@ -179,9 +246,12 @@ export default function ComprasList() {
           {isError && <CAlert color="danger">No se pudieron cargar las compras.</CAlert>}
           {data && (
             <>
-              <CTable hover responsive align="middle" className="mb-0">
+              <CTable hover responsive align="middle" className="mb-0 ledger">
                 <CTableHead>
                   <CTableRow>
+                    <CTableHeaderCell style={{ width: 32 }}>
+                      <CFormCheck checked={allChecked} onChange={toggleAll} aria-label="Seleccionar todos" />
+                    </CTableHeaderCell>
                     <CTableHeaderCell>Fecha</CTableHeaderCell>
                     <CTableHeaderCell>Comprobante</CTableHeaderCell>
                     <CTableHeaderCell>Proveedor</CTableHeaderCell>
@@ -193,6 +263,13 @@ export default function ComprasList() {
                 <CTableBody>
                   {data.results.map((c) => (
                     <CTableRow key={c.id}>
+                      <CTableDataCell>
+                        <CFormCheck
+                          checked={selected.has(c.id)}
+                          onChange={() => toggleOne(c.id)}
+                          aria-label={`Seleccionar ${comprobante(c)}`}
+                        />
+                      </CTableDataCell>
                       <CTableDataCell>{c.fecha ?? '—'}</CTableDataCell>
                       <CTableDataCell>{comprobante(c)}</CTableDataCell>
                       <CTableDataCell>{c.proveedor_nombre ?? '—'}</CTableDataCell>
@@ -208,6 +285,18 @@ export default function ComprasList() {
                         >
                           Editar
                         </CButton>
+                        <CButton
+                          color="info"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => {
+                            setMoverError(null)
+                            setMoviendo(c)
+                          }}
+                        >
+                          Mover
+                        </CButton>
                         <CButton color="danger" variant="outline" size="sm" onClick={() => onDelete(c)}>
                           Eliminar
                         </CButton>
@@ -216,7 +305,7 @@ export default function ComprasList() {
                   ))}
                   {data.results.length === 0 && (
                     <CTableRow>
-                      <CTableDataCell colSpan={6} className="text-center text-body-secondary py-4">
+                      <CTableDataCell colSpan={7} className="text-center text-body-secondary py-4">
                         Sin comprobantes de compra en este período.
                       </CTableDataCell>
                     </CTableRow>
@@ -264,6 +353,17 @@ export default function ComprasList() {
         errorMsg={formError}
         onClose={closeModal}
         onSubmit={(v) => saveM.mutate(v)}
+      />
+
+      <MoverComprobanteModal
+        visible={moviendo != null}
+        empresaId={eId}
+        periodoActualId={pId}
+        detalle={moviendo ? `la compra ${comprobante(moviendo)}` : undefined}
+        moving={moverM.isPending}
+        errorMsg={moverError}
+        onClose={() => setMoviendo(null)}
+        onMove={(destino) => moviendo && moverM.mutate({ id: moviendo.id, destino })}
       />
     </>
   )

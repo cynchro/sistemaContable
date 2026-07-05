@@ -5,6 +5,57 @@ body,
   min-height: 100vh;
 }
 
+/* Layout con sidebar fijo (patrón oficial de CoreUI): el contenido se corre a la
+   derecha el ancho del sidebar vía la variable que CoreUI setea en los hermanos
+   del `.sidebar` (0 en mobile, donde el sidebar pasa a overlay). */
+.wrapper {
+  padding-inline-start: var(--cui-sidebar-occupy-start, 0);
+  transition: padding 0.15s;
+  will-change: auto;
+}
+
+/* KPIs del Inicio: grilla de mosaicos estilo "stat-card" del Visual IVA. */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+.kpi-tile {
+  border: 1px solid var(--cui-border-color);
+  border-radius: var(--cui-border-radius, 0.375rem);
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+.kpi-tile .kpi-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-tile .kpi-label {
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--cui-secondary-color);
+}
+
+/* Densidad "planilla contable" para las tablas de datos (comprobantes, libros IVA):
+   números alineados (tabular), filas más compactas y encabezados en versalitas. */
+.ledger {
+  font-variant-numeric: tabular-nums;
+}
+.ledger > :not(caption) > * > * {
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+}
+.ledger thead th {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 /* Impresión / exportación a PDF: oculta el chrome del layout y todo lo marcado
    .no-print, y deja sólo el contenido .print-area a ancho completo. */
 @media print {

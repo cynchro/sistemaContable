@@ -11,10 +11,13 @@ import VentasList from './modules/iva/ventas/VentasList'
 import ComprasList from './modules/iva/compras/ComprasList'
 import LibroIvaPage from './modules/iva/libro/LibroIvaPage'
 import ActividadesPage from './modules/iva/actividades/ActividadesPage'
+import CuentasList from './modules/iva/cuentas/CuentasList'
+import ImportarPage from './modules/iva/importar/ImportarPage'
 import AfipPage from './modules/afip/AfipPage'
 import SueldosPage from './modules/sueldos/SueldosPage'
 import GestionPage from './modules/gestion/GestionPage'
 import AdminPage from './modules/admin/AdminPage'
+import UtilidadesPage from './modules/utilidades/UtilidadesPage'
 
 function App() {
   return (
@@ -28,15 +31,18 @@ function App() {
           <Route path="empresas/:empresaId/clientes" element={<SujetosList recurso="clientes" />} />
           <Route path="empresas/:empresaId/proveedores" element={<SujetosList recurso="proveedores" />} />
           <Route path="empresas/:empresaId/actividades" element={<ActividadesPage />} />
+          <Route path="empresas/:empresaId/cuentas" element={<CuentasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/ventas" element={<VentasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/compras" element={<ComprasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/libro-iva" element={<LibroIvaPage />} />
+          <Route path="empresas/:empresaId/periodos/:periodoId/importar" element={<ImportarPage />} />
           <Route path="iva" element={<EnConstruccion titulo="Comprobantes de IVA" />} />
           <Route path="iva/libro" element={<EnConstruccion titulo="Libro IVA y DDJJ" />} />
           <Route path="afip" element={<AfipPage />} />
           <Route path="sueldos" element={<SueldosPage />} />
           <Route path="gestion" element={<GestionPage />} />
           <Route path="admin" element={<AdminPage />} />
+          <Route path="utilidades" element={<UtilidadesPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -52,6 +52,9 @@ const schema = z.object({
   neto_no_grav: z.string().optional(),
   exento: z.string().optional(),
   imp_interno: z.string().optional(),
+  tipo_moneda_id: z.string().optional(),
+  tipo_cambio: z.string().optional(),
+  campo_auxiliar: z.string().optional(),
   actividad_id: z.string().optional(),
   concepto_dj: z.string().optional(),
   discriminaciones: z.array(lineaSchema).min(1, 'Agregá al menos una línea de IVA'),
@@ -73,6 +76,9 @@ const VACIO: FormValues = {
   neto_no_grav: '',
   exento: '',
   imp_interno: '',
+  tipo_moneda_id: '',
+  tipo_cambio: '',
+  campo_auxiliar: '',
   actividad_id: '',
   concepto_dj: '',
   discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', cf_computable: '' }],
@@ -117,6 +123,10 @@ export default function CompraFormModal({
   const { data: provincias } = useQuery({
     queryKey: ['catalogo', 'provincias'],
     queryFn: () => listCatalogo('provincias'),
+  })
+  const { data: tiposMoneda } = useQuery({
+    queryKey: ['catalogo', 'tipos-moneda'],
+    queryFn: () => listCatalogo('tipos-moneda'),
   })
   const { data: proveedores } = useQuery({
     queryKey: ['proveedores', empresaId],
@@ -168,6 +178,9 @@ export default function CompraFormModal({
         neto_no_grav: detalle.neto_no_grav ?? '',
         exento: detalle.exento ?? '',
         imp_interno: detalle.imp_interno ?? '',
+        tipo_moneda_id: detalle.tipo_moneda_id != null ? String(detalle.tipo_moneda_id) : '',
+        tipo_cambio: detalle.tipo_cambio ?? '',
+        campo_auxiliar: detalle.campo_auxiliar ?? '',
         actividad_id: detalle.actividad_id != null ? String(detalle.actividad_id) : '',
         concepto_dj: detalle.concepto_dj != null ? String(detalle.concepto_dj) : '',
         discriminaciones:
@@ -228,6 +241,9 @@ export default function CompraFormModal({
       neto_no_grav: str(v.neto_no_grav),
       exento: str(v.exento),
       imp_interno: str(v.imp_interno),
+      tipo_moneda_id: num(v.tipo_moneda_id),
+      tipo_cambio: str(v.tipo_cambio),
+      campo_auxiliar: str(v.campo_auxiliar),
       actividad_id: v.actividad_id ? Number(v.actividad_id) : null,
       concepto_dj: v.concepto_dj ? Number(v.concepto_dj) : null,
       discriminaciones: v.discriminaciones.map((d) => ({
@@ -464,6 +480,28 @@ export default function CompraFormModal({
                 <div className="col-md-4 mb-3">
                   <CFormLabel htmlFor="imp_interno">Imp. internos</CFormLabel>
                   <CFormInput id="imp_interno" inputMode="decimal" {...register('imp_interno')} />
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-md-3 mb-3">
+                  <CFormLabel htmlFor="tipo_moneda_id">Moneda</CFormLabel>
+                  <CFormSelect id="tipo_moneda_id" {...register('tipo_moneda_id')}>
+                    <option value="">—</option>
+                    {tiposMoneda?.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nombre}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+                <div className="col-md-3 mb-3">
+                  <CFormLabel htmlFor="tipo_cambio">Cotización</CFormLabel>
+                  <CFormInput id="tipo_cambio" inputMode="decimal" {...register('tipo_cambio')} />
+                </div>
+                <div className="col-md-6 mb-3">
+                  <CFormLabel htmlFor="campo_auxiliar">Campo auxiliar</CFormLabel>
+                  <CFormInput id="campo_auxiliar" {...register('campo_auxiliar')} />
                 </div>
               </div>
 

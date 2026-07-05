@@ -9,9 +9,9 @@ import AppBreadcrumb from '../components/AppBreadcrumb'
  * (toggle, dark mode, perfil) + breadcrumb + contenido + footer. */
 export default function DefaultLayout() {
   return (
-    <div className="d-flex">
+    <>
       <AppSidebar />
-      <div className="d-flex flex-column flex-grow-1 min-vh-100" style={{ minWidth: 0 }}>
+      <div className="wrapper d-flex flex-column min-vh-100" style={{ minWidth: 0 }}>
         <AppHeader />
         <div className="body flex-grow-1">
           <CContainer fluid className="px-4">
@@ -21,6 +21,6 @@ export default function DefaultLayout() {
         </div>
         <AppFooter />
       </div>
-    </div>
+    </>
   )
 }

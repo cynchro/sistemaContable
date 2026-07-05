@@ -31,6 +31,7 @@ export interface VentaInput {
   fecha: string
   tipo_comprobante_id?: number | null
   tipo_operacion_venta_id?: number | null
+  tipo_documento_id?: number | null
   condicion_iva_id?: number | null
   provincia_id?: number | null
   cliente_id?: number | null
@@ -42,6 +43,9 @@ export interface VentaInput {
   neto_no_grav?: string | null
   exento?: string | null
   imp_interno?: string | null
+  tipo_moneda_id?: number | null
+  tipo_cambio?: string | null
+  campo_auxiliar?: string | null
   actividad_id?: number | null
   es_bien_uso?: string | null
   discriminaciones: DiscriminacionInput[]
@@ -53,6 +57,7 @@ export interface VentaDetalle {
   fecha: string | null
   tipo_comprobante_id: number | null
   tipo_operacion_venta_id: number | null
+  tipo_documento_id: number | null
   condicion_iva_id: number | null
   provincia_id: number | null
   cliente_id: number | null
@@ -64,6 +69,9 @@ export interface VentaDetalle {
   neto_no_grav: string | null
   exento: string | null
   imp_interno: string | null
+  tipo_moneda_id: number | null
+  tipo_cambio: string | null
+  campo_auxiliar: string | null
   actividad_id: number | null
   es_bien_uso: string | null
   total: string
@@ -126,4 +134,16 @@ export async function updateVenta(
 
 export async function deleteVenta(empresaId: number, periodoId: number, id: number): Promise<void> {
   await api.delete(`/empresas/${empresaId}/periodos/${periodoId}/ventas/${id}`)
+}
+
+/** Mueve el comprobante a otro período de la misma empresa. */
+export async function moverVenta(
+  empresaId: number,
+  periodoId: number,
+  id: number,
+  periodoDestinoId: number,
+): Promise<void> {
+  await api.post(`/empresas/${empresaId}/periodos/${periodoId}/ventas/${id}/mover`, {
+    periodo_destino_id: periodoDestinoId,
+  })
 }

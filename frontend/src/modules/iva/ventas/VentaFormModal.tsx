@@ -40,6 +40,7 @@ const schema = z.object({
   fecha: z.string().min(1, 'La fecha es obligatoria'),
   tipo_comprobante_id: z.string().optional(),
   tipo_operacion_venta_id: z.string().optional(),
+  tipo_documento_id: z.string().optional(),
   cliente_id: z.string().optional(),
   cliente_nombre: z.string().optional(),
   cuit: z.string().optional(),
@@ -51,6 +52,9 @@ const schema = z.object({
   neto_no_grav: z.string().optional(),
   exento: z.string().optional(),
   imp_interno: z.string().optional(),
+  tipo_moneda_id: z.string().optional(),
+  tipo_cambio: z.string().optional(),
+  campo_auxiliar: z.string().optional(),
   actividad_id: z.string().optional(),
   es_bien_uso: z.boolean().optional(),
   discriminaciones: z.array(lineaSchema).min(1, 'Agregá al menos una línea de IVA'),
@@ -61,6 +65,7 @@ const VACIO: FormValues = {
   fecha: '',
   tipo_comprobante_id: '',
   tipo_operacion_venta_id: '',
+  tipo_documento_id: '',
   cliente_id: '',
   cliente_nombre: '',
   cuit: '',
@@ -72,6 +77,9 @@ const VACIO: FormValues = {
   neto_no_grav: '',
   exento: '',
   imp_interno: '',
+  tipo_moneda_id: '',
+  tipo_cambio: '',
+  campo_auxiliar: '',
   actividad_id: '',
   es_bien_uso: false,
   discriminaciones: [{ neto_gravado: '', iva_alicuota: '21' }],
@@ -117,6 +125,14 @@ export default function VentaFormModal({
     queryKey: ['catalogo', 'provincias'],
     queryFn: () => listCatalogo('provincias'),
   })
+  const { data: tiposDocumento } = useQuery({
+    queryKey: ['catalogo', 'tipos-documento'],
+    queryFn: () => listCatalogo('tipos-documento'),
+  })
+  const { data: tiposMoneda } = useQuery({
+    queryKey: ['catalogo', 'tipos-moneda'],
+    queryFn: () => listCatalogo('tipos-moneda'),
+  })
   const { data: clientes } = useQuery({
     queryKey: ['clientes', empresaId],
     queryFn: () => listSujetos('clientes', empresaId),
@@ -160,6 +176,7 @@ export default function VentaFormModal({
         tipo_comprobante_id: detalle.tipo_comprobante_id != null ? String(detalle.tipo_comprobante_id) : '',
         tipo_operacion_venta_id:
           detalle.tipo_operacion_venta_id != null ? String(detalle.tipo_operacion_venta_id) : '',
+        tipo_documento_id: detalle.tipo_documento_id != null ? String(detalle.tipo_documento_id) : '',
         cliente_id: detalle.cliente_id != null ? String(detalle.cliente_id) : '',
         cliente_nombre: detalle.cliente_nombre ?? '',
         cuit: detalle.cuit ?? '',
@@ -171,6 +188,9 @@ export default function VentaFormModal({
         neto_no_grav: detalle.neto_no_grav ?? '',
         exento: detalle.exento ?? '',
         imp_interno: detalle.imp_interno ?? '',
+        tipo_moneda_id: detalle.tipo_moneda_id != null ? String(detalle.tipo_moneda_id) : '',
+        tipo_cambio: detalle.tipo_cambio ?? '',
+        campo_auxiliar: detalle.campo_auxiliar ?? '',
         actividad_id: detalle.actividad_id != null ? String(detalle.actividad_id) : '',
         es_bien_uso: detalle.es_bien_uso === 'S',
         discriminaciones:
@@ -221,6 +241,7 @@ export default function VentaFormModal({
       fecha: v.fecha,
       tipo_comprobante_id: num(v.tipo_comprobante_id),
       tipo_operacion_venta_id: num(v.tipo_operacion_venta_id),
+      tipo_documento_id: num(v.tipo_documento_id),
       cliente_id: num(v.cliente_id),
       cliente_nombre: str(v.cliente_nombre),
       cuit: str(v.cuit),
@@ -232,6 +253,9 @@ export default function VentaFormModal({
       neto_no_grav: str(v.neto_no_grav),
       exento: str(v.exento),
       imp_interno: str(v.imp_interno),
+      tipo_moneda_id: num(v.tipo_moneda_id),
+      tipo_cambio: str(v.tipo_cambio),
+      campo_auxiliar: str(v.campo_auxiliar),
       actividad_id: v.actividad_id ? Number(v.actividad_id) : null,
       es_bien_uso: v.es_bien_uso ? 'S' : 'N',
       discriminaciones: v.discriminaciones.map((d) => ({
@@ -351,7 +375,18 @@ export default function VentaFormModal({
                 </div>
               </div>
               <div className="row">
-                <div className="col-md-6 mb-3">
+                <div className="col-md-4 mb-3">
+                  <CFormLabel htmlFor="tipo_documento_id">Tipo de documento</CFormLabel>
+                  <CFormSelect id="tipo_documento_id" {...register('tipo_documento_id')}>
+                    <option value="">—</option>
+                    {tiposDocumento?.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.nombre}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+                <div className="col-md-4 mb-3">
                   <CFormLabel htmlFor="condicion_iva_id">Condición IVA</CFormLabel>
                   <CFormSelect id="condicion_iva_id" {...register('condicion_iva_id')}>
                     <option value="">—</option>
@@ -362,7 +397,7 @@ export default function VentaFormModal({
                     ))}
                   </CFormSelect>
                 </div>
-                <div className="col-md-6 mb-3">
+                <div className="col-md-4 mb-3">
                   <CFormLabel htmlFor="provincia_id">Provincia</CFormLabel>
                   <CFormSelect id="provincia_id" {...register('provincia_id')}>
                     <option value="">—</option>
@@ -456,6 +491,28 @@ export default function VentaFormModal({
                 <div className="col-md-4 mb-3">
                   <CFormLabel htmlFor="imp_interno">Imp. internos</CFormLabel>
                   <CFormInput id="imp_interno" inputMode="decimal" {...register('imp_interno')} />
+                </div>
+              </div>
+
+              <div className="row">
+                <div className="col-md-3 mb-3">
+                  <CFormLabel htmlFor="tipo_moneda_id">Moneda</CFormLabel>
+                  <CFormSelect id="tipo_moneda_id" {...register('tipo_moneda_id')}>
+                    <option value="">—</option>
+                    {tiposMoneda?.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.nombre}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+                <div className="col-md-3 mb-3">
+                  <CFormLabel htmlFor="tipo_cambio">Cotización</CFormLabel>
+                  <CFormInput id="tipo_cambio" inputMode="decimal" {...register('tipo_cambio')} />
+                </div>
+                <div className="col-md-6 mb-3">
+                  <CFormLabel htmlFor="campo_auxiliar">Campo auxiliar</CFormLabel>
+                  <CFormInput id="campo_auxiliar" {...register('campo_auxiliar')} />
                 </div>
               </div>
 

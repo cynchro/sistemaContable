@@ -50,6 +50,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     $router->put("{$bajoPeriodo}/ventas/{id}", [VentaController::class, 'update'], [$pw('iva.ventas')]);
     $router->delete("{$bajoPeriodo}/ventas/{id}", [VentaController::class, 'delete'], [$pw('iva.ventas')]);
     $router->post("{$bajoPeriodo}/ventas/{id}/mover", [VentaController::class, 'mover'], [$pw('iva.ventas')]);
+    $router->post("{$bajoPeriodo}/ventas/import", [VentaController::class, 'import'], [$pw('iva.ventas')]);
 
     // Compras (agregado bajo período: cabecera + discriminación + percepciones)
     $router->get("{$bajoPeriodo}/compras", [CompraController::class, 'index'], [$perm('iva.compras')]);
@@ -58,6 +59,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     $router->put("{$bajoPeriodo}/compras/{id}", [CompraController::class, 'update'], [$pw('iva.compras')]);
     $router->delete("{$bajoPeriodo}/compras/{id}", [CompraController::class, 'delete'], [$pw('iva.compras')]);
     $router->post("{$bajoPeriodo}/compras/{id}/mover", [CompraController::class, 'mover'], [$pw('iva.compras')]);
+    $router->post("{$bajoPeriodo}/compras/import", [CompraController::class, 'import'], [$pw('iva.compras')]);
 
     // Libro IVA: totales, detalle por alícuota, DDJJ F2002 e IVA Simple (lectura)
     $router->get("{$bajoPeriodo}/totales", [LibroIvaController::class, 'totales'], [$perm('iva.libro')]);

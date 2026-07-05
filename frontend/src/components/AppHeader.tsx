@@ -15,6 +15,7 @@ import CIcon from '@coreui/icons-react'
 import { cilMenu, cilSun, cilMoon, cilContrast, cilUser, cilAccountLogout } from '@coreui/icons'
 import { useUi } from '../layout/UiContext'
 import { useAuth } from '../auth/AuthContext'
+import ActiveSelector from './ActiveSelector'
 
 export default function AppHeader() {
   const { sidebarShow, setSidebarShow } = useUi()
@@ -35,6 +36,10 @@ export default function AppHeader() {
         <CHeaderToggler onClick={() => setSidebarShow(!sidebarShow)} className="px-md-0 me-md-3">
           <CIcon icon={cilMenu} size="lg" />
         </CHeaderToggler>
+
+        <CHeaderNav className="d-none d-md-flex align-items-center">
+          <ActiveSelector />
+        </CHeaderNav>
 
         <CHeaderNav className="ms-auto align-items-center">
           <CDropdown variant="nav-item" placement="bottom-end">

@@ -19,7 +19,7 @@ class VentaRepository
         'rubro_id', 'tipo_operacion_venta_id', 'tipo_moneda_id', 'cliente_id', 'fecha',
         'cliente_nombre', 'cuit', 'letra', 'punto_venta', 'numero', 'numero_fin',
         'neto_no_grav', 'exento', 'imp_interno', 'total', 'tipo_cambio', 'concepto',
-        'cai', 'fecha_cai', 'actividad_id', 'es_bien_uso',
+        'cai', 'fecha_cai', 'actividad_id', 'es_bien_uso', 'campo_auxiliar',
     ];
 
     private const DISCRIMINACION_WRITABLE = [
