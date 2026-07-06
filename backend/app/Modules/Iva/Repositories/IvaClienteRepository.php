@@ -20,11 +20,22 @@ class IvaClienteRepository
     {
     }
 
-    /** @return list<array<string, mixed>> */
-    public function findAllByEmpresa(int $empresaId): array
+    /**
+     * Clientes de la empresa + los marcados `esglobal` de cualquier empresa del mismo
+     * estudio (tenant): así un cliente cargado una vez se ve en todas las empresas.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findAllByEmpresa(int $empresaId, string $tenantId): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM iva_clientes WHERE empresa_id = ? ORDER BY nombre');
-        $stmt->execute([$empresaId]);
+        $stmt = $this->pdo->prepare(
+            'SELECT c.* FROM iva_clientes c
+               JOIN empresas e ON c.empresa_id = e.id
+              WHERE c.empresa_id = ?
+                 OR (c.esglobal = ? AND e.tenant_id = ?)
+              ORDER BY c.nombre'
+        );
+        $stmt->execute([$empresaId, 'S', $tenantId]);
 
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

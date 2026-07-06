@@ -12,6 +12,7 @@ import {
   CTableHeaderCell,
   CTableBody,
   CTableDataCell,
+  CBadge,
   CSpinner,
   CAlert,
 } from '@coreui/react'
@@ -97,31 +98,51 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {data.map((s) => (
-                  <CTableRow key={s.id}>
-                    <CTableDataCell>{s.nombre}</CTableDataCell>
-                    <CTableDataCell>{s.cuit ?? '—'}</CTableDataCell>
-                    <CTableDataCell>{s.localidad ?? '—'}</CTableDataCell>
-                    <CTableDataCell>{s.telefono ?? '—'}</CTableDataCell>
-                    <CTableDataCell className="text-end">
-                      <CButton
-                        color="secondary"
-                        variant="outline"
-                        size="sm"
-                        className="me-2"
-                        onClick={() => {
-                          setEditing(s)
-                          setModalOpen(true)
-                        }}
-                      >
-                        Editar
-                      </CButton>
-                      <CButton color="danger" variant="outline" size="sm" onClick={() => onDelete(s)}>
-                        Eliminar
-                      </CButton>
-                    </CTableDataCell>
-                  </CTableRow>
-                ))}
+                {data.map((s) => {
+                  // Un global de OTRA empresa se administra desde su empresa de origen.
+                  const ajeno = s.esglobal === 'S' && s.empresa_id !== id
+                  return (
+                    <CTableRow key={s.id}>
+                      <CTableDataCell>
+                        {s.nombre}
+                        {s.esglobal === 'S' && (
+                          <CBadge color="info" className="ms-2">
+                            Global
+                          </CBadge>
+                        )}
+                      </CTableDataCell>
+                      <CTableDataCell>{s.cuit ?? '—'}</CTableDataCell>
+                      <CTableDataCell>{s.localidad ?? '—'}</CTableDataCell>
+                      <CTableDataCell>{s.telefono ?? '—'}</CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        <CButton
+                          color="secondary"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                          disabled={ajeno}
+                          title={ajeno ? 'Global de otra empresa: se edita desde su empresa de origen' : undefined}
+                          onClick={() => {
+                            setEditing(s)
+                            setModalOpen(true)
+                          }}
+                        >
+                          Editar
+                        </CButton>
+                        <CButton
+                          color="danger"
+                          variant="outline"
+                          size="sm"
+                          disabled={ajeno}
+                          title={ajeno ? 'Global de otra empresa: se borra desde su empresa de origen' : undefined}
+                          onClick={() => onDelete(s)}
+                        >
+                          Eliminar
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  )
+                })}
                 {data.length === 0 && (
                   <CTableRow>
                     <CTableDataCell colSpan={5} className="text-center text-body-secondary py-4">

@@ -31,6 +31,7 @@ const schema = z.object({
   cp: z.string().optional(),
   cai: z.string().optional(),
   fecha_cai: z.string().optional(),
+  esglobal: z.boolean().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -97,6 +98,7 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
         cp: sujeto?.cp ?? '',
         cai: sujeto?.cai ?? '',
         fecha_cai: sujeto?.fecha_cai ?? '',
+        esglobal: sujeto?.esglobal === 'S',
       })
     }
   }, [visible, sujeto, reset])
@@ -106,6 +108,7 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
       ...v,
       condicion_iva_id: v.condicion_iva_id ? Number(v.condicion_iva_id) : null,
       provincia_id: v.provincia_id ? Number(v.provincia_id) : null,
+      esglobal: v.esglobal ? 'S' : 'N',
     })
 
   const titulo = `${sujeto ? 'Editar' : 'Nuevo'} ${esProveedor ? 'proveedor' : 'cliente'}`
@@ -198,6 +201,12 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
                 </div>
               </>
             )}
+          </div>
+          <div className="form-check">
+            <input className="form-check-input" type="checkbox" id="esglobal" {...register('esglobal')} />
+            <label className="form-check-label" htmlFor="esglobal">
+              Compartir con todas las empresas del estudio (global)
+            </label>
           </div>
         </CModalBody>
         <CModalFooter>

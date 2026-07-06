@@ -24,7 +24,7 @@ class IvaClienteService
     {
         $this->assertEmpresa($empresaId, $tenantId);
 
-        return $this->clientes->findAllByEmpresa($empresaId);
+        return $this->clientes->findAllByEmpresa($empresaId, $tenantId);
     }
 
     /** @return array<string, mixed> */

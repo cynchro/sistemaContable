@@ -22,10 +22,16 @@ class IvaProveedorRepository
     }
 
     /** @return list<array<string, mixed>> */
-    public function findAllByEmpresa(int $empresaId): array
+    public function findAllByEmpresa(int $empresaId, string $tenantId): array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM iva_proveedores WHERE empresa_id = ? ORDER BY nombre');
-        $stmt->execute([$empresaId]);
+        $stmt = $this->pdo->prepare(
+            'SELECT p.* FROM iva_proveedores p
+               JOIN empresas e ON p.empresa_id = e.id
+              WHERE p.empresa_id = ?
+                 OR (p.esglobal = ? AND e.tenant_id = ?)
+              ORDER BY p.nombre'
+        );
+        $stmt->execute([$empresaId, 'S', $tenantId]);
 
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

@@ -5,6 +5,7 @@ export type RecursoSujeto = 'clientes' | 'proveedores'
 
 export interface Sujeto {
   id: number
+  empresa_id: number
   nombre: string
   cuit: string | null
   condicion_iva_id: number | null
@@ -13,6 +14,8 @@ export interface Sujeto {
   localidad: string | null
   telefono: string | null
   ingresos_brutos: string | null
+  /** 'S' = compartido entre todas las empresas del estudio (tenant). */
+  esglobal?: string | null
   cp?: string | null
   cai?: string | null
   fecha_cai?: string | null
@@ -27,6 +30,7 @@ export interface SujetoInput {
   localidad?: string | null
   telefono?: string | null
   ingresos_brutos?: string | null
+  esglobal?: string | null
   cp?: string | null
   cai?: string | null
   fecha_cai?: string | null

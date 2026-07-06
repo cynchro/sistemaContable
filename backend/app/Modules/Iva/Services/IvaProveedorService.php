@@ -24,7 +24,7 @@ class IvaProveedorService
     {
         $this->assertEmpresa($empresaId, $tenantId);
 
-        return $this->proveedores->findAllByEmpresa($empresaId);
+        return $this->proveedores->findAllByEmpresa($empresaId, $tenantId);
     }
 
     /** @return array<string, mixed> */
