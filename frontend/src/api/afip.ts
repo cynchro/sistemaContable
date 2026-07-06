@@ -1,6 +1,17 @@
 import api from './client'
 
 /** Datos del padrón A5 de ARCA (consulta por CUIT). */
+/** Ambiente AFIP activo: 'homologacion' (pruebas) o 'produccion' (real). */
+export interface AfipAmbiente {
+  env: string
+  cuit: string | null
+}
+
+export async function getAfipAmbiente(): Promise<AfipAmbiente> {
+  const { data } = await api.get('/afip/ambiente')
+  return data.data as AfipAmbiente
+}
+
 export interface PersonaPadron {
   cuit: string | null
   tipo_persona: string | null

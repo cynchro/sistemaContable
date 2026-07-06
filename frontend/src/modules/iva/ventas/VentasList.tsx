@@ -34,6 +34,7 @@ import {
 import { emitirCae } from '../../../api/afip'
 import VentaFormModal from './VentaFormModal'
 import MoverComprobanteModal from '../MoverComprobanteModal'
+import AfipAmbienteBanner from '../../../components/AfipAmbienteBanner'
 
 /** Mensaje de error de la API (422 con detalle de validación o 409 de conflicto). */
 function apiError(e: unknown): string {
@@ -223,6 +224,9 @@ export default function VentasList() {
             ← Empresas
           </Link>
           <strong className="ms-2">Ventas</strong>
+          <span className="ms-2">
+            <AfipAmbienteBanner variant="badge" />
+          </span>
           {isFetching && <CSpinner size="sm" className="ms-2" />}
         </div>
         <div className="d-flex gap-2">

@@ -30,6 +30,7 @@ import {
   type PuntoVenta,
 } from '../../api/afip'
 import { listEmpresas } from '../../api/empresas'
+import AfipAmbienteBanner from '../../components/AfipAmbienteBanner'
 
 function apiError(e: unknown, fallback: string): string {
   const err = e as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
@@ -277,6 +278,7 @@ export default function AfipPage() {
   return (
     <>
       <h2 className="mb-4">AFIP / Factura electrónica</h2>
+      <AfipAmbienteBanner />
       <CAlert color="info" className="small">
         La consulta de padrón y la emisión de CAE usan los web services de ARCA y requieren el
         certificado configurado en el backend (homologación o producción). Sin certificado válido,

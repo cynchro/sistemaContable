@@ -12,6 +12,7 @@ use App\Modules\Iva\Controllers\EmpresaActividadController;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
 use App\Modules\Iva\Controllers\PadronController;
+use App\Modules\Iva\Controllers\AfipController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
 use App\Modules\Iva\Controllers\ExportFormatoController;
@@ -188,6 +189,9 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         [ExportFormatoController::class, 'exportar'],
         [$perm('iva.libro')],
     );
+
+    // Ambiente AFIP activo (homologación = pruebas, producción = real) — para el aviso del front
+    $router->get('/afip/ambiente', [AfipController::class, 'ambiente'], [$perm('iva.padron')]);
 
     // Padrón AFIP: consulta de un contribuyente por CUIT (autocompletar cliente/proveedor)
     $router->get('/padron/{cuit}', [PadronController::class, 'show'], [$perm('iva.padron')]);
