@@ -26,6 +26,8 @@ export interface DiscriminacionInput {
   neto_gravado: string
   iva_alicuota: string
   iva_importe?: string | null
+  /** Reintegro de IVA (Factura T): iguala al IVA para que el débito neto sea cero. */
+  reintegro_t?: string | null
 }
 
 /**

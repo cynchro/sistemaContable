@@ -280,6 +280,8 @@ export default function VentaFormModal({
 
   const lineas = watch('discriminaciones')
   const esFacturaC = (watch('letra') ?? '').trim().toUpperCase() === 'C'
+  const tipoCbteId = watch('tipo_comprobante_id')
+  const esFacturaT = tiposComprobante?.find((t) => String(t.id) === tipoCbteId)?.codigo === 'FT'
   const netoNoGrav = watch('neto_no_grav')
   const exento = watch('exento')
   const impInterno = watch('imp_interno')
@@ -325,11 +327,21 @@ export default function VentaFormModal({
       campo_auxiliar: str(v.campo_auxiliar),
       actividad_id: v.actividad_id ? Number(v.actividad_id) : null,
       es_bien_uso: v.es_bien_uso ? 'S' : 'N',
-      discriminaciones: v.discriminaciones.map((d) => ({
-        neto_gravado: d.neto_gravado,
-        iva_alicuota: d.iva_alicuota,
-        iva_importe: str(d.iva_importe),
-      })),
+      discriminaciones: v.discriminaciones.map((d) => {
+        const neto = Number(d.neto_gravado) || 0
+        const alic = Number(d.iva_alicuota) || 0
+        const ivaEfectivo =
+          d.iva_importe && Number.isFinite(Number(d.iva_importe))
+            ? d.iva_importe
+            : (Math.round(neto * alic) / 100).toFixed(2)
+        return {
+          neto_gravado: d.neto_gravado,
+          iva_alicuota: d.iva_alicuota,
+          iva_importe: str(d.iva_importe),
+          // Factura T: el reintegro iguala al IVA → débito neto = 0 en libro/DDJJ.
+          reintegro_t: esFacturaT ? ivaEfectivo : null,
+        }
+      }),
       percepciones: v.percepciones
         .filter((p) => p.tipo_retencion_id)
         .map((p) => ({
@@ -551,6 +563,12 @@ export default function VentaFormModal({
                 <CAlert color="info" className="py-2 small mb-2">
                   Factura C (Monotributo/Exento): no lleva IVA discriminado. Cargá el importe en{' '}
                   <strong>Neto no gravado</strong> y dejá la discriminación en cero.
+                </CAlert>
+              )}
+              {esFacturaT && (
+                <CAlert color="info" className="py-2 small mb-2">
+                  Factura T: el IVA se <strong>reintegra al turista</strong>. Cargá el Neto y el IVA normal; el
+                  sistema iguala el reintegro al IVA para que el <strong>débito fiscal neto sea cero</strong>.
                 </CAlert>
               )}
               <CTable small bordered responsive align="middle">

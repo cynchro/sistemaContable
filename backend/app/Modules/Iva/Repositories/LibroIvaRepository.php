@@ -33,7 +33,9 @@ class LibroIvaRepository
     public function ventasIvaPorSigno(int $periodoId): array
     {
         return $this->run(
-            'SELECT COALESCE(tc.signo, 1) AS signo, SUM(vd.iva_importe) AS importe
+            // Débito fiscal neto: se descuenta el reintegro de IVA (Factura T → IVA cero).
+            'SELECT COALESCE(tc.signo, 1) AS signo,
+                    SUM(vd.iva_importe - COALESCE(vd.reintegro_t, 0)) AS importe
                FROM venta_discriminaciones vd
                JOIN ventas v ON vd.venta_id = v.id
                LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
@@ -79,8 +81,10 @@ class LibroIvaRepository
     public function ventasDetallePorAlicuota(int $periodoId): array
     {
         $stmt = $this->pdo->prepare(
+            // IVA neto del reintegro (Factura T → débito cero) para libro/DDJJ.
             'SELECT v.condicion_iva_id, vd.iva_alicuota AS alicuota, COALESCE(tc.signo, 1) AS signo,
-                    SUM(vd.neto_gravado) AS neto_gravado, SUM(vd.iva_importe) AS iva
+                    SUM(vd.neto_gravado) AS neto_gravado,
+                    SUM(vd.iva_importe - COALESCE(vd.reintegro_t, 0)) AS iva
                FROM venta_discriminaciones vd
                JOIN ventas v ON vd.venta_id = v.id
                LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id

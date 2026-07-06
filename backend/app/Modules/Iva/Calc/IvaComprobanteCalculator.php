@@ -27,7 +27,7 @@ final class IvaComprobanteCalculator implements Calculator
 {
     /**
      * @param  array{neto_no_grav?: mixed, exento?: mixed, imp_interno?: mixed} $cabecera
-     * @param  list<array{neto_gravado?: mixed, iva_alicuota?: mixed, iva_importe?: mixed, iva_inc_alicuota?: mixed}> $lineas
+     * @param  list<array<string, mixed>> $lineas cada línea: neto_gravado, iva_alicuota, iva_importe?, iva_inc_alicuota?
      * @param  list<array{importe?: mixed}> $percepciones percepciones ya resueltas (integran el total)
      * @return array{
      *   lineas: list<array{neto_gravado: string, iva_importe: string, iva_inc_importe: string}>,

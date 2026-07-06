@@ -66,7 +66,7 @@ tipos_retencion.base_calculo), `0039` (campo_auxiliar). Payload venta/compra en
 | Moneda de pago + Cotización | `tipo_moneda_id`, `tipo_cambio` | sí | ✅ | — |
 | Impuestos Internos | `imp_interno` | sí | ✅ | — |
 | Campo Auxiliar (nombre configurable) | `campo_auxiliar` | sí (nombre fijo) | 🟡 | nombre configurable (Utilidades > Config) |
-| **Reintegro (Factura T)** | `venta_discriminaciones.reintegro_t` (⚠️ el calculador lo IGNORA) | no | 🔴 | **requiere backend**: el motor no resta el reintegro; wire sin eso sería engañoso |
+| **Reintegro (Factura T)** | `venta_discriminaciones.reintegro_t` | sí | ✅ | **HECHO** — LibroIvaRepository netea el débito (`iva − reintegro`); subdiario ya lo hacía; DDJJ F2002 cubierto. Front: detecta Factura T (cód FT) → reintegro=IVA + aviso. ⚠️ exports (RG3685/LID/DJ) reportan el reintegro **aparte** (manual), no neteado — pendiente ese mecanismo. E2E: total 1210, débito 0 |
 | IVA incluido | `venta_discriminaciones.iva_inc_*` | no | 🟡 | el contador no reconoce "IVA incluido" → probablemente descartar |
 | Concepto del comprobante | `concepto` (SMALLINT) | no | 🟡 | verificar uso/semántica |
 | **Comprobantes asociados (NC/ND)** | `venta_comprobantes_asociados[]` (mig. 0030) | sí (ventas) | ✅ | **HECHO** — sección en VentaFormModal (tipo/letra/PV/número/CUIT/fecha). E2E OK |
@@ -130,7 +130,7 @@ tipos_retencion.base_calculo), `0039` (campo_auxiliar). Payload venta/compra en
 
 **P2 — reglas/UX del manual:**
 5. ✅ **auto-última-fecha, typeahead, Factura C (hint) y override de importe IVA HECHOS** (override: motor respeta iva_importe si viene; celda editable; E2E OK).
-6. 🔴 **Factura T** — ⚠️ **requiere backend**: verificado que el calculador ignora `reintegro_t` (solo persiste la columna). Wire sin cambio de motor daría IVA/total incorrectos.
+6. ✅ **HECHO — Factura T** (libro/DDJJ/totales/subdiario netean el débito; front setea reintegro=IVA + aviso). Pendiente menor: reporte del reintegro en los **exports** (RG3685/Libro IVA Digital/DJ) — el manual lo trata aparte (importe total a cargar en el aplicativo).
 7. ✅ **HECHO — ABM de tipos_retencion y de rubros** (pestañas en Utilidades; estándar read-only + propios editables). E2E OK.
 8. 🟡 **Búsqueda inteligente** (typeahead) de cliente/proveedor por nombre/CUIT.
 
