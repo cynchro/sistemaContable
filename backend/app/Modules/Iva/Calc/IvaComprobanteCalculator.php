@@ -27,7 +27,7 @@ final class IvaComprobanteCalculator implements Calculator
 {
     /**
      * @param  array{neto_no_grav?: mixed, exento?: mixed, imp_interno?: mixed} $cabecera
-     * @param  list<array{neto_gravado?: mixed, iva_alicuota?: mixed, iva_inc_alicuota?: mixed}> $lineas
+     * @param  list<array{neto_gravado?: mixed, iva_alicuota?: mixed, iva_importe?: mixed, iva_inc_alicuota?: mixed}> $lineas
      * @param  list<array{importe?: mixed}> $percepciones percepciones ya resueltas (integran el total)
      * @return array{
      *   lineas: list<array{neto_gravado: string, iva_importe: string, iva_inc_importe: string}>,
@@ -43,7 +43,11 @@ final class IvaComprobanteCalculator implements Calculator
 
         foreach ($lineas as $linea) {
             $neto    = Decimal::of($linea['neto_gravado'] ?? 0)->round(2);
-            $iva     = $neto->percentage(Decimal::of($linea['iva_alicuota'] ?? 0))->round(2);
+            // Override del importe de IVA (regla del "asterisco" del manual: tolerancia de
+            // redondeo). Si la línea trae un iva_importe numérico se respeta; si no, se calcula.
+            $iva     = (isset($linea['iva_importe']) && is_numeric($linea['iva_importe']))
+                ? Decimal::of($linea['iva_importe'])->round(2)
+                : $neto->percentage(Decimal::of($linea['iva_alicuota'] ?? 0))->round(2);
             $ivaInc  = $neto->percentage(Decimal::of($linea['iva_inc_alicuota'] ?? 0))->round(2);
 
             $netoGravado = $netoGravado->add($neto);

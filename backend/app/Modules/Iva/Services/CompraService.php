@@ -241,6 +241,8 @@ class CompraService
             $out[] = [
                 'neto_gravado'     => $linea['neto_gravado'],
                 'iva_alicuota'     => $linea['iva_alicuota'],
+                // Override opcional del importe de IVA (regla del asterisco): sólo si es numérico.
+                'iva_importe'      => $this->esNumerico($linea['iva_importe'] ?? null) ? $linea['iva_importe'] : null,
                 'iva_inc_alicuota' => $linea['iva_inc_alicuota'] ?? null,
                 'cf_computable'    => $cf,
             ];

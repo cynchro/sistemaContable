@@ -20,10 +20,12 @@ export interface VentasFiltros {
   letra?: string
 }
 
-/** Línea de discriminación de IVA: neto gravado a una alícuota. */
+/** Línea de discriminación de IVA: neto gravado a una alícuota. `iva_importe` es un
+ * override opcional (regla del asterisco); si va vacío, lo calcula el motor. */
 export interface DiscriminacionInput {
   neto_gravado: string
   iva_alicuota: string
+  iva_importe?: string | null
 }
 
 /**

@@ -58,7 +58,7 @@ tipos_retencion.base_calculo), `0039` (campo_auxiliar). Payload venta/compra en
 | Total (transcripto, "Diferencia=0") | `total` **derivado por el motor** | no se ingresa | 🟡 | por diseño el total lo calcula el motor; documentar (no hay "diferencia=0") |
 | Subtotal (Neto+IVA) helper de carga | — | no | 🟡 | helper opcional de UX |
 | Neto Gravado N + alícuota + IVA | `venta_discriminaciones[]` (multi) | sí (multi-línea) | ✅ | — |
-| Override importe IVA (por redondeo, "*") | `iva_importe` | no (calculado) | 🔴 | permitir override del importe de IVA |
+| Override importe IVA (por redondeo, "*") | `iva_importe` (override en el motor) | **sí** | ✅ | **HECHO** — celda IVA editable (placeholder=computado); backend: normalizador acepta iva_importe y el calculador lo respeta. E2E OK |
 | **Percepción/Retención** (+ "Otros importes", multi) | `venta_percepciones[]` `{tipo_retencion_id, alicuota?, base?, importe?, provincia_id?}` + `PercepcionCalculator` | **sí (multi)** | ✅ | **HECHO** — sección Percepciones/Retenciones en ambos modales (catálogo `tipos-retencion`, importe calculado por el motor, integra el total). Verificado E2E. |
 | Fecha de pago percepción | — (verificar) | no | ⛔ | verificar si el modelo lo tiene |
 | Importe Exento | `exento` | sí | ✅ | — |
@@ -129,7 +129,7 @@ tipos_retencion.base_calculo), `0039` (campo_auxiliar). Payload venta/compra en
 4. ✅ **HECHO — Comprobantes asociados (NC/ND)** (`comprobantes_asociados[]`, ventas). Verificado E2E.
 
 **P2 — reglas/UX del manual:**
-5. ✅ **auto-última-fecha, typeahead y Factura C (hint) HECHOS**. Pendiente **override de importe IVA** (requiere backend: el motor siempre calcula).
+5. ✅ **auto-última-fecha, typeahead, Factura C (hint) y override de importe IVA HECHOS** (override: motor respeta iva_importe si viene; celda editable; E2E OK).
 6. 🔴 **Factura T** — ⚠️ **requiere backend**: verificado que el calculador ignora `reintegro_t` (solo persiste la columna). Wire sin cambio de motor daría IVA/total incorrectos.
 7. ✅ **HECHO — ABM de tipos_retencion y de rubros** (pestañas en Utilidades; estándar read-only + propios editables). E2E OK.
 8. 🟡 **Búsqueda inteligente** (typeahead) de cliente/proveedor por nombre/CUIT.

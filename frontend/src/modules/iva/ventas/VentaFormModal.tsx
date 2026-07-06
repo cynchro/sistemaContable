@@ -36,6 +36,7 @@ const ALICUOTAS = ['0', '10.5', '21', '27', '2.5', '5']
 const lineaSchema = z.object({
   neto_gravado: z.string().min(1, 'Requerido'),
   iva_alicuota: z.string().min(1, 'Requerido'),
+  iva_importe: z.string().optional(),
 })
 
 const percepcionSchema = z.object({
@@ -110,7 +111,7 @@ const VACIO: FormValues = {
   campo_auxiliar: '',
   actividad_id: '',
   es_bien_uso: false,
-  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21' }],
+  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '' }],
   percepciones: [],
   comprobantes_asociados: [],
 }
@@ -247,11 +248,18 @@ export default function VentaFormModal({
         es_bien_uso: detalle.es_bien_uso === 'S',
         discriminaciones:
           detalle.discriminaciones.length > 0
-            ? detalle.discriminaciones.map((d) => ({
-                neto_gravado: String(d.neto_gravado),
-                iva_alicuota: String(Number(d.iva_alicuota)),
-              }))
-            : [{ neto_gravado: '', iva_alicuota: '21' }],
+            ? detalle.discriminaciones.map((d) => {
+                // Solo tratamos iva_importe como override si difiere del computado (así una
+                // línea normal recalcula al cambiar neto/alícuota en vez de quedar fija).
+                const computado = Math.round((Number(d.neto_gravado) || 0) * (Number(d.iva_alicuota) || 0)) / 100
+                const esOverride = Math.abs((Number(d.iva_importe) || 0) - computado) > 0.005
+                return {
+                  neto_gravado: String(d.neto_gravado),
+                  iva_alicuota: String(Number(d.iva_alicuota)),
+                  iva_importe: esOverride ? String(d.iva_importe) : '',
+                }
+              })
+            : [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '' }],
         percepciones: (detalle.percepciones ?? []).map((p) => ({
           tipo_retencion_id: p.tipo_retencion_id != null ? String(p.tipo_retencion_id) : '',
           alicuota: p.alicuota != null ? String(Number(p.alicuota)) : '',
@@ -283,8 +291,9 @@ export default function VentaFormModal({
     for (const l of lineas ?? []) {
       const n = Number(l.neto_gravado) || 0
       const a = Number(l.iva_alicuota) || 0
+      const ov = Number(l.iva_importe)
       neto += n
-      iva += (n * a) / 100
+      iva += l.iva_importe && Number.isFinite(ov) ? ov : (n * a) / 100
     }
     const extra = (Number(netoNoGrav) || 0) + (Number(exento) || 0) + (Number(impInterno) || 0)
     return neto + iva + extra
@@ -319,6 +328,7 @@ export default function VentaFormModal({
       discriminaciones: v.discriminaciones.map((d) => ({
         neto_gravado: d.neto_gravado,
         iva_alicuota: d.iva_alicuota,
+        iva_importe: str(d.iva_importe),
       })),
       percepciones: v.percepciones
         .filter((p) => p.tipo_retencion_id)
@@ -529,7 +539,7 @@ export default function VentaFormModal({
                   color="primary"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21' })}
+                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21', iva_importe: '' })}
                 >
                   + Agregar línea
                 </CButton>
@@ -575,8 +585,14 @@ export default function VentaFormModal({
                             ))}
                           </CFormSelect>
                         </CTableDataCell>
-                        <CTableDataCell className="text-end">
-                          {((n * a) / 100).toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        <CTableDataCell>
+                          <CFormInput
+                            size="sm"
+                            inputMode="decimal"
+                            className="text-end"
+                            placeholder={((n * a) / 100).toFixed(2)}
+                            {...register(`discriminaciones.${i}.iva_importe`)}
+                          />
                         </CTableDataCell>
                         <CTableDataCell className="text-end">
                           <CButton

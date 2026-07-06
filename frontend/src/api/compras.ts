@@ -25,6 +25,7 @@ export interface CompraDiscriminacionInput {
   neto_gravado: string
   iva_alicuota: string
   cf_computable?: string | null
+  iva_importe?: string | null
 }
 
 /** Cabecera de la compra enviada al backend (las líneas/total los calcula el motor). */

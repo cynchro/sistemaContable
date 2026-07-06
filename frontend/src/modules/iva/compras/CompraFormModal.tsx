@@ -36,6 +36,7 @@ const ALICUOTAS = ['0', '10.5', '21', '27', '2.5', '5']
 const lineaSchema = z.object({
   neto_gravado: z.string().min(1, 'Requerido'),
   iva_alicuota: z.string().min(1, 'Requerido'),
+  iva_importe: z.string().optional(),
   cf_computable: z.string().optional(),
 })
 
@@ -97,7 +98,7 @@ const VACIO: FormValues = {
   campo_auxiliar: '',
   actividad_id: '',
   concepto_dj: '',
-  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', cf_computable: '' }],
+  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '' }],
   percepciones: [],
 }
 
@@ -218,12 +219,17 @@ export default function CompraFormModal({
         concepto_dj: detalle.concepto_dj != null ? String(detalle.concepto_dj) : '',
         discriminaciones:
           detalle.discriminaciones.length > 0
-            ? detalle.discriminaciones.map((d) => ({
-                neto_gravado: String(d.neto_gravado),
-                iva_alicuota: String(Number(d.iva_alicuota)),
-                cf_computable: d.cf_computable != null ? String(d.cf_computable) : '',
-              }))
-            : [{ neto_gravado: '', iva_alicuota: '21', cf_computable: '' }],
+            ? detalle.discriminaciones.map((d) => {
+                const computado = Math.round((Number(d.neto_gravado) || 0) * (Number(d.iva_alicuota) || 0)) / 100
+                const esOverride = Math.abs((Number(d.iva_importe) || 0) - computado) > 0.005
+                return {
+                  neto_gravado: String(d.neto_gravado),
+                  iva_alicuota: String(Number(d.iva_alicuota)),
+                  iva_importe: esOverride ? String(d.iva_importe) : '',
+                  cf_computable: d.cf_computable != null ? String(d.cf_computable) : '',
+                }
+              })
+            : [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '' }],
         percepciones: (detalle.percepciones ?? []).map((p) => ({
           tipo_retencion_id: p.tipo_retencion_id != null ? String(p.tipo_retencion_id) : '',
           alicuota: p.alicuota != null ? String(Number(p.alicuota)) : '',
@@ -246,8 +252,9 @@ export default function CompraFormModal({
     for (const l of lineas ?? []) {
       const n = Number(l.neto_gravado) || 0
       const a = Number(l.iva_alicuota) || 0
+      const ov = Number(l.iva_importe)
       neto += n
-      iva += (n * a) / 100
+      iva += l.iva_importe && Number.isFinite(ov) ? ov : (n * a) / 100
     }
     const extra = (Number(netoNoGrav) || 0) + (Number(exento) || 0) + (Number(impInterno) || 0)
     return neto + iva + extra
@@ -280,6 +287,7 @@ export default function CompraFormModal({
       discriminaciones: v.discriminaciones.map((d) => ({
         neto_gravado: d.neto_gravado,
         iva_alicuota: d.iva_alicuota,
+        iva_importe: str(d.iva_importe),
         cf_computable: str(d.cf_computable),
       })),
       percepciones: v.percepciones
@@ -464,7 +472,7 @@ export default function CompraFormModal({
                   color="primary"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21', cf_computable: '' })}
+                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '' })}
                 >
                   + Agregar línea
                 </CButton>
@@ -492,7 +500,10 @@ export default function CompraFormModal({
                   {fields.map((f, i) => {
                     const n = Number(lineas?.[i]?.neto_gravado) || 0
                     const a = Number(lineas?.[i]?.iva_alicuota) || 0
-                    const iva = (n * a) / 100
+                    const ovImp = lineas?.[i]?.iva_importe
+                    const computado = (n * a) / 100
+                    // IVA efectivo (override si se cargó), usado para el placeholder de CF.
+                    const iva = ovImp && Number.isFinite(Number(ovImp)) ? Number(ovImp) : computado
                     return (
                       <CTableRow key={f.id}>
                         <CTableDataCell>
@@ -512,8 +523,14 @@ export default function CompraFormModal({
                             ))}
                           </CFormSelect>
                         </CTableDataCell>
-                        <CTableDataCell className="text-end">
-                          {iva.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                        <CTableDataCell>
+                          <CFormInput
+                            size="sm"
+                            inputMode="decimal"
+                            className="text-end"
+                            placeholder={computado.toFixed(2)}
+                            {...register(`discriminaciones.${i}.iva_importe`)}
+                          />
                         </CTableDataCell>
                         <CTableDataCell>
                           <CFormInput
