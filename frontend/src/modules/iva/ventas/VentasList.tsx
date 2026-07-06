@@ -201,6 +201,8 @@ export default function VentasList() {
 
   const total = data?.total ?? 0
   const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
+  // Última fecha cargada (para pre-cargar en una venta nueva; YYYY-MM-DD compara lexicográfico).
+  const ultimaFecha = rows.reduce((max, v) => (v.fecha && v.fecha > max ? v.fecha : max), '')
 
   return (
     <>
@@ -394,6 +396,7 @@ export default function VentasList() {
       ventaId={editingId}
       saving={saveM.isPending}
       errorMsg={formError}
+      ultimaFecha={ultimaFecha}
       onClose={closeModal}
       onSubmit={(v) => saveM.mutate(v)}
     />

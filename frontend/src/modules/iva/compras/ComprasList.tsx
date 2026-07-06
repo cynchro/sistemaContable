@@ -189,6 +189,7 @@ export default function ComprasList() {
 
   const total = data?.total ?? 0
   const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
+  const ultimaFecha = rows.reduce((max, c) => (c.fecha && c.fecha > max ? c.fecha : max), '')
 
   return (
     <>
@@ -351,6 +352,7 @@ export default function ComprasList() {
         compraId={editingId}
         saving={saveM.isPending}
         errorMsg={formError}
+        ultimaFecha={ultimaFecha}
         onClose={closeModal}
         onSubmit={(v) => saveM.mutate(v)}
       />

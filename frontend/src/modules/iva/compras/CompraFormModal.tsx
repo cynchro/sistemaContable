@@ -23,10 +23,12 @@ import {
   CTableBody,
   CTableDataCell,
 } from '@coreui/react'
-import { listCatalogo } from '../../../api/catalogos'
+import { listCatalogo, listTiposRetencion } from '../../../api/catalogos'
 import { listSujetos } from '../../../api/sujetos'
 import { listActividades } from '../../../api/actividades'
+import { listRubros } from '../../../api/rubros'
 import { getCompra, type CompraInput } from '../../../api/compras'
+import SujetoTypeahead from '../SujetoTypeahead'
 
 /** Alícuotas habilitadas por AFIP (%). El motor usa el %. */
 const ALICUOTAS = ['0', '10.5', '21', '27', '2.5', '5']
@@ -35,6 +37,13 @@ const lineaSchema = z.object({
   neto_gravado: z.string().min(1, 'Requerido'),
   iva_alicuota: z.string().min(1, 'Requerido'),
   cf_computable: z.string().optional(),
+})
+
+const percepcionSchema = z.object({
+  tipo_retencion_id: z.string().min(1, 'Elegí un tipo'),
+  alicuota: z.string().optional(),
+  importe: z.string().optional(),
+  provincia_id: z.string().optional(),
 })
 
 const schema = z.object({
@@ -46,9 +55,12 @@ const schema = z.object({
   cuit: z.string().optional(),
   condicion_iva_id: z.string().optional(),
   provincia_id: z.string().optional(),
+  rubro_id: z.string().optional(),
   letra: z.string().optional(),
   punto_venta: z.string().optional(),
   numero: z.string().optional(),
+  cai: z.string().optional(),
+  fecha_cai: z.string().optional(),
   neto_no_grav: z.string().optional(),
   exento: z.string().optional(),
   imp_interno: z.string().optional(),
@@ -58,6 +70,7 @@ const schema = z.object({
   actividad_id: z.string().optional(),
   concepto_dj: z.string().optional(),
   discriminaciones: z.array(lineaSchema).min(1, 'Agregá al menos una línea de IVA'),
+  percepciones: z.array(percepcionSchema),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -70,9 +83,12 @@ const VACIO: FormValues = {
   cuit: '',
   condicion_iva_id: '',
   provincia_id: '',
+  rubro_id: '',
   letra: '',
   punto_venta: '',
   numero: '',
+  cai: '',
+  fecha_cai: '',
   neto_no_grav: '',
   exento: '',
   imp_interno: '',
@@ -82,6 +98,7 @@ const VACIO: FormValues = {
   actividad_id: '',
   concepto_dj: '',
   discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', cf_computable: '' }],
+  percepciones: [],
 }
 
 interface Props {
@@ -91,6 +108,8 @@ interface Props {
   compraId: number | null
   saving: boolean
   errorMsg?: string | null
+  /** Fecha a pre-cargar en una compra nueva (última cargada del período). */
+  ultimaFecha?: string
   onClose: () => void
   onSubmit: (values: CompraInput) => void
 }
@@ -105,6 +124,7 @@ export default function CompraFormModal({
   compraId,
   saving,
   errorMsg,
+  ultimaFecha,
   onClose,
   onSubmit,
 }: Props) {
@@ -128,6 +148,10 @@ export default function CompraFormModal({
     queryKey: ['catalogo', 'tipos-moneda'],
     queryFn: () => listCatalogo('tipos-moneda'),
   })
+  const { data: tiposRetencion } = useQuery({
+    queryKey: ['catalogo', 'tipos-retencion'],
+    queryFn: () => listTiposRetencion(),
+  })
   const { data: proveedores } = useQuery({
     queryKey: ['proveedores', empresaId],
     queryFn: () => listSujetos('proveedores', empresaId),
@@ -138,6 +162,7 @@ export default function CompraFormModal({
     queryFn: () => listActividades(empresaId),
     enabled: visible,
   })
+  const { data: rubros } = useQuery({ queryKey: ['rubros'], queryFn: () => listRubros(), enabled: visible })
 
   const { data: detalle, isLoading: cargando } = useQuery({
     queryKey: ['compra', empresaId, periodoId, compraId],
@@ -156,11 +181,16 @@ export default function CompraFormModal({
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: VACIO })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'discriminaciones' })
+  const {
+    fields: percFields,
+    append: percAppend,
+    remove: percRemove,
+  } = useFieldArray({ control, name: 'percepciones' })
 
   useEffect(() => {
     if (!visible) return
     if (compraId == null) {
-      reset(VACIO)
+      reset({ ...VACIO, fecha: ultimaFecha ?? '' })
     } else if (detalle) {
       reset({
         fecha: detalle.fecha ?? '',
@@ -172,9 +202,12 @@ export default function CompraFormModal({
         cuit: detalle.cuit ?? '',
         condicion_iva_id: detalle.condicion_iva_id != null ? String(detalle.condicion_iva_id) : '',
         provincia_id: detalle.provincia_id != null ? String(detalle.provincia_id) : '',
+        rubro_id: detalle.rubro_id != null ? String(detalle.rubro_id) : '',
         letra: detalle.letra ?? '',
         punto_venta: detalle.punto_venta != null ? String(detalle.punto_venta) : '',
         numero: detalle.numero != null ? String(detalle.numero) : '',
+        cai: detalle.cai ?? '',
+        fecha_cai: detalle.fecha_cai ?? '',
         neto_no_grav: detalle.neto_no_grav ?? '',
         exento: detalle.exento ?? '',
         imp_interno: detalle.imp_interno ?? '',
@@ -191,23 +224,18 @@ export default function CompraFormModal({
                 cf_computable: d.cf_computable != null ? String(d.cf_computable) : '',
               }))
             : [{ neto_gravado: '', iva_alicuota: '21', cf_computable: '' }],
+        percepciones: (detalle.percepciones ?? []).map((p) => ({
+          tipo_retencion_id: p.tipo_retencion_id != null ? String(p.tipo_retencion_id) : '',
+          alicuota: p.alicuota != null ? String(Number(p.alicuota)) : '',
+          importe: p.importe != null ? String(p.importe) : '',
+          provincia_id: p.provincia_id != null ? String(p.provincia_id) : '',
+        })),
       })
     }
-  }, [visible, compraId, detalle, reset])
-
-  const onProveedorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const id = e.target.value
-    setValue('proveedor_id', id)
-    const p = proveedores?.find((x) => String(x.id) === id)
-    if (p) {
-      setValue('proveedor_nombre', p.nombre ?? '')
-      setValue('cuit', p.cuit ?? '')
-      if (p.condicion_iva_id != null) setValue('condicion_iva_id', String(p.condicion_iva_id))
-      if (p.provincia_id != null) setValue('provincia_id', String(p.provincia_id))
-    }
-  }
+  }, [visible, compraId, detalle, reset, ultimaFecha])
 
   const lineas = watch('discriminaciones')
+  const esFacturaC = (watch('letra') ?? '').trim().toUpperCase() === 'C'
   const netoNoGrav = watch('neto_no_grav')
   const exento = watch('exento')
   const impInterno = watch('imp_interno')
@@ -235,9 +263,12 @@ export default function CompraFormModal({
       cuit: str(v.cuit),
       condicion_iva_id: num(v.condicion_iva_id),
       provincia_id: num(v.provincia_id),
+      rubro_id: num(v.rubro_id),
       letra: str(v.letra),
       punto_venta: str(v.punto_venta),
       numero: str(v.numero),
+      cai: str(v.cai),
+      fecha_cai: str(v.fecha_cai),
       neto_no_grav: str(v.neto_no_grav),
       exento: str(v.exento),
       imp_interno: str(v.imp_interno),
@@ -251,6 +282,14 @@ export default function CompraFormModal({
         iva_alicuota: d.iva_alicuota,
         cf_computable: str(d.cf_computable),
       })),
+      percepciones: v.percepciones
+        .filter((p) => p.tipo_retencion_id)
+        .map((p) => ({
+          tipo_retencion_id: Number(p.tipo_retencion_id),
+          alicuota: str(p.alicuota),
+          importe: str(p.importe),
+          provincia_id: p.provincia_id ? Number(p.provincia_id) : null,
+        })),
     })
 
   const titulo = compraId == null ? 'Nueva compra' : 'Editar compra'
@@ -316,22 +355,41 @@ export default function CompraFormModal({
                 </div>
               </div>
 
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <CFormLabel htmlFor="cai">CAI / CAE</CFormLabel>
+                  <CFormInput id="cai" {...register('cai')} />
+                </div>
+                <div className="col-md-6 mb-3">
+                  <CFormLabel htmlFor="fecha_cai">Vto. CAI/CAE</CFormLabel>
+                  <CFormInput id="fecha_cai" type="date" {...register('fecha_cai')} />
+                </div>
+              </div>
+
               <hr />
               <div className="row">
-                <div className="col-md-4 mb-3">
-                  <CFormLabel htmlFor="proveedor_id">Proveedor</CFormLabel>
-                  <CFormSelect id="proveedor_id" value={watch('proveedor_id')} onChange={onProveedorChange}>
-                    <option value="">— Sin proveedor / manual —</option>
-                    {proveedores?.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre}
-                      </option>
-                    ))}
-                  </CFormSelect>
-                </div>
-                <div className="col-md-5 mb-3">
-                  <CFormLabel htmlFor="proveedor_nombre">Nombre / Razón social</CFormLabel>
-                  <CFormInput id="proveedor_nombre" {...register('proveedor_nombre')} />
+                <div className="col-md-9 mb-3">
+                  <CFormLabel htmlFor="proveedor_nombre">Proveedor / Razón social</CFormLabel>
+                  <SujetoTypeahead
+                    id="proveedor_nombre"
+                    sujetos={proveedores}
+                    value={watch('proveedor_nombre') ?? ''}
+                    placeholder="Buscar por nombre o CUIT…"
+                    onText={(t) => {
+                      setValue('proveedor_nombre', t)
+                      setValue('proveedor_id', '')
+                    }}
+                    onPick={(p) => {
+                      setValue('proveedor_id', String(p.id))
+                      setValue('proveedor_nombre', p.nombre ?? '')
+                      setValue('cuit', p.cuit ?? '')
+                      if (p.condicion_iva_id != null) setValue('condicion_iva_id', String(p.condicion_iva_id))
+                      if (p.provincia_id != null) setValue('provincia_id', String(p.provincia_id))
+                    }}
+                  />
+                  <div className="text-body-secondary small mt-1">
+                    Elegí uno del padrón (autocompleta) o escribí un proveedor ocasional.
+                  </div>
                 </div>
                 <div className="col-md-3 mb-3">
                   <CFormLabel htmlFor="cuit">CUIT</CFormLabel>
@@ -363,7 +421,7 @@ export default function CompraFormModal({
                 </div>
               </div>
               <div className="row">
-                <div className="col-md-6 mb-3">
+                <div className="col-md-4 mb-3">
                   <CFormLabel htmlFor="actividad_id">Actividad (IIBB)</CFormLabel>
                   <CFormSelect id="actividad_id" {...register('actividad_id')}>
                     <option value="">— Por punto de venta —</option>
@@ -374,7 +432,19 @@ export default function CompraFormModal({
                     ))}
                   </CFormSelect>
                 </div>
-                <div className="col-md-6 mb-3">
+                <div className="col-md-4 mb-3">
+                  <CFormLabel htmlFor="rubro_id">Rubro (F2002)</CFormLabel>
+                  <CFormSelect id="rubro_id" {...register('rubro_id')}>
+                    <option value="">—</option>
+                    {rubros?.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.codigo ? `${r.codigo} — ` : ''}
+                        {r.nombre}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+                <div className="col-md-4 mb-3">
                   <CFormLabel htmlFor="concepto_dj">Concepto (DJ IVA)</CFormLabel>
                   <CFormSelect id="concepto_dj" {...register('concepto_dj')}>
                     <option value="">— Bienes (default) —</option>
@@ -401,6 +471,12 @@ export default function CompraFormModal({
               </div>
               {errors.discriminaciones?.message && (
                 <div className="text-danger small mb-2">{errors.discriminaciones.message}</div>
+              )}
+              {esFacturaC && (
+                <CAlert color="info" className="py-2 small mb-2">
+                  Factura C (Monotributo/Exento): no lleva IVA discriminado. Cargá el importe en{' '}
+                  <strong>Neto no gravado</strong> y dejá la discriminación en cero.
+                </CAlert>
               )}
               <CTable small bordered responsive align="middle">
                 <CTableHead>
@@ -466,6 +542,88 @@ export default function CompraFormModal({
               </CTable>
               <div className="text-body-secondary small mb-3">
                 CF computable: dejalo en blanco para computar el 100% del IVA de la línea.
+              </div>
+
+              <hr />
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <strong>Retenciones / Percepciones</strong>
+                <CButton
+                  type="button"
+                  color="primary"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => percAppend({ tipo_retencion_id: '', alicuota: '', importe: '', provincia_id: '' })}
+                >
+                  + Agregar
+                </CButton>
+              </div>
+              {percFields.length > 0 && (
+                <CTable small bordered responsive align="middle" className="ledger">
+                  <CTableHead>
+                    <CTableRow>
+                      <CTableHeaderCell>Tipo</CTableHeaderCell>
+                      <CTableHeaderCell>Alícuota %</CTableHeaderCell>
+                      <CTableHeaderCell>Provincia</CTableHeaderCell>
+                      <CTableHeaderCell className="text-end">Importe</CTableHeaderCell>
+                      <CTableHeaderCell />
+                    </CTableRow>
+                  </CTableHead>
+                  <CTableBody>
+                    {percFields.map((f, i) => (
+                      <CTableRow key={f.id}>
+                        <CTableDataCell>
+                          <CFormSelect
+                            size="sm"
+                            invalid={!!errors.percepciones?.[i]?.tipo_retencion_id}
+                            {...register(`percepciones.${i}.tipo_retencion_id`)}
+                          >
+                            <option value="">— Elegí —</option>
+                            {tiposRetencion?.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.nombre}
+                                {t.tenant_id ? ' (propio)' : ''}
+                              </option>
+                            ))}
+                          </CFormSelect>
+                        </CTableDataCell>
+                        <CTableDataCell>
+                          <CFormInput
+                            size="sm"
+                            inputMode="decimal"
+                            placeholder="del tipo"
+                            {...register(`percepciones.${i}.alicuota`)}
+                          />
+                        </CTableDataCell>
+                        <CTableDataCell>
+                          <CFormSelect size="sm" {...register(`percepciones.${i}.provincia_id`)}>
+                            <option value="">—</option>
+                            {provincias?.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.nombre}
+                              </option>
+                            ))}
+                          </CFormSelect>
+                        </CTableDataCell>
+                        <CTableDataCell className="text-end">
+                          <CFormInput
+                            size="sm"
+                            inputMode="decimal"
+                            placeholder="calculado"
+                            {...register(`percepciones.${i}.importe`)}
+                          />
+                        </CTableDataCell>
+                        <CTableDataCell className="text-end">
+                          <CButton type="button" color="danger" variant="ghost" size="sm" onClick={() => percRemove(i)}>
+                            ✕
+                          </CButton>
+                        </CTableDataCell>
+                      </CTableRow>
+                    ))}
+                  </CTableBody>
+                </CTable>
+              )}
+              <div className="text-body-secondary small mb-3">
+                Alícuota/importe en blanco → los calcula el sistema según el tipo (integran el total).
               </div>
 
               <div className="row">

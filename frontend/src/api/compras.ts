@@ -1,5 +1,5 @@
 import api from './client'
-import type { Pagina } from './ventas'
+import type { Pagina, PercepcionInput, PercepcionDetalle } from './ventas'
 
 export interface Compra {
   id: number
@@ -34,12 +34,15 @@ export interface CompraInput {
   tipo_operacion_compra_id?: number | null
   condicion_iva_id?: number | null
   provincia_id?: number | null
+  rubro_id?: number | null
   proveedor_id?: number | null
   proveedor_nombre?: string | null
   cuit?: string | null
   letra?: string | null
   punto_venta?: string | null
   numero?: string | null
+  cai?: string | null
+  fecha_cai?: string | null
   neto_no_grav?: string | null
   exento?: string | null
   imp_interno?: string | null
@@ -49,6 +52,7 @@ export interface CompraInput {
   actividad_id?: number | null
   concepto_dj?: number | null
   discriminaciones: CompraDiscriminacionInput[]
+  percepciones?: PercepcionInput[]
 }
 
 /** Compra completa (cabecera + líneas) tal como la devuelve el backend para editar. */
@@ -59,12 +63,15 @@ export interface CompraDetalle {
   tipo_operacion_compra_id: number | null
   condicion_iva_id: number | null
   provincia_id: number | null
+  rubro_id: number | null
   proveedor_id: number | null
   proveedor_nombre: string | null
   cuit: string | null
   letra: string | null
   punto_venta: number | string | null
   numero: number | string | null
+  cai: string | null
+  fecha_cai: string | null
   neto_no_grav: string | null
   exento: string | null
   imp_interno: string | null
@@ -81,6 +88,7 @@ export interface CompraDetalle {
     iva_importe: string
     cf_computable: string | null
   }>
+  percepciones?: PercepcionDetalle[]
 }
 
 const base = (empresaId: number, periodoId: number) =>
