@@ -63,6 +63,7 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
 
     // Libro IVA: totales, detalle por alícuota, DDJJ F2002 e IVA Simple (lectura)
     $router->get("{$bajoPeriodo}/totales", [LibroIvaController::class, 'totales'], [$perm('iva.libro')]);
+    $router->get("{$bajoPeriodo}/reintegro-t", [LibroIvaController::class, 'reintegroT'], [$perm('iva.libro')]);
     $router->get("{$bajoPeriodo}/libro-iva", [LibroIvaController::class, 'detalle'], [$perm('iva.libro')]);
     $router->get("{$bajoPeriodo}/ddjj", [LibroIvaController::class, 'ddjj'], [$perm('iva.libro')]);
     $router->get("{$bajoPeriodo}/iva-simple", [LibroIvaController::class, 'ivaSimple'], [$perm('iva.libro')]);

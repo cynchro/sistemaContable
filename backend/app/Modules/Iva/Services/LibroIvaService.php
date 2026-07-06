@@ -51,6 +51,20 @@ class LibroIvaService
     }
 
     /**
+     * Reintegro de IVA (Factura T) del período: importe total a informar en el
+     * aplicativo de ARCA al exportar (RG3685 / Libro IVA Digital / DJ IVA Simple).
+     *
+     * @return array{total: string, comprobantes: int}
+     */
+    public function reintegroFacturaT(int $empresaId, int $periodoId, string $tenantId): array
+    {
+        $this->empresas->findById($empresaId, $tenantId);
+        $this->periodos->findById($periodoId, $empresaId);
+
+        return $this->libro->reintegroFacturaT($periodoId);
+    }
+
+    /**
      * Libro IVA detallado: subtotales por (condición IVA, alícuota) de ventas y
      * compras, ponderados por signo. Base de las DDJJ.
      *

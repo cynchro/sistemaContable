@@ -22,6 +22,16 @@ class LibroIvaController
         ));
     }
 
+    /** Reintegro de IVA (Factura T) del período — a informar en el aplicativo de ARCA. */
+    public function reintegroT(Request $request): Response
+    {
+        return Response::success($this->service->reintegroFacturaT(
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (string) $request->tenantId(),
+        ));
+    }
+
     /** Libro IVA detallado: subtotales por condición y alícuota (ventas y compras). */
     public function detalle(Request $request): Response
     {

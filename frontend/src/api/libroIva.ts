@@ -55,6 +55,17 @@ export interface IvaSimple {
   }
 }
 
+/** Reintegro de IVA (Factura T) del período — a informar en el aplicativo de ARCA al exportar. */
+export interface ReintegroT {
+  total: string
+  comprobantes: number
+}
+
+export async function getReintegroT(empresaId: number, periodoId: number): Promise<ReintegroT> {
+  const { data } = await api.get(`${base(empresaId, periodoId)}/reintegro-t`)
+  return data.data as ReintegroT
+}
+
 export async function getTotales(empresaId: number, periodoId: number): Promise<Totales> {
   const { data } = await api.get(`${base(empresaId, periodoId)}/totales`)
   return data.data as Totales

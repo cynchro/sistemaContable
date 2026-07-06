@@ -45,6 +45,30 @@ class LibroIvaRepository
         );
     }
 
+    /**
+     * Reintegro de IVA (Factura T) del período: total a informar en el aplicativo de
+     * ARCA al exportar (el manual lo reporta aparte; no se netea en los archivos).
+     *
+     * @return array{total: string, comprobantes: int}
+     */
+    public function reintegroFacturaT(int $periodoId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT COALESCE(SUM(vd.reintegro_t), 0) AS total,
+                    COUNT(DISTINCT CASE WHEN vd.reintegro_t > 0 THEN v.id END) AS comprobantes
+               FROM venta_discriminaciones vd
+               JOIN ventas v ON vd.venta_id = v.id
+              WHERE v.periodo_id = ?'
+        );
+        $stmt->execute([$periodoId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'total'        => (string) (is_array($row) ? ($row['total'] ?? '0') : '0'),
+            'comprobantes' => (int) (is_array($row) ? ($row['comprobantes'] ?? 0) : 0),
+        ];
+    }
+
     /** @return list<array{signo: int, importe: string}> */
     public function comprasTotalPorSigno(int $periodoId): array
     {

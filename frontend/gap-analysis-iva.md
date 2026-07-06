@@ -130,7 +130,7 @@ tipos_retencion.base_calculo), `0039` (campo_auxiliar). Payload venta/compra en
 
 **P2 — reglas/UX del manual:**
 5. ✅ **auto-última-fecha, typeahead, Factura C (hint) y override de importe IVA HECHOS** (override: motor respeta iva_importe si viene; celda editable; E2E OK).
-6. ✅ **HECHO — Factura T** (libro/DDJJ/totales/subdiario netean el débito; front setea reintegro=IVA + aviso). Pendiente menor: reporte del reintegro en los **exports** (RG3685/Libro IVA Digital/DJ) — el manual lo trata aparte (importe total a cargar en el aplicativo).
+6. ✅ **HECHO — Factura T** (libro/DDJJ/totales/subdiario netean el débito; front setea reintegro=IVA + aviso). **HECHO** el reporte del reintegro en export: `GET …/reintegro-t` (total + #comprobantes); la pestaña Descargas avisa el reintegro total a cargar en el aplicativo de ARCA. E2E OK.
 7. ✅ **HECHO — ABM de tipos_retencion y de rubros** (pestañas en Utilidades; estándar read-only + propios editables). E2E OK.
 8. 🟡 **Búsqueda inteligente** (typeahead) de cliente/proveedor por nombre/CUIT.
 

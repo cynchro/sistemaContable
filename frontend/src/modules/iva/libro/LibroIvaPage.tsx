@@ -26,6 +26,7 @@ import {
 import { listCatalogo } from '../../../api/catalogos'
 import {
   getTotales,
+  getReintegroT,
   getLibroDetalle,
   getDdjj,
   getIvaSimple,
@@ -474,6 +475,10 @@ function TablaPercepciones({
 
 function Descargas({ eId, pId }: { eId: number; pId: number }) {
   const [error, setError] = useState<string | null>(null)
+  const { data: reintegro } = useQuery({
+    queryKey: ['reintegro-t', eId, pId],
+    queryFn: () => getReintegroT(eId, pId),
+  })
   const run = (fn: () => Promise<void>) => {
     setError(null)
     fn().catch(() => setError('No se pudo generar la descarga.'))
@@ -482,6 +487,14 @@ function Descargas({ eId, pId }: { eId: number; pId: number }) {
   return (
     <>
       {error && <CAlert color="danger">{error}</CAlert>}
+
+      {reintegro && reintegro.comprobantes > 0 && (
+        <CAlert color="warning">
+          Este período tiene <strong>{reintegro.comprobantes}</strong> Factura(s) T. Al exportar a ARCA,
+          ingresá el <strong>reintegro total de {money(reintegro.total)}</strong> en el aplicativo (los
+          archivos no lo incluyen; se carga aparte en la pantalla de generación).
+        </CAlert>
+      )}
 
       <h6>Subdiario (CSV / TXT)</h6>
       <div className="mb-4 d-flex flex-wrap gap-2">
