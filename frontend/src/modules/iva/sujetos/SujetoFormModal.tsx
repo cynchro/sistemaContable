@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQuery, useMutation } from '@tanstack/react-query'
@@ -32,6 +32,7 @@ const schema = z.object({
   cai: z.string().optional(),
   fecha_cai: z.string().optional(),
   esglobal: z.boolean().optional(),
+  cais: z.array(z.object({ numero: z.string(), vencimiento: z.string() })),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -60,8 +61,10 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
     reset,
     setValue,
     getValues,
+    control,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const { fields: caiFields, append: caiAppend, remove: caiRemove } = useFieldArray({ control, name: 'cais' })
 
   const [padronError, setPadronError] = useState<string | null>(null)
   const padron = useMutation({
@@ -99,6 +102,7 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
         cai: sujeto?.cai ?? '',
         fecha_cai: sujeto?.fecha_cai ?? '',
         esglobal: sujeto?.esglobal === 'S',
+        cais: sujeto?.cais ?? [],
       })
     }
   }, [visible, sujeto, reset])
@@ -109,6 +113,8 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
       condicion_iva_id: v.condicion_iva_id ? Number(v.condicion_iva_id) : null,
       provincia_id: v.provincia_id ? Number(v.provincia_id) : null,
       esglobal: v.esglobal ? 'S' : 'N',
+      // Solo los proveedores tienen lista de CAI; se descartan las filas vacías.
+      cais: esProveedor ? v.cais.filter((c) => c.numero.trim() !== '') : [],
     })
 
   const titulo = `${sujeto ? 'Editar' : 'Nuevo'} ${esProveedor ? 'proveedor' : 'cliente'}`
@@ -202,6 +208,41 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
               </>
             )}
           </div>
+          {esProveedor && (
+            <div className="mb-3">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <CFormLabel className="mb-0">CAI adicionales (hasta 5)</CFormLabel>
+                <CButton
+                  type="button"
+                  color="primary"
+                  variant="outline"
+                  size="sm"
+                  disabled={caiFields.length >= 5}
+                  onClick={() => caiAppend({ numero: '', vencimiento: '' })}
+                >
+                  + Agregar CAI
+                </CButton>
+              </div>
+              {caiFields.map((f, i) => (
+                <div className="row g-2 mb-2 align-items-center" key={f.id}>
+                  <div className="col">
+                    <CFormInput
+                      placeholder="Número de CAI"
+                      {...register(`cais.${i}.numero`)}
+                    />
+                  </div>
+                  <div className="col-auto">
+                    <CFormInput type="date" {...register(`cais.${i}.vencimiento`)} />
+                  </div>
+                  <div className="col-auto">
+                    <CButton type="button" color="danger" variant="ghost" size="sm" onClick={() => caiRemove(i)}>
+                      ✕
+                    </CButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="form-check">
             <input className="form-check-input" type="checkbox" id="esglobal" {...register('esglobal')} />
             <label className="form-check-label" htmlFor="esglobal">

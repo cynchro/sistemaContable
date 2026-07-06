@@ -14,7 +14,7 @@ class IvaProveedorRepository
     private const WRITABLE = [
         'condicion_iva_id', 'provincia_id', 'cuenta_id', 'rubro_id',
         'nombre', 'cuit', 'domicilio', 'localidad', 'telefono', 'cp',
-        'ingresos_brutos', 'cai', 'fecha_cai', 'esglobal',
+        'ingresos_brutos', 'cai', 'fecha_cai', 'cais', 'esglobal',
     ];
 
     public function __construct(private PDO $pdo)
@@ -33,7 +33,7 @@ class IvaProveedorRepository
         );
         $stmt->execute([$empresaId, 'S', $tenantId]);
 
-        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_map([$this, 'decode'], (array) $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /** @return array<string, mixed> */
@@ -47,7 +47,7 @@ class IvaProveedorRepository
             throw new NotFoundException('Proveedor', $id);
         }
 
-        return $row;
+        return $this->decode($row);
     }
 
     /**
@@ -105,6 +105,29 @@ class IvaProveedorRepository
      */
     private function writableFrom(array $data): array
     {
-        return array_intersect_key($data, array_flip(self::WRITABLE));
+        $fields = array_intersect_key($data, array_flip(self::WRITABLE));
+        // La lista de CAI se persiste como JSON (hasta 5 {numero, vencimiento}).
+        if (array_key_exists('cais', $fields)) {
+            $fields['cais'] = is_array($fields['cais'])
+                ? (json_encode(array_values($fields['cais'])) ?: null)
+                : null;
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Decodifica el JSON de `cais` a un arreglo para la respuesta.
+     *
+     * @param  array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function decode(array $row): array
+    {
+        $row['cais'] = is_string($row['cais'] ?? null)
+            ? (json_decode((string) $row['cais'], true) ?: [])
+            : [];
+
+        return $row;
     }
 }

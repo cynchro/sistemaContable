@@ -19,6 +19,14 @@ export interface Sujeto {
   cp?: string | null
   cai?: string | null
   fecha_cai?: string | null
+  /** CAI adicionales del proveedor (hasta 5). */
+  cais?: CaiItem[] | null
+}
+
+/** Un CAI de proveedor: número + fecha de vencimiento. */
+export interface CaiItem {
+  numero: string
+  vencimiento: string
 }
 
 export interface SujetoInput {
@@ -34,6 +42,7 @@ export interface SujetoInput {
   cp?: string | null
   cai?: string | null
   fecha_cai?: string | null
+  cais?: CaiItem[] | null
 }
 
 const base = (recurso: RecursoSujeto, empresaId: number) => `/empresas/${empresaId}/${recurso}`

@@ -24,6 +24,7 @@ class UpdateProveedorRequest extends FormRequest
             'cai'              => 'nullable|string|max:15',
             'fecha_cai'        => 'nullable|date:Y-m-d',
             'esglobal'         => 'nullable|in:S,N',
+            'cais'             => 'nullable|array',
         ];
     }
 }
