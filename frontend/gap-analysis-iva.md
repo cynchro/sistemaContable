@@ -27,9 +27,9 @@ tipos_retencion.base_calculo), `0039` (campo_auxiliar). Payload venta/compra en
 |---|---|---|---|---|
 | Listado fecha/nombre/nº/total + paginado | `GET …/ventas\|compras` | sí | ✅ | — |
 | Filtro por fecha (rango) | query `fecha_desde/hasta` | sí | ✅ | — |
-| Buscar proveedor/cliente | query `cliente_id`/`proveedor_id`/`cuit` | por CUIT (ventas por letra) | 🟡 | filtro por nombre/cliente_id |
-| Filtro por comprobante (nº/letra) | query `letra` | letra sí, nº no | 🟡 | filtro por número |
-| Orden fecha↔proveedor/cliente | (backend ordena por fecha) | no | 🟡 | selector de orden |
+| Buscar proveedor/cliente | query `nombre` (LIKE) + cuit | filtro por nombre | ✅ | **HECHO** — input Cliente/Proveedor (LIKE) en ambos listados |
+| Filtro por comprobante (nº/letra) | query `letra` + `numero` (LIKE) | ambos | ✅ | **HECHO** — input Número (parcial) |
+| Orden fecha↔proveedor/cliente | query `orden` (fecha\|nombre) | selector | ✅ | **HECHO** — selector Orden Fecha/Cliente-Proveedor |
 | Multi-select borrar / borrar todos | `DELETE` x N | sí (multi-select) | ✅ | "borrar todos" opcional |
 | Mover a otro período | `POST …/{id}/mover` | sí | ✅ | (falta mover en lote) |
 | Imprimir → Reportes | Libro/Reportes | link | ✅ | — |

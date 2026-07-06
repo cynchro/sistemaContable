@@ -9,6 +9,7 @@ import {
   CForm,
   CFormInput,
   CFormLabel,
+  CFormSelect,
   CTable,
   CTableHead,
   CTableRow,
@@ -67,6 +68,9 @@ export default function VentasList() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [letra, setLetra] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [numero, setNumero] = useState('')
+  const [orden, setOrden] = useState('')
   const [filtros, setFiltros] = useState<VentasFiltros>({})
   const [page, setPage] = useState(1)
 
@@ -155,6 +159,9 @@ export default function VentasList() {
       fecha_desde: fechaDesde || undefined,
       fecha_hasta: fechaHasta || undefined,
       letra: letra || undefined,
+      nombre: nombre || undefined,
+      numero: numero || undefined,
+      orden: orden || undefined,
     })
   }
 
@@ -162,6 +169,9 @@ export default function VentasList() {
     setFechaDesde('')
     setFechaHasta('')
     setLetra('')
+    setNombre('')
+    setNumero('')
+    setOrden('')
     setPage(1)
     setFiltros({})
   }
@@ -256,6 +266,21 @@ export default function VentasList() {
               value={letra}
               onChange={(e) => setLetra(e.target.value.toUpperCase())}
             />
+          </div>
+          <div className="col-auto">
+            <CFormLabel className="small mb-1">Cliente</CFormLabel>
+            <CFormInput size="sm" placeholder="Nombre…" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          </div>
+          <div className="col-auto">
+            <CFormLabel className="small mb-1">Número</CFormLabel>
+            <CFormInput size="sm" style={{ width: 110 }} value={numero} onChange={(e) => setNumero(e.target.value)} />
+          </div>
+          <div className="col-auto">
+            <CFormLabel className="small mb-1">Orden</CFormLabel>
+            <CFormSelect size="sm" value={orden} onChange={(e) => setOrden(e.target.value)}>
+              <option value="">Fecha</option>
+              <option value="nombre">Cliente</option>
+            </CFormSelect>
           </div>
           <div className="col-auto">
             <CButton type="submit" color="primary" variant="outline" size="sm" className="me-2">

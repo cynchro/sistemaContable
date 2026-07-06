@@ -18,6 +18,9 @@ export interface ComprasFiltros {
   proveedor_id?: number
   cuit?: string
   letra?: string
+  nombre?: string
+  numero?: string
+  orden?: string
 }
 
 /** Línea de discriminación de IVA de compra: incluye el crédito fiscal computable. */
@@ -108,6 +111,9 @@ export async function listCompras(
   if (filtros.proveedor_id) params.proveedor_id = filtros.proveedor_id
   if (filtros.cuit) params.cuit = filtros.cuit
   if (filtros.letra) params.letra = filtros.letra
+  if (filtros.nombre) params.nombre = filtros.nombre
+  if (filtros.numero) params.numero = filtros.numero
+  if (filtros.orden) params.orden = filtros.orden
 
   const { data } = await api.get(base(empresaId, periodoId), { params })
   return data.data as Pagina<Compra>

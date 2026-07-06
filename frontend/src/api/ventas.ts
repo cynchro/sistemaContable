@@ -18,6 +18,9 @@ export interface VentasFiltros {
   fecha_hasta?: string
   cliente_id?: number
   letra?: string
+  nombre?: string
+  numero?: string
+  orden?: string
 }
 
 /** Línea de discriminación de IVA: neto gravado a una alícuota. `iva_importe` es un
@@ -166,6 +169,9 @@ export async function listVentas(
   if (filtros.fecha_hasta) params.fecha_hasta = filtros.fecha_hasta
   if (filtros.cliente_id) params.cliente_id = filtros.cliente_id
   if (filtros.letra) params.letra = filtros.letra
+  if (filtros.nombre) params.nombre = filtros.nombre
+  if (filtros.numero) params.numero = filtros.numero
+  if (filtros.orden) params.orden = filtros.orden
 
   const { data } = await api.get(`/empresas/${empresaId}/periodos/${periodoId}/ventas`, { params })
   return data.data as Pagina<Venta>

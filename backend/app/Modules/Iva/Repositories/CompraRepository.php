@@ -48,7 +48,7 @@ class CompraRepository
      *
      * @param array{
      *   fecha_desde?: ?string, fecha_hasta?: ?string, proveedor_id?: ?int,
-     *   cuit?: ?string, letra?: ?string
+     *   cuit?: ?string, letra?: ?string, nombre?: ?string, numero?: ?string, orden?: ?string
      * } $filtros
      * @return array<string, mixed> total / cantidad_por_pagina / pagina / results
      */
@@ -77,8 +77,17 @@ class CompraRepository
             $where[]  = 'letra = ?';
             $params[] = $filtros['letra'];
         }
+        if (!empty($filtros['nombre'])) {
+            $where[]  = 'proveedor_nombre LIKE ?';
+            $params[] = '%' . $filtros['nombre'] . '%';
+        }
+        if (!empty($filtros['numero'])) {
+            $where[]  = 'numero LIKE ?';
+            $params[] = '%' . $filtros['numero'] . '%';
+        }
 
-        $query = 'SELECT * FROM compras WHERE ' . implode(' AND ', $where) . ' ORDER BY fecha, id';
+        $orden = ($filtros['orden'] ?? '') === 'nombre' ? 'proveedor_nombre, fecha, id' : 'fecha, id';
+        $query = 'SELECT * FROM compras WHERE ' . implode(' AND ', $where) . ' ORDER BY ' . $orden;
 
         return (new PaginatorHelper($this->pdo, $query, $page, $perPage, true, $params))->getPaginatedResults();
     }

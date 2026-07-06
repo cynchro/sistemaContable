@@ -9,6 +9,7 @@ import {
   CForm,
   CFormInput,
   CFormLabel,
+  CFormSelect,
   CTable,
   CTableHead,
   CTableRow,
@@ -65,6 +66,9 @@ export default function ComprasList() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const [cuit, setCuit] = useState('')
+  const [nombre, setNombre] = useState('')
+  const [numero, setNumero] = useState('')
+  const [orden, setOrden] = useState('')
   const [filtros, setFiltros] = useState<ComprasFiltros>({})
   const [page, setPage] = useState(1)
 
@@ -143,6 +147,9 @@ export default function ComprasList() {
       fecha_desde: fechaDesde || undefined,
       fecha_hasta: fechaHasta || undefined,
       cuit: cuit || undefined,
+      nombre: nombre || undefined,
+      numero: numero || undefined,
+      orden: orden || undefined,
     })
   }
 
@@ -150,6 +157,9 @@ export default function ComprasList() {
     setFechaDesde('')
     setFechaHasta('')
     setCuit('')
+    setNombre('')
+    setNumero('')
+    setOrden('')
     setPage(1)
     setFiltros({})
   }
@@ -232,6 +242,21 @@ export default function ComprasList() {
             <div className="col-auto">
               <CFormLabel className="small mb-1">CUIT</CFormLabel>
               <CFormInput size="sm" style={{ width: 160 }} value={cuit} onChange={(e) => setCuit(e.target.value)} />
+            </div>
+            <div className="col-auto">
+              <CFormLabel className="small mb-1">Proveedor</CFormLabel>
+              <CFormInput size="sm" placeholder="Nombre…" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            </div>
+            <div className="col-auto">
+              <CFormLabel className="small mb-1">Número</CFormLabel>
+              <CFormInput size="sm" style={{ width: 110 }} value={numero} onChange={(e) => setNumero(e.target.value)} />
+            </div>
+            <div className="col-auto">
+              <CFormLabel className="small mb-1">Orden</CFormLabel>
+              <CFormSelect size="sm" value={orden} onChange={(e) => setOrden(e.target.value)}>
+                <option value="">Fecha</option>
+                <option value="nombre">Proveedor</option>
+              </CFormSelect>
             </div>
             <div className="col-auto">
               <CButton type="submit" color="primary" variant="outline" size="sm" className="me-2">
