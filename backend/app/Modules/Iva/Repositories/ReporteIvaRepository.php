@@ -34,12 +34,14 @@ class ReporteIvaRepository
                 tc.codigo AS tipo_comprobante_codigo, tc.nombre AS tipo_comprobante_nombre, tc.cod_citi,
                 td.nombre AS tipo_documento_nombre, td.cod_afip AS tipo_documento_cod_afip,
                 pr.nombre AS provincia_nombre,
-                ci.codigo AS condicion_codigo, ci.nombre AS condicion_nombre
+                ci.codigo AS condicion_codigo, ci.nombre AS condicion_nombre,
+                mo.codigo_afip AS moneda_codigo, mo.nombre AS moneda_nombre
                FROM ventas v
                LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
                LEFT JOIN tipos_documento  td ON v.tipo_documento_id  = td.id
                LEFT JOIN provincias       pr ON v.provincia_id       = pr.id
                LEFT JOIN condiciones_iva  ci ON v.condicion_iva_id   = ci.id
+               LEFT JOIN tipos_moneda     mo ON v.tipo_moneda_id     = mo.id
               WHERE v.periodo_id = ?
               ORDER BY v.fecha, v.id"
         );
@@ -66,12 +68,14 @@ class ReporteIvaRepository
                 tc.codigo AS tipo_comprobante_codigo, tc.nombre AS tipo_comprobante_nombre, tc.cod_citi,
                 pr.nombre AS provincia_nombre,
                 ci.codigo AS condicion_codigo, ci.nombre AS condicion_nombre,
-                op.nombre AS tipo_operacion_nombre
+                op.nombre AS tipo_operacion_nombre,
+                mo.codigo_afip AS moneda_codigo, mo.nombre AS moneda_nombre
                FROM compras c
                LEFT JOIN tipos_comprobante      tc ON c.tipo_comprobante_id      = tc.id
                LEFT JOIN provincias             pr ON c.provincia_id             = pr.id
                LEFT JOIN condiciones_iva        ci ON c.condicion_iva_id         = ci.id
                LEFT JOIN tipos_operacion_compra op ON c.tipo_operacion_compra_id = op.id
+               LEFT JOIN tipos_moneda           mo ON c.tipo_moneda_id           = mo.id
               WHERE c.periodo_id = ?
               ORDER BY c.fecha, c.id"
         );

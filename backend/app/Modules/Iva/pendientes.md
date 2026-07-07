@@ -146,8 +146,12 @@
       alta de cliente/proveedor ya mapeados (nombre/cuit/domicilio/localidad) + el bloque crudo
       `padron` para que el front complete los desplegables (condición de IVA, provincia) contra
       los catálogos. No se mapea condición/provincia en el back (evita matching riesgoso).
-- [ ] **Concurrencia en la numeración**: `FECompUltimoAutorizado`+1 sin lock; suficiente para
-      un emisor secuencial, revisar si hay emisión concurrente.
+- [x] **Concurrencia en la numeración** (HECHO). `FacturaElectronicaService::autorizar` envuelve
+      la sección crítica —leer `FECompUltimoAutorizado`+1 → solicitar CAE → persistir— en un lock
+      consultivo `DB::withLock("cae:{empresaId}:{ptoVta}:{cbteTipo}", …, 30)` (GET_LOCK/RELEASE_LOCK
+      de MySQL, con `finally`). Dos emisiones concurrentes del mismo punto de venta + tipo se serializan
+      (la segunda espera hasta 30s por la primera) en vez de tomar el mismo número. `DB::withLock` es
+      reutilizable para otras secciones críticas.
 - [ ] **WSMTXCA** (factura con detalle de ítem) y **WSFEXv1** (exportación, comprobante E):
       otros WS si el negocio los necesita.
 - [ ] Campos legacy aún no usados: en `empresas` guardar `certificado`/`clave_privada` por CUIT
@@ -157,11 +161,23 @@
 - [ ] **Imputación contable** en comprobantes/discriminación: `*_CTA_*`
       (cuenta total/neto/iva/imp interno), `*_CTA_DEBE`/`*_CTA_HABER`. Necesarios
       para asientos y export a Contable.
-- [ ] `total_productos` / `total_servicios`, `id_actividad`, `campo_aux` /
-      `nombre_campo_aux`, `reten_nro_fac` / `reten_vtaid` (ventas).
-- [ ] **Múltiples CAI** en proveedores (`cai2..5` + fechas) — hoy sólo el principal.
-- [ ] **`esglobal`**: sujetos (clientes/proveedores) compartidos entre empresas del
-      tenant. Hoy el campo se conserva pero las consultas filtran por empresa.
+- [~] `total_productos` / `total_servicios`, `id_actividad`, `campo_aux` /
+      `nombre_campo_aux`, `reten_nro_fac` / `reten_vtaid` (ventas). **Parcial**:
+      `id_actividad` HECHO (`ventas.actividad_id` / `compras.actividad_id`, migración 0036,
+      resuelve la DJ IVA Simple por actividad); `campo_aux` HECHO (`campo_auxiliar`, migración
+      0039, en ventas y compras); `numero_fin` HECHO en ventas (equivalente a `reten_nro_fac`,
+      número final del rango). Siguen sin usar: `total_productos`/`total_servicios` y
+      `reten_vtaid` (no hay caso de uso confirmado).
+- [x] **Múltiples CAI** en proveedores (`cai2..5` + fechas). HECHO: migración 0040 agrega
+      `iva_proveedores.cais` (JSON, hasta 5 `{numero, vencimiento}`); el `cai`/`fecha_cai` simple
+      sigue como principal. El repo hace encode/decode del JSON; el request valida `cais` como
+      array nullable (el tope de 5 se controla en el front). ABM en `SujetoFormModal` (field-array
+      solo para proveedores).
+- [x] **`esglobal`**: sujetos (clientes/proveedores) compartidos entre empresas del tenant.
+      HECHO: `IvaCliente/IvaProveedorRepository::findAllByEmpresa($empresaId, $tenantId)` trae los
+      propios + los globales de cualquier empresa del tenant. Front: checkbox "Compartir con todas
+      las empresas", badge **Global**, Editar/Eliminar deshabilitados para un global de otra empresa
+      (se administra desde su empresa de origen; la edición propaga por ser la misma fila).
 
 ## G) Otros / infraestructura
 - [x] **Paginación y filtros en los listados de comprobantes** (HECHO). `GET …/ventas` y
@@ -171,7 +187,11 @@
       `PaginatorHelper`. Respuesta paginada `{ total, cantidad_por_pagina, pagina, results }`.
       Se corrigió un bug del `PaginatorHelper` (bindear `LIMIT`/`OFFSET` como int; MySQL rechaza
       `LIMIT '10'` con emulación de prepares desactivada). Tests: `VentaListadoTest`.
-- [ ] Manejo de `tipo_moneda` / `tipo_cambio` en reportes en moneda extranjera.
+- [x] Manejo de `tipo_moneda` / `tipo_cambio` en reportes en moneda extranjera (HECHO). El subdiario
+      (`ReporteIvaRepository::ventas`/`compras`) hace `LEFT JOIN tipos_moneda` y expone `moneda_codigo`
+      (código AFIP) + `moneda_nombre` por comprobante; `tipo_cambio` ya venía en la fila. Los importes
+      del libro IVA se mantienen en pesos (el motor no reconvierte por `tipo_cambio`: el Libro IVA
+      argentino se lleva en moneda de curso legal; moneda/cotización son informativos del comprobante).
 - [x] **Auditoría de operaciones** (HECHO, registro de cambios — el legacy tenía tabla `LOG`).
       Migración 0035 (`iva_audit_log`). `Audit/AuditMiddleware` (en el grupo de rutas de IVA)
       registra cada escritura exitosa (POST/PUT/PATCH/DELETE, status < 400): tenant, user_id,
