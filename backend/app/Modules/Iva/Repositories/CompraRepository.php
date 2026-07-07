@@ -19,7 +19,7 @@ class CompraRepository
         'tipo_operacion_compra_id', 'tipo_moneda_id', 'proveedor_id', 'fecha',
         'proveedor_nombre', 'cuit', 'letra', 'punto_venta', 'numero',
         'neto_no_grav', 'exento', 'imp_interno', 'total', 'total_informado', 'tipo_cambio', 'concepto',
-        'cai', 'fecha_cai', 'actividad_id', 'concepto_dj', 'campo_auxiliar',
+        'cai', 'fecha_cai', 'actividad_id', 'concepto_dj', 'campo_auxiliar', 'cuenta_debe_id', 'cuenta_haber_id',
     ];
 
     private const DISCRIMINACION_WRITABLE = [

@@ -25,6 +25,7 @@ import {
   CAlert,
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
+import { getMayorResumen, getMayorDetalle } from '../../../api/mayor'
 import {
   getTotales,
   getReintegroT,
@@ -51,7 +52,7 @@ const money = (v?: string) => {
 }
 const pct = (v: string | null) => (v == null ? '—' : `${Number(v)}%`)
 
-type Tab = 'resumen' | 'ddjj' | 'simple' | 'reportes' | 'descargas'
+type Tab = 'resumen' | 'ddjj' | 'simple' | 'reportes' | 'mayor' | 'descargas'
 
 export default function LibroIvaPage() {
   const { empresaId, periodoId } = useParams()
@@ -84,6 +85,7 @@ export default function LibroIvaPage() {
             ['ddjj', 'DDJJ (F2002)'],
             ['simple', 'IVA Simple (F2051)'],
             ['reportes', 'Reportes'],
+            ['mayor', 'Mayor'],
             ['descargas', 'Descargas'],
           ] as [Tab, string][]).map(([k, label]) => (
             <CNavItem key={k}>
@@ -99,6 +101,7 @@ export default function LibroIvaPage() {
         {tab === 'ddjj' && <DdjjF2002 eId={eId} pId={pId} condNombre={condNombre} />}
         {tab === 'simple' && <IvaSimpleTab eId={eId} pId={pId} qc={qc} />}
         {tab === 'reportes' && <Reportes eId={eId} pId={pId} />}
+        {tab === 'mayor' && <Mayor eId={eId} pId={pId} />}
         {tab === 'descargas' && <Descargas eId={eId} pId={pId} />}
       </CCardBody>
     </CCard>
@@ -471,6 +474,94 @@ function TablaPercepciones({
           </CTableHead>
         )}
       </CTable>
+    </>
+  )
+}
+
+function Mayor({ eId, pId }: { eId: number; pId: number }) {
+  const [cuenta, setCuenta] = useState<{ id: number; nombre: string } | null>(null)
+  const { data: resumen, isLoading } = useQuery({
+    queryKey: ['mayor', eId, pId],
+    queryFn: () => getMayorResumen(eId, pId),
+  })
+  const { data: detalle } = useQuery({
+    queryKey: ['mayor-detalle', eId, pId, cuenta?.id],
+    queryFn: () => getMayorDetalle(eId, pId, cuenta!.id),
+    enabled: cuenta != null,
+  })
+
+  if (isLoading) return <CSpinner size="sm" />
+
+  return (
+    <>
+      <div className="text-body-secondary small mb-2">
+        Resumen de movimientos por cuenta (mayorización interna). Hacé clic en una cuenta para ver el
+        detalle de los comprobantes imputados.
+      </div>
+      {!resumen || resumen.length === 0 ? (
+        <CAlert color="info">No hay comprobantes mayorizados en este período. Asigná una cuenta Debe/Haber al cargar ventas o compras.</CAlert>
+      ) : (
+        <CTable small bordered responsive align="middle" className="ledger">
+          <CTableHead>
+            <CTableRow>
+              <CTableHeaderCell>Cuenta</CTableHeaderCell>
+              <CTableHeaderCell className="text-end">Debe</CTableHeaderCell>
+              <CTableHeaderCell className="text-end">Haber</CTableHeaderCell>
+              <CTableHeaderCell className="text-end">Saldo</CTableHeaderCell>
+              <CTableHeaderCell className="text-end">Movim.</CTableHeaderCell>
+            </CTableRow>
+          </CTableHead>
+          <CTableBody>
+            {resumen.map((r) => (
+              <CTableRow
+                key={r.id}
+                style={{ cursor: 'pointer' }}
+                active={cuenta?.id === r.id}
+                onClick={() => setCuenta({ id: r.id, nombre: r.nombre })}
+              >
+                <CTableDataCell>
+                  {r.codigo ? `${r.codigo} — ` : ''}
+                  {r.nombre}
+                </CTableDataCell>
+                <CTableDataCell className="text-end">{money(r.debe)}</CTableDataCell>
+                <CTableDataCell className="text-end">{money(r.haber)}</CTableDataCell>
+                <CTableDataCell className="text-end">{money(r.saldo)}</CTableDataCell>
+                <CTableDataCell className="text-end">{r.movimientos}</CTableDataCell>
+              </CTableRow>
+            ))}
+          </CTableBody>
+        </CTable>
+      )}
+
+      {cuenta && (
+        <div className="mt-4">
+          <h6>Detalle — {cuenta.nombre}</h6>
+          <CTable small bordered responsive align="middle" className="ledger">
+            <CTableHead>
+              <CTableRow>
+                <CTableHeaderCell>Fecha</CTableHeaderCell>
+                <CTableHeaderCell>Comprobante</CTableHeaderCell>
+                <CTableHeaderCell>Nombre</CTableHeaderCell>
+                <CTableHeaderCell>Lado</CTableHeaderCell>
+                <CTableHeaderCell className="text-end">Importe</CTableHeaderCell>
+              </CTableRow>
+            </CTableHead>
+            <CTableBody>
+              {(detalle ?? []).map((m, i) => (
+                <CTableRow key={i}>
+                  <CTableDataCell>{m.fecha ?? '—'}</CTableDataCell>
+                  <CTableDataCell>
+                    {`${m.cbte_codigo ?? ''} ${m.letra ?? ''} ${m.punto_venta ?? ''}-${m.numero ?? ''}`.trim()}
+                  </CTableDataCell>
+                  <CTableDataCell>{m.nombre ?? '—'}</CTableDataCell>
+                  <CTableDataCell>{m.lado}</CTableDataCell>
+                  <CTableDataCell className="text-end">{money(m.importe)}</CTableDataCell>
+                </CTableRow>
+              ))}
+            </CTableBody>
+          </CTable>
+        </div>
+      )}
     </>
   )
 }

@@ -9,6 +9,7 @@ use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Controllers\DjIvaSimpleController;
 use App\Modules\Iva\Controllers\SifereController;
+use App\Modules\Iva\Controllers\MayorController;
 use App\Modules\Iva\Controllers\EmpresaActividadController;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
@@ -116,6 +117,10 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         [SifereController::class, 'exportar'],
         [$perm('iva.libro')],
     );
+
+    // Mayor de cuentas (mayorización interna): resumen por cuenta + detalle de una cuenta.
+    $router->get("{$bajoPeriodo}/mayor", [MayorController::class, 'resumen'], [$perm('iva.libro')]);
+    $router->get("{$bajoPeriodo}/mayor/{cuentaId}", [MayorController::class, 'detalle'], [$perm('iva.libro')]);
 
     // Actividades (NAES) por empresa + mapa {punto de venta → actividad} (apertura DJ por actividad)
     $router->get("{$base}/actividades", [EmpresaActividadController::class, 'index'], [$perm('iva.libro')]);

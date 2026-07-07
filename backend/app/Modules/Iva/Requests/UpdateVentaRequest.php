@@ -40,6 +40,8 @@ class UpdateVentaRequest extends FormRequest
             'es_bien_uso'             => 'nullable|in:S,N',
             'campo_auxiliar'          => 'nullable|string|max:255',
             'total_informado'         => 'nullable|numeric',
+            'cuenta_debe_id'          => 'nullable|integer',
+            'cuenta_haber_id'         => 'nullable|integer',
             'discriminaciones'        => 'nullable|array',
             'percepciones'            => 'nullable|array',
             'comprobantes_asociados'  => 'nullable|array',

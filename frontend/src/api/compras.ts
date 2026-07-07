@@ -56,6 +56,8 @@ export interface CompraInput {
   tipo_cambio?: string | null
   campo_auxiliar?: string | null
   total_informado?: string | null
+  cuenta_debe_id?: number | null
+  cuenta_haber_id?: number | null
   actividad_id?: number | null
   concepto_dj?: number | null
   discriminaciones: CompraDiscriminacionInput[]
@@ -71,6 +73,8 @@ export interface CompraDetalle {
   condicion_iva_id: number | null
   provincia_id: number | null
   rubro_id: number | null
+  cuenta_debe_id: number | null
+  cuenta_haber_id: number | null
   proveedor_id: number | null
   proveedor_nombre: string | null
   cuit: string | null

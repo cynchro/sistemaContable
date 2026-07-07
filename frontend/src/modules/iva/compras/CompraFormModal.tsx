@@ -27,6 +27,7 @@ import { listCatalogo, listTiposRetencion } from '../../../api/catalogos'
 import { listSujetos } from '../../../api/sujetos'
 import { listActividades } from '../../../api/actividades'
 import { listRubros } from '../../../api/rubros'
+import { listCuentas } from '../../../api/cuentas'
 import { getCompra, type CompraInput } from '../../../api/compras'
 import SujetoTypeahead from '../SujetoTypeahead'
 
@@ -57,6 +58,8 @@ const schema = z.object({
   condicion_iva_id: z.string().optional(),
   provincia_id: z.string().optional(),
   rubro_id: z.string().optional(),
+  cuenta_debe_id: z.string().optional(),
+  cuenta_haber_id: z.string().optional(),
   letra: z.string().optional(),
   punto_venta: z.string().optional(),
   numero: z.string().optional(),
@@ -85,6 +88,8 @@ const VACIO: FormValues = {
   condicion_iva_id: '',
   provincia_id: '',
   rubro_id: '',
+  cuenta_debe_id: '',
+  cuenta_haber_id: '',
   letra: '',
   punto_venta: '',
   numero: '',
@@ -164,6 +169,11 @@ export default function CompraFormModal({
     enabled: visible,
   })
   const { data: rubros } = useQuery({ queryKey: ['rubros'], queryFn: () => listRubros(), enabled: visible })
+  const { data: cuentas } = useQuery({
+    queryKey: ['cuentas', empresaId],
+    queryFn: () => listCuentas(empresaId),
+    enabled: visible,
+  })
 
   const { data: detalle, isLoading: cargando } = useQuery({
     queryKey: ['compra', empresaId, periodoId, compraId],
@@ -204,6 +214,8 @@ export default function CompraFormModal({
         condicion_iva_id: detalle.condicion_iva_id != null ? String(detalle.condicion_iva_id) : '',
         provincia_id: detalle.provincia_id != null ? String(detalle.provincia_id) : '',
         rubro_id: detalle.rubro_id != null ? String(detalle.rubro_id) : '',
+        cuenta_debe_id: detalle.cuenta_debe_id != null ? String(detalle.cuenta_debe_id) : '',
+        cuenta_haber_id: detalle.cuenta_haber_id != null ? String(detalle.cuenta_haber_id) : '',
         letra: detalle.letra ?? '',
         punto_venta: detalle.punto_venta != null ? String(detalle.punto_venta) : '',
         numero: detalle.numero != null ? String(detalle.numero) : '',
@@ -271,6 +283,8 @@ export default function CompraFormModal({
       condicion_iva_id: num(v.condicion_iva_id),
       provincia_id: num(v.provincia_id),
       rubro_id: num(v.rubro_id),
+      cuenta_debe_id: num(v.cuenta_debe_id),
+      cuenta_haber_id: num(v.cuenta_haber_id),
       letra: str(v.letra),
       punto_venta: str(v.punto_venta),
       numero: str(v.numero),
@@ -460,6 +474,30 @@ export default function CompraFormModal({
                     <option value="2">2 — Locaciones (alquileres)</option>
                     <option value="3">3 — Servicios (luz/agua/gas/tel.)</option>
                     <option value="4">4 — Inversiones en bienes de uso</option>
+                  </CFormSelect>
+                </div>
+                <div className="col-md-4 mb-3">
+                  <CFormLabel htmlFor="cuenta_debe_id">Cuenta Debe (mayorización)</CFormLabel>
+                  <CFormSelect id="cuenta_debe_id" {...register('cuenta_debe_id')}>
+                    <option value="">—</option>
+                    {cuentas?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.codigo ? `${c.codigo} — ` : ''}
+                        {c.nombre}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+                <div className="col-md-4 mb-3">
+                  <CFormLabel htmlFor="cuenta_haber_id">Cuenta Haber (mayorización)</CFormLabel>
+                  <CFormSelect id="cuenta_haber_id" {...register('cuenta_haber_id')}>
+                    <option value="">—</option>
+                    {cuentas?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.codigo ? `${c.codigo} — ` : ''}
+                        {c.nombre}
+                      </option>
+                    ))}
                   </CFormSelect>
                 </div>
               </div>

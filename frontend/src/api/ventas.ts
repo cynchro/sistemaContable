@@ -107,6 +107,8 @@ export interface VentaInput {
   tipo_cambio?: string | null
   campo_auxiliar?: string | null
   total_informado?: string | null
+  cuenta_debe_id?: number | null
+  cuenta_haber_id?: number | null
   actividad_id?: number | null
   es_bien_uso?: string | null
   discriminaciones: DiscriminacionInput[]
@@ -124,6 +126,8 @@ export interface VentaDetalle {
   condicion_iva_id: number | null
   provincia_id: number | null
   rubro_id: number | null
+  cuenta_debe_id: number | null
+  cuenta_haber_id: number | null
   cliente_id: number | null
   cliente_nombre: string | null
   cuit: string | null

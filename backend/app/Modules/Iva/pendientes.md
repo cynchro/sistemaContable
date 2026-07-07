@@ -158,9 +158,11 @@
       (hoy el cert va por ruta en `.env`, un solo emisor); `ventas_cache_ws`.
 
 ## F) Campos del legacy podados (re-incorporar si el negocio los pide)
-- [ ] **Imputación contable** en comprobantes/discriminación: `*_CTA_*`
-      (cuenta total/neto/iva/imp interno), `*_CTA_DEBE`/`*_CTA_HABER`. Necesarios
-      para asientos y export a Contable.
+- [~] **Imputación contable** en comprobantes: **HECHO a nivel comprobante** (migración 0042:
+      `cuenta_debe_id` / `cuenta_haber_id` en ventas y compras, FK a `cuentas`). Alimenta el
+      **Mayor de cuentas** (`GET …/periodos/{pid}/mayor` resumen + `…/mayor/{cuentaId}` detalle) que
+      el estudio usa a diario. Pendiente v2: imputación **por línea** (separar neto/IVA en cuentas
+      distintas, para asientos completos y export a Contable) y mayor por rango/anual.
 - [~] `total_productos` / `total_servicios`, `id_actividad`, `campo_aux` /
       `nombre_campo_aux`, `reten_nro_fac` / `reten_vtaid` (ventas). **Parcial**:
       `id_actividad` HECHO (`ventas.actividad_id` / `compras.actividad_id`, migración 0036,

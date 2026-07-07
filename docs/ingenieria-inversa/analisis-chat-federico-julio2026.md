@@ -48,7 +48,7 @@ falta es **operativa/UX y reportes** que él nombró en los audios del 3/7 y 7/7
 - **Esfuerzo:** bajo. El endpoint del subdiario (`ReporteIvaRepository`) ya calcula neto/IVA;
   hay que exponerlos en el listado paginado (o agregar columnas derivadas) y sumarlos en el front.
 
-### 🔴 FALTA 2 — Mayorización (imputación contable) + reportes de Mayor (grande, estructural)
+### 🟢 FALTA 2 — Mayorización (imputación contable) + reportes de Mayor — ✅ HECHO (v1)
 - **Pedido** (audio `WA0010`, muy enfático — "lo uso bastante", "proveedores uso mucho, la
   mayorización, todo"): en el Visual IVA cada comprobante se **mayoriza** asignándole una
   **cuenta contable** (IMG-0015: "Cuenta Haber: 5008 SEGUROS PAGADOS", cuenta por línea de neto,
@@ -60,9 +60,15 @@ falta es **operativa/UX y reportes** que él nombró en los audios del 3/7 y 7/7
   `pendientes.md §F`). Solo quedó `rubro_id` a nivel cabecera (rubro F2002 — NO es la cuenta de
   mayorización). Existe el catálogo `cuentas` (plan de cuentas por empresa) pero no se imputa por
   comprobante ni hay reportes de mayor.
-- **Esfuerzo:** medio-alto. Migración para agregar `cuenta_id` (debe/haber) por comprobante y/o
-  por línea de discriminación; UI de imputación en los modales; 2 reportes nuevos (agregado +
-  detalle por cuenta). Es el faltante más importante para su día a día.
+- **✅ HECHO (v1, 2026-07-07):** migración 0042 (`cuenta_debe_id` / `cuenta_haber_id` en ventas y
+  compras, FK a `cuentas` con `ON DELETE SET NULL`). Los modales de venta y compra tienen selectores
+  **Cuenta Debe / Cuenta Haber** (del plan de la empresa). Reportes: `GET …/periodos/{pid}/mayor`
+  (Resumen de Movimientos: por cuenta, debe/haber/saldo/#movimientos, las NC restan por signo) y
+  `GET …/periodos/{pid}/mayor/{cuentaId}` (Detalle: comprobantes imputados). Frontend: pestaña
+  **Mayor** en el Libro IVA (resumen → clic en cuenta → detalle). Tests `MayorTest`. 550 tests.
+- **A confirmar con Federico / pendiente v2:** el importe del movimiento hoy es el **total** del
+  comprobante (con signo). Si el mayor debe separar neto (gasto) del IVA (crédito fiscal), habría que
+  imputar por línea. También: mayor **por rango de fechas / anual** (para convenio — FALTA 4).
 
 ### 🟢 FALTA 3 — Exportaciones IIBB por jurisdicción (SIFERE V4 y familia) — ✅ V4 percepciones HECHO
 - **Pedido** (audios `WA0010`/`WA0018`/`WA0024` + IMG-0016/0017 + TXT de ejemplo): en "Otros
@@ -169,7 +175,7 @@ repos actualizados. 53 tests verdes.
 | 1 | **Neto + IVA en el listado** de compras/ventas | Front | 🥇 Alta (rápido, alto impacto UX) | — |
 | 2 | **Validar LAVALLE mayo/2026** (regenerar Libro IVA Digital y comparar) | Verificación | 🥇 Alta (cierra "producción") | — |
 | 3 | **SIFERE Convenio Multilateral V4** (percepciones) ✅ HECHO · retenciones + otras jurisdicciones pendientes | Back+Front | 🥈 Alta (mensual, 7-8 clientes) | datos de percepción por provincia (ya están) |
-| 4 | **Mayorización**: `cuenta_id` por comprobante + 2 reportes de Mayor | Back+Front | 🥈 Alta (uso diario) | migración + UI |
+| 4 | **Mayorización**: cuenta debe/haber por comprobante + 2 reportes de Mayor ✅ HECHO (v1) | Back+Front | 🥈 Alta (uso diario) | migración + UI |
 | 5 | Resto de exportaciones IIBB por jurisdicción (Santa Fe, Córdoba, SIRCAR, ATER…) | Back | 🥉 Media | spec de cada layout |
 | 6 | Reportes **por provincia** (anual de convenio) | Back+Front | 🥉 Media/Baja (futuro) | #4 (mayorización) |
 | 7 | Pulido de reportes en general ("meterle cabeza") | Front | 🥉 Media | — |

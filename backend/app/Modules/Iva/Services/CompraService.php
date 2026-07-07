@@ -337,6 +337,14 @@ class CompraService
                 'table' => 'iva_proveedores', 'value' => $data['proveedor_id'] ?? null,
                 'scope' => ['empresa_id' => $empresaId],
             ],
+            'cuenta_debe_id'           => [
+                'table' => 'cuentas', 'value' => $data['cuenta_debe_id'] ?? null,
+                'scope' => ['empresa_id' => $empresaId],
+            ],
+            'cuenta_haber_id'          => [
+                'table' => 'cuentas', 'value' => $data['cuenta_haber_id'] ?? null,
+                'scope' => ['empresa_id' => $empresaId],
+            ],
         ]);
     }
 

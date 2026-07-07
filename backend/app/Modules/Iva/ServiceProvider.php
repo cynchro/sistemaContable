@@ -58,6 +58,9 @@ use App\Modules\Iva\Repositories\SifereRepository;
 use App\Modules\Iva\Export\SifereWriter;
 use App\Modules\Iva\Services\SifereService;
 use App\Modules\Iva\Controllers\SifereController;
+use App\Modules\Iva\Repositories\MayorRepository;
+use App\Modules\Iva\Services\MayorService;
+use App\Modules\Iva\Controllers\MayorController;
 use App\Modules\Iva\Repositories\AuditoriaRepository;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
@@ -233,6 +236,18 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             SifereController::class,
             fn () => new SifereController($c->get(SifereService::class)),
+        );
+
+        // Mayor de cuentas (mayorización interna): resumen + detalle por cuenta.
+        $c->singleton(MayorRepository::class, fn () => new MayorRepository($c->get(PDO::class)));
+        $c->singleton(MayorService::class, fn () => new MayorService(
+            $c->get(MayorRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+        ));
+        $c->singleton(
+            MayorController::class,
+            fn () => new MayorController($c->get(MayorService::class)),
         );
 
         // Actividades por empresa (NAES) + mapa de puntos de venta (apertura DJ por actividad).
