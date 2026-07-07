@@ -20,6 +20,7 @@ import {
   CButtonGroup,
   CFormInput,
   CFormLabel,
+  CFormSelect,
   CSpinner,
   CAlert,
 } from '@coreui/react'
@@ -34,6 +35,7 @@ import {
   descargarSubdiario,
   descargarLibroIvaDigital,
   descargarDjIvaSimple,
+  descargarSifere,
   type DetalleAlicuota,
 } from '../../../api/libroIva'
 import {
@@ -475,9 +477,14 @@ function TablaPercepciones({
 
 function Descargas({ eId, pId }: { eId: number; pId: number }) {
   const [error, setError] = useState<string | null>(null)
+  const [sifereProv, setSifereProv] = useState('')
   const { data: reintegro } = useQuery({
     queryKey: ['reintegro-t', eId, pId],
     queryFn: () => getReintegroT(eId, pId),
+  })
+  const { data: provincias = [] } = useQuery({
+    queryKey: ['catalogo', 'provincias'],
+    queryFn: () => listCatalogo('provincias'),
   })
   const run = (fn: () => Promise<void>) => {
     setError(null)
@@ -548,6 +555,33 @@ function Descargas({ eId, pId }: { eId: number; pId: number }) {
         </CButton>
         <CButton color="info" variant="outline" onClick={() => run(() => descargarDjIvaSimple(eId, pId, 'restitucion-credito'))}>
           Restitución de crédito
+        </CButton>
+      </div>
+
+      <h6 className="mt-4">SIFERE Convenio Multilateral V4 — percepciones de IIBB</h6>
+      <div className="text-body-secondary small mb-2">
+        Percepciones de IIBB sufridas en compras de una jurisdicción, para cargar en el sistema de
+        convenio multilateral (agentes locales que no informan en COMARB).
+      </div>
+      <div className="d-flex flex-wrap gap-2 align-items-end" style={{ maxWidth: 520 }}>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <CFormLabel className="small mb-1">Jurisdicción (provincia)</CFormLabel>
+          <CFormSelect size="sm" value={sifereProv} onChange={(e) => setSifereProv(e.target.value)}>
+            <option value="">Elegí una provincia…</option>
+            {provincias.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre}
+              </option>
+            ))}
+          </CFormSelect>
+        </div>
+        <CButton
+          color="warning"
+          variant="outline"
+          disabled={!sifereProv}
+          onClick={() => run(() => descargarSifere(eId, pId, Number(sifereProv)))}
+        >
+          Descargar percepciones
         </CButton>
       </div>
     </>

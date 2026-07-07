@@ -154,3 +154,14 @@ export function descargarDjIvaSimple(
 ): Promise<void> {
   return descargar(`${base(empresaId, periodoId)}/dj-iva-simple/${archivo}`)
 }
+
+/** TXT de percepciones SIFERE Convenio Multilateral V4, por jurisdicción (provincia). */
+export function descargarSifere(
+  empresaId: number,
+  periodoId: number,
+  provinciaId: number,
+): Promise<void> {
+  return descargar(`${base(empresaId, periodoId)}/sifere/percepciones`, {
+    provincia_id: String(provinciaId),
+  })
+}

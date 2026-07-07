@@ -64,7 +64,7 @@ falta es **operativa/UX y reportes** que él nombró en los audios del 3/7 y 7/7
   por línea de discriminación; UI de imputación en los modales; 2 reportes nuevos (agregado +
   detalle por cuenta). Es el faltante más importante para su día a día.
 
-### 🔴 FALTA 3 — Exportaciones IIBB por jurisdicción (SIFERE V4 y familia) (grande)
+### 🟢 FALTA 3 — Exportaciones IIBB por jurisdicción (SIFERE V4 y familia) — ✅ V4 percepciones HECHO
 - **Pedido** (audios `WA0010`/`WA0018`/`WA0024` + IMG-0016/0017 + TXT de ejemplo): en "Otros
   Listados → Exportación IIBB" hay un desplegable con **muchos formatos por jurisdicción**:
   `Percepciones SI.FE.RE Convenio Multilateral V4` (el que más usa, mensual), Retenciones SIFERE
@@ -76,12 +76,16 @@ falta es **operativa/UX y reportes** que él nombró en los audios del 3/7 y 7/7
   (agente local de Salta que no informa en COMARB) → las percepciones se cargan como Salta y se
   exporta el SIFERE. Formato de ejemplo (`Percepciones SIFERE -202605`):
   `917` (jurisdicción) + `CUIT` + `dd/mm/aaaa` + `PV(4)` + `número(8)` + `tipo(FA)` + `importe(coma decimal)`.
-- **Hoy:** existe un **exportador TXT configurable** genérico (`iva_export_formatos`, migr. 0034)
-  pero **no** los presets estandarizados por jurisdicción ni la lógica de seleccionar la
-  jurisdicción/provincia de la percepción. El dato base (percepciones por tipo+provincia) SÍ lo
-  tenemos (`reportes/percepciones`).
-- **Esfuerzo:** medio. Empezar por **SIFERE Convenio Multilateral V4** (percepciones y
-  retenciones), que cubre a la mayoría; los demás formatos se agregan de a uno con su spec.
+- **✅ HECHO — SIFERE Convenio Multilateral V4 (percepciones)** (2026-07-07): `Export/SifereWriter`
+  (ancho fijo 51 chars: jurisdicción 3 + CUIT con guiones 13 + fecha dd/mm/aaaa 10 + PV 4 + número 8 +
+  tipo 2 + importe 11 con coma; CRLF) + `Export/JurisdiccionSifere` (provincia→código COMARB, fallback
+  del `provincias.jurisdiccion` sembrado) + `SifereRepository` (percepciones IIBB `tipo_rg3685=3` por
+  jurisdicción) + `SifereService` + `GET …/sifere/percepciones?provincia_id=`. Frontend: selector de
+  provincia + descarga en la pestaña "Descargas" del Libro IVA. **Validado byte a byte** contra el
+  ejemplo real del contador (`SifereWriterTest`) + `SifereExportTest` (E2E). 548 tests.
+- **Pendiente (agregar de a uno con su spec):** SIFERE V4 **retenciones**, y los demás formatos del
+  desplegable (IIBB Santa Fe, Córdoba APIBCBA, SIRCAR, ATER, Catamarca, San Juan, Posadas, ARCA Web
+  2.00). El dato base (percepciones por tipo+provincia) ya lo tenemos.
 
 ### 🟡 FALTA 4 — Reportes por provincia para DDJJ anual de convenio (futuro)
 - **Pedido** (audio `WA0024`): para la DDJJ **anual** de convenio necesita saber, de todo el año,
@@ -164,7 +168,7 @@ repos actualizados. 53 tests verdes.
 |---|---|---|---|---|
 | 1 | **Neto + IVA en el listado** de compras/ventas | Front | 🥇 Alta (rápido, alto impacto UX) | — |
 | 2 | **Validar LAVALLE mayo/2026** (regenerar Libro IVA Digital y comparar) | Verificación | 🥇 Alta (cierra "producción") | — |
-| 3 | **SIFERE Convenio Multilateral V4** (percep. + retenc.) | Back+Front | 🥈 Alta (mensual, 7-8 clientes) | datos de percepción por provincia (ya están) |
+| 3 | **SIFERE Convenio Multilateral V4** (percepciones) ✅ HECHO · retenciones + otras jurisdicciones pendientes | Back+Front | 🥈 Alta (mensual, 7-8 clientes) | datos de percepción por provincia (ya están) |
 | 4 | **Mayorización**: `cuenta_id` por comprobante + 2 reportes de Mayor | Back+Front | 🥈 Alta (uso diario) | migración + UI |
 | 5 | Resto de exportaciones IIBB por jurisdicción (Santa Fe, Córdoba, SIRCAR, ATER…) | Back | 🥉 Media | spec de cada layout |
 | 6 | Reportes **por provincia** (anual de convenio) | Back+Front | 🥉 Media/Baja (futuro) | #4 (mayorización) |

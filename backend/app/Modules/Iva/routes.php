@@ -8,6 +8,7 @@ use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
 use App\Modules\Iva\Controllers\LibroIvaDigitalController;
 use App\Modules\Iva\Controllers\DjIvaSimpleController;
+use App\Modules\Iva\Controllers\SifereController;
 use App\Modules\Iva\Controllers\EmpresaActividadController;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
@@ -105,6 +106,14 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     $router->get(
         "{$bajoPeriodo}/dj-iva-simple/{archivo}",
         [DjIvaSimpleController::class, 'exportar'],
+        [$perm('iva.libro')],
+    );
+
+    // Exportación SIFERE Convenio Multilateral V4 (percepciones IIBB por jurisdicción).
+    // tipo: percepciones · ?provincia_id=<id de la jurisdicción>
+    $router->get(
+        "{$bajoPeriodo}/sifere/{tipo}",
+        [SifereController::class, 'exportar'],
         [$perm('iva.libro')],
     );
 

@@ -54,6 +54,10 @@ use App\Modules\Iva\Repositories\DjIvaSimpleRepository;
 use App\Modules\Iva\Export\DjIvaSimpleWriter;
 use App\Modules\Iva\Services\DjIvaSimpleService;
 use App\Modules\Iva\Controllers\DjIvaSimpleController;
+use App\Modules\Iva\Repositories\SifereRepository;
+use App\Modules\Iva\Export\SifereWriter;
+use App\Modules\Iva\Services\SifereService;
+use App\Modules\Iva\Controllers\SifereController;
 use App\Modules\Iva\Repositories\AuditoriaRepository;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
@@ -215,6 +219,20 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             DjIvaSimpleController::class,
             fn () => new DjIvaSimpleController($c->get(DjIvaSimpleService::class)),
+        );
+
+        // SIFERE Convenio Multilateral V4: percepciones de IIBB sufridas por jurisdicción.
+        $c->singleton(SifereRepository::class, fn () => new SifereRepository($c->get(PDO::class)));
+        $c->singleton(SifereWriter::class, fn () => new SifereWriter());
+        $c->singleton(SifereService::class, fn () => new SifereService(
+            $c->get(SifereRepository::class),
+            $c->get(SifereWriter::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+        ));
+        $c->singleton(
+            SifereController::class,
+            fn () => new SifereController($c->get(SifereService::class)),
         );
 
         // Actividades por empresa (NAES) + mapa de puntos de venta (apertura DJ por actividad).
