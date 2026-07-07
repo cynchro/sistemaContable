@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import {
   CCard,
   CCardHeader,
@@ -21,7 +21,8 @@ import {
 } from '@coreui/react'
 import { parseCsv, normNumber, normDate, type CsvParsed } from './csv'
 import { importVentas, importCompras, type ImportResultado } from '../../../api/importar'
-import type { VentaInput } from '../../../api/ventas'
+import { listTiposRetencionAbm } from '../../../api/tiposRetencion'
+import type { VentaInput, DiscriminacionInput, PercepcionInput } from '../../../api/ventas'
 import type { CompraInput } from '../../../api/compras'
 
 type Destino = 'ventas' | 'compras'
@@ -43,6 +44,7 @@ const CAMPOS: Campo[] = [
   { key: 'nombre', label: 'Nombre / Razón social' },
   { key: 'neto_gravado', label: 'Neto gravado', required: true },
   { key: 'iva_alicuota', label: 'Alícuota % (def. 21)' },
+  { key: 'iva_importe', label: 'IVA (importe, opcional)' },
   { key: 'neto_no_grav', label: 'Neto no gravado' },
   { key: 'exento', label: 'Exento' },
   { key: 'imp_interno', label: 'Imp. internos' },
@@ -59,12 +61,19 @@ const PISTAS: Record<string, RegExp> = {
   nombre: /denomin|nombre|raz[oó]n/i,
   neto_gravado: /neto\s*grav/i,
   iva_alicuota: /al[ií]cuota/i,
+  iva_importe: /^\s*iva\s*$|importe.*iva/i,
   neto_no_grav: /no\s*grav/i,
   exento: /exent/i,
   imp_interno: /interno/i,
 }
 
 type Mapping = Record<string, string> // key destino → índice de columna (string) o ''
+
+/** Asocia una columna del CSV (importe) a un tipo de percepción/retención del catálogo. */
+interface PercepMapping {
+  col: string // índice de columna (string) o ''
+  tipoId: string // id de tipo_retencion (string) o ''
+}
 
 function autoMap(headers: string[]): Mapping {
   const m: Mapping = {}
@@ -80,11 +89,36 @@ function autoMap(headers: string[]): Mapping {
   return m
 }
 
-function buildComprobante(row: string[], map: Mapping, destino: Destino): VentaInput | CompraInput {
+function buildComprobante(
+  row: string[],
+  map: Mapping,
+  destino: Destino,
+  percepMappings: PercepMapping[],
+): VentaInput | CompraInput {
   const get = (key: string): string | undefined => {
     const idx = map[key]
     return idx === '' || idx == null ? undefined : row[Number(idx)]
   }
+
+  const disc: DiscriminacionInput = {
+    neto_gravado: normNumber(get('neto_gravado')) || '0',
+    iva_alicuota: normNumber(get('iva_alicuota')) || '21',
+  }
+  // Override del IVA (regla del asterisco): si el CSV trae el importe de IVA (p. ej. el de
+  // AFIP) lo respetamos; si no, lo calcula el motor desde neto × alícuota.
+  const ivaImporte = normNumber(get('iva_importe'))
+  if (ivaImporte) disc.iva_importe = ivaImporte
+
+  // Percepciones/retenciones: cada mapeo lee su columna; se agrega solo si trae un importe ≠ 0.
+  const percepciones: PercepcionInput[] = []
+  for (const pm of percepMappings) {
+    if (pm.col === '' || pm.tipoId === '') continue
+    const val = normNumber(row[Number(pm.col)])
+    if (val && Number(val) !== 0) {
+      percepciones.push({ tipo_retencion_id: Number(pm.tipoId), importe: val })
+    }
+  }
+
   const base = {
     fecha: normDate(get('fecha')),
     letra: get('letra') || null,
@@ -95,9 +129,8 @@ function buildComprobante(row: string[], map: Mapping, destino: Destino): VentaI
     exento: normNumber(get('exento')) || null,
     imp_interno: normNumber(get('imp_interno')) || null,
     campo_auxiliar: get('campo_auxiliar') || null,
-    discriminaciones: [
-      { neto_gravado: normNumber(get('neto_gravado')) || '0', iva_alicuota: normNumber(get('iva_alicuota')) || '21' },
-    ],
+    discriminaciones: [disc],
+    ...(percepciones.length > 0 ? { percepciones } : {}),
   }
   const nombre = get('nombre') || null
   return destino === 'ventas'
@@ -114,8 +147,14 @@ export default function ImportarPage() {
   const [fileName, setFileName] = useState('')
   const [parsed, setParsed] = useState<CsvParsed | null>(null)
   const [mapping, setMapping] = useState<Mapping>({})
+  const [percepMappings, setPercepMappings] = useState<PercepMapping[]>([])
   const [parseError, setParseError] = useState<string | null>(null)
   const [result, setResult] = useState<ImportResultado | null>(null)
+
+  const { data: tipos = [] } = useQuery({
+    queryKey: ['tipos-retencion-abm'],
+    queryFn: listTiposRetencionAbm,
+  })
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -133,6 +172,7 @@ export default function ImportarPage() {
       }
       setParsed(p)
       setMapping(autoMap(p.headers))
+      setPercepMappings([])
     } catch {
       setParseError('No se pudo leer el archivo.')
       setParsed(null)
@@ -140,8 +180,8 @@ export default function ImportarPage() {
   }
 
   const comprobantes = useMemo(
-    () => (parsed ? parsed.rows.map((r) => buildComprobante(r, mapping, destino)) : []),
-    [parsed, mapping, destino],
+    () => (parsed ? parsed.rows.map((r) => buildComprobante(r, mapping, destino, percepMappings)) : []),
+    [parsed, mapping, destino, percepMappings],
   )
 
   const nombreCampo = destino === 'ventas' ? 'cliente_nombre' : 'proveedor_nombre'
@@ -155,6 +195,7 @@ export default function ImportarPage() {
   })
 
   const faltaObligatorio = CAMPOS.filter((c) => c.required && !mapping[c.key])
+  const conceptoPercep = destino === 'ventas' ? 'Percepciones' : 'Retenciones / percepciones'
 
   return (
     <CCard>
@@ -191,8 +232,8 @@ export default function ImportarPage() {
       <CCardBody>
         <p className="text-body-secondary">
           Subí un CSV (Mis Comprobantes de ARCA, o cualquier export). Se detectan las columnas y las
-          mapeás a los campos del sistema; el total y el IVA los calcula el motor. Los comprobantes se
-          crean en el período activo (empresa #{eId}, período #{pId}).
+          mapeás a los campos del sistema; el total y el IVA los calcula el motor (salvo que mapees el
+          importe de IVA). Los comprobantes se crean en el período activo (empresa #{eId}, período #{pId}).
         </p>
 
         <div className="mb-3" style={{ maxWidth: 420 }}>
@@ -233,6 +274,79 @@ export default function ImportarPage() {
               ))}
             </div>
 
+            <div className="mb-2 d-flex align-items-center gap-2">
+              <strong>{conceptoPercep}</strong>
+              <span className="text-body-secondary small">
+                (asociá una columna de importe a un tipo del catálogo; integra el total)
+              </span>
+              <CButton
+                size="sm"
+                color="secondary"
+                variant="outline"
+                className="ms-auto"
+                disabled={tipos.length === 0}
+                onClick={() => setPercepMappings((p) => [...p, { col: '', tipoId: '' }])}
+              >
+                + Agregar {destino === 'ventas' ? 'percepción' : 'retención'}
+              </CButton>
+            </div>
+            {tipos.length === 0 && (
+              <div className="small text-body-secondary mb-2">
+                No hay tipos de retención/percepción cargados. Definilos en Utilidades → Tipos de retención.
+              </div>
+            )}
+            {percepMappings.length > 0 && (
+              <div className="row g-2 mb-3">
+                {percepMappings.map((pm, idx) => (
+                  <div className="col-12 d-flex gap-2 align-items-end" key={idx}>
+                    <div style={{ flex: 1, maxWidth: 260 }}>
+                      <CFormLabel className="small mb-1">Columna (importe)</CFormLabel>
+                      <CFormSelect
+                        size="sm"
+                        value={pm.col}
+                        onChange={(e) =>
+                          setPercepMappings((p) => p.map((x, i) => (i === idx ? { ...x, col: e.target.value } : x)))
+                        }
+                      >
+                        <option value="">—</option>
+                        {parsed.headers.map((h, i) => (
+                          <option key={i} value={i}>
+                            {h || `Columna ${i + 1}`}
+                          </option>
+                        ))}
+                      </CFormSelect>
+                    </div>
+                    <div style={{ flex: 1, maxWidth: 320 }}>
+                      <CFormLabel className="small mb-1">Tipo</CFormLabel>
+                      <CFormSelect
+                        size="sm"
+                        value={pm.tipoId}
+                        onChange={(e) =>
+                          setPercepMappings((p) => p.map((x, i) => (i === idx ? { ...x, tipoId: e.target.value } : x)))
+                        }
+                      >
+                        <option value="">—</option>
+                        {tipos.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nombre}
+                            {t.tenant_id === null ? ' (estándar)' : ''}
+                          </option>
+                        ))}
+                      </CFormSelect>
+                    </div>
+                    <CButton
+                      size="sm"
+                      color="danger"
+                      variant="outline"
+                      onClick={() => setPercepMappings((p) => p.filter((_, i) => i !== idx))}
+                    >
+                      Quitar
+                    </CButton>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="mb-2">
               <strong>Vista previa</strong> <span className="text-body-secondary small">(primeras 6 filas)</span>
             </div>
@@ -245,12 +359,15 @@ export default function ImportarPage() {
                   <CTableHeaderCell>CUIT</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Neto gravado</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Alíc. %</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">IVA</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">Perc.</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
                 {comprobantes.slice(0, 6).map((c, i) => {
                   const d = c.discriminaciones[0]
                   const nombre = (c as unknown as Record<string, unknown>)[nombreCampo] as string | null
+                  const perc = c.percepciones ?? []
                   return (
                     <CTableRow key={i}>
                       <CTableDataCell>{c.fecha || <span className="text-danger">—</span>}</CTableDataCell>
@@ -261,6 +378,10 @@ export default function ImportarPage() {
                       <CTableDataCell>{c.cuit ?? '—'}</CTableDataCell>
                       <CTableDataCell className="text-end">{d.neto_gravado}</CTableDataCell>
                       <CTableDataCell className="text-end">{d.iva_alicuota}</CTableDataCell>
+                      <CTableDataCell className="text-end">{d.iva_importe ?? '—'}</CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        {perc.length > 0 ? perc.reduce((s, p) => s + Number(p.importe ?? 0), 0) : '—'}
+                      </CTableDataCell>
                     </CTableRow>
                   )
                 })}
