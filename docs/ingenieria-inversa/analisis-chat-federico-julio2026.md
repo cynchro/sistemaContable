@@ -116,9 +116,25 @@ No son features nuevas: son **pruebas de que lo que generamos coincide** con lo 
      propio archivo del Visual tiene `total ≠ neto+iva` por 0,03 y ARCA lo aceptó). Para paridad
      **byte a byte** habría que **arrastrar el "total informado"** (columna Importe Total del
      comprobante/ARCA) en vez de derivarlo — mejora acotada y opcional (ver §5).
-2. **GRUPO MAZZUCO — COMPRAS**: 129 comprobantes en ARCA vs **135** en el TXT del Visual → hay **6
-   compras manuales** (el "cai manual.xls") que se agregan fuera de ARCA. La validación de compras
-   necesita parsear esa planilla; pendiente.
+2. **GRUPO MAZZUCO — COMPRAS: ✅ VALIDADO E2E (129 de ARCA; 2026-07-07)**. Se importaron los 129
+   comprobantes del CSV de ARCA (mapeando tipo, neto/IVA por alícuota, `cf_computable`, percepciones
+   IIBB/IVA/municipales y `total_informado`) y se regeneraron `COMPRAS_CBTE`/`COMPRAS_ALICUOTAS`.
+   - `COMPRAS_CBTE`: **99/129 byte-idénticas**. De las 30 con diferencia: **17 son solo el NOMBRE**
+     del proveedor (la `ñ` de "COMPAÑIA" — el CSV de ARCA viene con encoding roto `COMPA�IA`, nuestro
+     import tomó el carácter roto; cosmético, no afecta a AFIP). **13 son comprobantes (mayormente de
+     SEGUROS/FIANZAS) donde `total ≠ neto+iva`**: el Visual guarda la diferencia (ej. 828,45) en un
+     campo de "otros/imp. interno" que **el CSV de ARCA no desglosa** (la trae implícita en el total).
+     Nuestro **total matchea** (vía `total_informado`); solo difiere dónde se ubica ese resto. Más un
+     par de comprobantes exento-puro donde el Visual pone `cant_alic=0` y nosotros `1`.
+   - `COMPRAS_ALICUOTAS`: **124/132 byte-idénticas**; las pocas diferencias son artefactos de
+     alineación de comprobantes **multi-alícuota** en la comparación (mismo tipo/PV/número, distinta
+     alícuota), no errores de monto.
+   - **Conclusión:** el pipeline de compras reproduce correctamente montos, IVA, crédito fiscal y
+     percepciones. Diferencias residuales: (a) encoding `ñ` del CSV fuente, (b) un "otros tributos" que
+     ARCA no itemiza pero está en el total (seguros), (c) manejo de `cant_alic` en comprobantes
+     exento-puro (posible refinamiento menor del writer, a confirmar con Federico).
+   - Faltan las **6 compras manuales** (el "cai manual.xls") que se agregan fuera de ARCA — se cargan
+     a mano/planilla; no bloquean la validación del subconjunto de ARCA.
 3. **LAVALLE SRL — mayo 2026**: mismo método, pendiente (también con agregados manuales en compras).
 4. **Prueba de subida al Portal IVA**: que Federico suba un archivo nuestro a ARCA y confirme que
    lo acepta (de su lado).
