@@ -39,6 +39,7 @@ class UpdateVentaRequest extends FormRequest
             'actividad_id'            => 'nullable|integer',
             'es_bien_uso'             => 'nullable|in:S,N',
             'campo_auxiliar'          => 'nullable|string|max:255',
+            'total_informado'         => 'nullable|numeric',
             'discriminaciones'        => 'nullable|array',
             'percepciones'            => 'nullable|array',
             'comprobantes_asociados'  => 'nullable|array',

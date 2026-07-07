@@ -37,6 +37,7 @@ class CreateCompraRequest extends FormRequest
             'actividad_id'             => 'nullable|integer',
             'concepto_dj'              => 'nullable|integer',
             'campo_auxiliar'           => 'nullable|string|max:255',
+            'total_informado'          => 'nullable|numeric',
             'discriminaciones'         => 'nullable|array',
             'percepciones'             => 'nullable|array',
         ];

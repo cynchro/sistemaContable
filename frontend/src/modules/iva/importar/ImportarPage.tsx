@@ -45,6 +45,7 @@ const CAMPOS: Campo[] = [
   { key: 'neto_gravado', label: 'Neto gravado', required: true },
   { key: 'iva_alicuota', label: 'Alícuota % (def. 21)' },
   { key: 'iva_importe', label: 'IVA (importe, opcional)' },
+  { key: 'total_informado', label: 'Importe Total (informado)' },
   { key: 'neto_no_grav', label: 'Neto no gravado' },
   { key: 'exento', label: 'Exento' },
   { key: 'imp_interno', label: 'Imp. internos' },
@@ -62,6 +63,7 @@ const PISTAS: Record<string, RegExp> = {
   neto_gravado: /neto\s*grav/i,
   iva_alicuota: /al[ií]cuota/i,
   iva_importe: /^\s*iva\s*$|importe.*iva/i,
+  total_informado: /importe\s*total|^\s*total\s*$/i,
   neto_no_grav: /no\s*grav/i,
   exento: /exent/i,
   imp_interno: /interno/i,
@@ -129,6 +131,9 @@ function buildComprobante(
     exento: normNumber(get('exento')) || null,
     imp_interno: normNumber(get('imp_interno')) || null,
     campo_auxiliar: get('campo_auxiliar') || null,
+    // Total informado (el del comprobante/ARCA): si viene, el Libro IVA Digital lo usa en vez
+    // del derivado (neto+iva), para paridad byte a byte con lo que ya presenta el estudio.
+    total_informado: normNumber(get('total_informado')) || null,
     discriminaciones: [disc],
     ...(percepciones.length > 0 ? { percepciones } : {}),
   }

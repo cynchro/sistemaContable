@@ -37,7 +37,8 @@ class LibroIvaDigitalRepository
     {
         $stmt = $this->pdo->prepare(
             'SELECT v.fecha, tc.codigo AS cbte_codigo, v.letra, v.punto_venta, v.numero, v.numero_fin,
-                    td.cod_afip AS doc_cod_afip, v.cuit, v.cliente_nombre, v.total, v.neto_no_grav,
+                    td.cod_afip AS doc_cod_afip, v.cuit, v.cliente_nombre,
+                    COALESCE(v.total_informado, v.total) AS total, v.neto_no_grav,
                     v.exento, v.imp_interno, v.tipo_cambio, mo.codigo_afip AS moneda_codigo,
                     (SELECT COUNT(*) FROM venta_discriminaciones vd WHERE vd.venta_id = v.id) AS cant_alic,
                     ' . $this->percVenta('tr.tipo_rg3685 = 5') . ' AS perc_no_cat,
@@ -78,7 +79,8 @@ class LibroIvaDigitalRepository
     {
         $stmt = $this->pdo->prepare(
             'SELECT c.fecha, tc.codigo AS cbte_codigo, c.letra, c.punto_venta, c.numero,
-                    c.cuit, c.proveedor_nombre, c.total, c.neto_no_grav, c.exento, c.imp_interno,
+                    c.cuit, c.proveedor_nombre, COALESCE(c.total_informado, c.total) AS total,
+                    c.neto_no_grav, c.exento, c.imp_interno,
                     c.tipo_cambio, mo.codigo_afip AS moneda_codigo,
                     (SELECT COUNT(*) FROM compra_discriminaciones cd WHERE cd.compra_id = c.id) AS cant_alic,
                     (SELECT COALESCE(SUM(cd.cf_computable), 0) FROM compra_discriminaciones cd

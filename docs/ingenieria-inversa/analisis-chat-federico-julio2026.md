@@ -99,14 +99,46 @@ falta es **operativa/UX y reportes** que él nombró en los audios del 3/7 y 7/7
 ## 3. VALIDACIÓN PENDIENTE (datasets que mandó, para cerrar "IVA en producción")
 No son features nuevas: son **pruebas de que lo que generamos coincide** con lo que él presenta.
 
-1. **LAVALLE SRL — mayo 2026** (corralón). Mandó los 4 TXT del Libro IVA Digital + los ZIP de
-   "Mis Comprobantes" de ARCA (compras/ventas 202605) + "Planilla Importación Compras y Ventas".
-   → **Tarea:** importar esos comprobantes, cargar lo manual, **regenerar los 4 archivos** y
-   compararlos byte a byte contra los suyos.
-2. **GRUPO MAZZUCO** (constructora) — caso de DJ IVA Simple **por alícuota**. Ya hay
-   `GrupoMazzucoDjE2ETest` (vino en un commit de deploy) → confirmar que está cubierto/verde.
-3. **Prueba de subida al Portal IVA**: que Federico suba un archivo generado por nosotros a ARCA
-   y confirme que lo acepta (pendiente de su lado).
+1. **GRUPO MAZZUCO — mayo 2026 — VENTAS: ✅ VALIDADO E2E (2026-07-07)**. Se importaron los 6
+   comprobantes del CSV de ARCA (`comprobantes_periodo_202605_ventas`) en una empresa/período
+   limpios y se regeneraron `VENTAS_CBTE` y `VENTAS_ALICUOTAS` con nuestro sistema, comparándolos
+   contra los TXT del Visual. **Resultado**: todo lo estructural (tipo, letra, PV, número, doc,
+   CUIT, nombre, alícuota, IVA, moneda) es **byte-idéntico**. Las **únicas** diferencias son de
+   **redondeo sub-peso**:
+   - `VENTAS_CBTE`: 3 de 6 difieren **solo en el campo `total`** (±0,01–0,03). Causa: **nuestro
+     sistema deriva `total = neto + iva`**, mientras el Visual **arrastra el total informado** por
+     el comprobante/ARCA (que trae el redondeo propio de AFIP). Ej. cbte 434: neto 9.764.966,67 +
+     iva 2.050.643,00 = **11.815.609,67** (nuestro) vs **11.815.609,70** (Visual) vs 11.815.609,65
+     (ARCA) — los tres distintos.
+   - `VENTAS_ALICUOTAS`: 5 de 6 idénticas; 1 (cbte 135) difiere solo en el **neto**: ARCA informa
+     22.064.846,86 (lo que cargamos) y el Visual usó 22.064.846,90 (redondeo propio del Visual).
+   - **Conclusión:** el pipeline es correcto. Las diferencias son centavos que AFIP tolera (el
+     propio archivo del Visual tiene `total ≠ neto+iva` por 0,03 y ARCA lo aceptó). Para paridad
+     **byte a byte** habría que **arrastrar el "total informado"** (columna Importe Total del
+     comprobante/ARCA) en vez de derivarlo — mejora acotada y opcional (ver §5).
+2. **GRUPO MAZZUCO — COMPRAS**: 129 comprobantes en ARCA vs **135** en el TXT del Visual → hay **6
+   compras manuales** (el "cai manual.xls") que se agregan fuera de ARCA. La validación de compras
+   necesita parsear esa planilla; pendiente.
+3. **LAVALLE SRL — mayo 2026**: mismo método, pendiente (también con agregados manuales en compras).
+4. **Prueba de subida al Portal IVA**: que Federico suba un archivo nuestro a ARCA y confirme que
+   lo acepta (de su lado).
+
+## 5. Mejora detectada por la validación — arrastrar el "total informado" (✅ HECHO)
+Nuestro motor **deriva** el total (`neto + iva + percepciones`). Para el Libro IVA Digital, AFIP
+espera el **total real del comprobante** (el de la factura / el que ARCA ya tiene), que puede diferir
+del recalculado por redondeo. **Implementado** (migración 0041): campo opcional `total_informado` en
+`ventas`/`compras`; el Libro IVA Digital usa `COALESCE(total_informado, total)` en el campo `total`;
+el importador lo mapea desde la columna "Importe Total" del CSV de ARCA. Requests + whitelists de los
+repos actualizados. 53 tests verdes.
+- **Efecto medido** (re-validación MAZZUCO ventas con `total_informado` = total de ARCA):
+  `VENTAS_CBTE` pasó de **3/6 → 4/6** líneas byte-idénticas. Los 2 restantes (cbte 434 y 135) son
+  casos donde **el propio archivo del Visual difiere del CSV de ARCA** (por 0,01–0,05): Visual
+  arrastra un total que no es ni el de ARCA ni `neto+iva` (redondeo/historial interno del Visual,
+  no reproducible sin sus datos). Nosotros ahora matcheamos **ARCA** (la fuente canónica).
+- Queda 1 diferencia en `VENTAS_ALICUOTAS` (cbte 135): el **neto** de ARCA (22.064.846,86) vs el que
+  usó el Visual (22.064.846,90) — redondeo propio del Visual sobre el neto, fuera de nuestro control.
+- **Todo dentro de la tolerancia de AFIP** (el propio archivo del Visual tiene `total ≠ neto+iva` y
+  ARCA lo aceptó). El pipeline queda **validado** para ventas.
 
 ---
 

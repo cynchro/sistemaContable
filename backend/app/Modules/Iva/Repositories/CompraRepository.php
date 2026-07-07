@@ -18,7 +18,7 @@ class CompraRepository
         'tipo_comprobante_id', 'condicion_iva_id', 'provincia_id', 'rubro_id',
         'tipo_operacion_compra_id', 'tipo_moneda_id', 'proveedor_id', 'fecha',
         'proveedor_nombre', 'cuit', 'letra', 'punto_venta', 'numero',
-        'neto_no_grav', 'exento', 'imp_interno', 'total', 'tipo_cambio', 'concepto',
+        'neto_no_grav', 'exento', 'imp_interno', 'total', 'total_informado', 'tipo_cambio', 'concepto',
         'cai', 'fecha_cai', 'actividad_id', 'concepto_dj', 'campo_auxiliar',
     ];
 

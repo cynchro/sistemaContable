@@ -106,6 +106,7 @@ export interface VentaInput {
   tipo_moneda_id?: number | null
   tipo_cambio?: string | null
   campo_auxiliar?: string | null
+  total_informado?: string | null
   actividad_id?: number | null
   es_bien_uso?: string | null
   discriminaciones: DiscriminacionInput[]

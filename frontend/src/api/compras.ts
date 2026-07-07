@@ -55,6 +55,7 @@ export interface CompraInput {
   tipo_moneda_id?: number | null
   tipo_cambio?: string | null
   campo_auxiliar?: string | null
+  total_informado?: string | null
   actividad_id?: number | null
   concepto_dj?: number | null
   discriminaciones: CompraDiscriminacionInput[]
