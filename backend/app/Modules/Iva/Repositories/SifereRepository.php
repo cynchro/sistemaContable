@@ -15,8 +15,10 @@ class SifereRepository
     }
 
     /**
-     * Percepciones de IIBB (tipo_rg3685 = 3) de compras del período cuya jurisdicción
-     * (provincia de la percepción, o de su tipo de retención) es la indicada. Ordenadas
+     * Percepciones de IIBB (tipo_rg3685 = 3) de compras del período cuya jurisdicción es la
+     * indicada. La jurisdicción se resuelve por precedencia: provincia de la percepción →
+     * provincia del tipo de retención → provincia del comprobante/proveedor (el legacy, si no
+     * se especifica, "toma la Provincia del Proveedor" — manual Visual IVA 6.10). Ordenadas
      * por proveedor, fecha y número (como el TXT del legacy).
      *
      * @return list<array<string, mixed>>
@@ -32,7 +34,7 @@ class SifereRepository
                LEFT JOIN tipos_retencion tr   ON cp.tipo_retencion_id  = tr.id
               WHERE c.periodo_id = ?
                 AND tr.tipo_rg3685 = 3
-                AND COALESCE(cp.provincia_id, tr.provincia_id) = ?
+                AND COALESCE(cp.provincia_id, tr.provincia_id, c.provincia_id) = ?
               ORDER BY c.cuit, c.fecha, c.numero'
         );
         $stmt->execute([$periodoId, $provinciaId]);

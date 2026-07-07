@@ -55,9 +55,16 @@ tickets, servicios)? Con un ejemplo del "cai manual" reproducimos el 100% del pe
 tu ejemplo). El desplegable del Visual tiene muchos más formatos por jurisdicción.
 **Pregunta:** de los que aparecen en "Exportación IIBB", ¿cuáles usás de verdad y conviene sumar?
 (SIFERE V4 **Retenciones**, IIBB **Santa Fe** ret/perc, **Córdoba APIBCBA**, **SIRCAR** ret/perc,
-**ATER**, Catamarca, San Juan, Posadas-Misiones, ARCA Web 2.00). Si tenés un TXT de ejemplo de cada uno
-que uses, lo replicamos byte a byte como el SIFERE.
-**Hoy asumimos:** solo SIFERE V4 Percepciones; el resto se agrega con su spec cuando lo pidas.
+**ATER**, Catamarca, San Juan, Posadas-Misiones, ARCA Web 2.00). **Necesitamos un TXT de ejemplo real
+de cada uno** (uno que ya hayas presentado): revisamos el legacy y los layouts byte a byte de estos
+formatos NO están en la base ni en el manual (estaban en el programa de escritorio), así que sin un
+ejemplo no los podemos reproducir con exactitud (no queremos inventar el formato). Con el TXT de
+ejemplo los replicamos byte a byte como hicimos con el SIFERE Percepciones.
+**Nota adicional para SIFERE Retenciones:** hoy modelamos percepciones **sobre comprobantes** (compras);
+las **retenciones sufridas** suelen aplicarse sobre **pagos**, que todavía no modelamos. Para SIFERE
+Retenciones necesitaríamos definir de dónde salen esos datos (¿los cargás como una percepción más, o
+van por otro lado?).
+**Hoy asumimos:** solo SIFERE V4 Percepciones (validado byte a byte); el resto espera tu ejemplo.
 
 ## 7. 🟢 Prueba de subida al Portal IVA (pendiente de tu lado)
 **Contexto:** los archivos que genera el sistema (Libro IVA Digital, DJ IVA Simple, SIFERE) coinciden
