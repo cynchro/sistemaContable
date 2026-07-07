@@ -4,14 +4,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
-  CContainer,
-  CRow,
-  CCol,
   CCard,
   CCardBody,
   CForm,
   CFormInput,
   CFormLabel,
+  CInputGroup,
   CButton,
   CAlert,
   CSpinner,
@@ -24,10 +22,23 @@ const schema = z.object({
 })
 type FormValues = z.infer<typeof schema>
 
+/** Ojo abierto / tachado para el toggle de "ver contraseña" (SVG inline: sin dep de iconos). */
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <line x1="3" y1="3" x2="21" y2="21" />}
+    </svg>
+  )
+}
+
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
+  const [showPass, setShowPass] = useState(false)
   const {
     register,
     handleSubmit,
@@ -45,49 +56,59 @@ export default function LoginPage() {
   }
 
   return (
-    <CContainer className="min-vh-100 d-flex align-items-center justify-content-center bg-body-tertiary">
-      <CRow className="justify-content-center w-100">
-        <CCol md={5} lg={4}>
-          <CCard className="shadow-sm">
-            <CCardBody className="p-4">
-              <h3 className="mb-1">Sistema Contable</h3>
-              <p className="text-body-secondary mb-4">Ingresá con tu cuenta</p>
+    <div className="login-hero min-vh-100 d-flex align-items-center justify-content-center p-3">
+      <CCard className="login-card shadow-lg border-0">
+        <CCardBody className="p-4 p-md-5">
+          <h3 className="text-center mb-1">Sistema Contable</h3>
+          <p className="text-body-secondary text-center mb-4">Ingresá con tu cuenta</p>
 
-              {error && <CAlert color="danger">{error}</CAlert>}
+          {error && <CAlert color="danger">{error}</CAlert>}
 
-              <CForm onSubmit={handleSubmit(onSubmit)} noValidate>
-                <div className="mb-3">
-                  <CFormLabel htmlFor="usuario">Email</CFormLabel>
-                  <CFormInput
-                    id="usuario"
-                    type="email"
-                    autoComplete="username"
-                    invalid={!!errors.usuario}
-                    {...register('usuario')}
-                  />
-                  {errors.usuario && <div className="text-danger small mt-1">{errors.usuario.message}</div>}
-                </div>
+          <CForm onSubmit={handleSubmit(onSubmit)} noValidate>
+            <div className="mb-3">
+              <CFormLabel htmlFor="usuario">Email</CFormLabel>
+              <CFormInput
+                id="usuario"
+                type="email"
+                autoComplete="username"
+                invalid={!!errors.usuario}
+                {...register('usuario')}
+              />
+              {errors.usuario && <div className="text-danger small mt-1">{errors.usuario.message}</div>}
+            </div>
 
-                <div className="mb-4">
-                  <CFormLabel htmlFor="clave">Contraseña</CFormLabel>
-                  <CFormInput
-                    id="clave"
-                    type="password"
-                    autoComplete="current-password"
-                    invalid={!!errors.clave}
-                    {...register('clave')}
-                  />
-                  {errors.clave && <div className="text-danger small mt-1">{errors.clave.message}</div>}
-                </div>
-
-                <CButton type="submit" color="primary" className="w-100" disabled={isSubmitting}>
-                  {isSubmitting ? <CSpinner size="sm" /> : 'Ingresar'}
+            <div className="mb-4">
+              <CFormLabel htmlFor="clave">Contraseña</CFormLabel>
+              <CInputGroup>
+                <CFormInput
+                  id="clave"
+                  type={showPass ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  invalid={!!errors.clave}
+                  {...register('clave')}
+                />
+                <CButton
+                  type="button"
+                  color="secondary"
+                  variant="outline"
+                  className="pw-toggle"
+                  tabIndex={-1}
+                  aria-label={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  title={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  onClick={() => setShowPass((v) => !v)}
+                >
+                  <EyeIcon off={showPass} />
                 </CButton>
-              </CForm>
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
-    </CContainer>
+              </CInputGroup>
+              {errors.clave && <div className="text-danger small mt-1">{errors.clave.message}</div>}
+            </div>
+
+            <CButton type="submit" color="primary" className="w-100" disabled={isSubmitting}>
+              {isSubmitting ? <CSpinner size="sm" /> : 'Ingresar'}
+            </CButton>
+          </CForm>
+        </CCardBody>
+      </CCard>
+    </div>
   )
 }

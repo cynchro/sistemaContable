@@ -81,3 +81,34 @@ body,
     box-shadow: none !important;
   }
 }
+
+/* Pantalla de login: fondo background.png atenuado + card centrada. Se muestra
+   completo (contain) para no recortar ni agrandar el logo de la marca; el resto
+   se rellena con el mismo azul de la imagen (#223556) para cubrir toda la
+   pantalla sin costuras. El overlay da contraste a la tarjeta (light/dark). */
+.login-hero {
+  position: relative;
+  background-color: #223556;
+  background-image: url('/background.png');
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+.login-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+}
+.login-hero > * {
+  position: relative;
+  z-index: 1;
+}
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--cui-body-bg);
+}
+.pw-toggle {
+  border-color: var(--cui-input-border-color);
+}
