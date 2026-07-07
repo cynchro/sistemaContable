@@ -310,6 +310,8 @@ export default function VentasList() {
                   <CTableHeaderCell>Comprobante</CTableHeaderCell>
                   <CTableHeaderCell>Cliente</CTableHeaderCell>
                   <CTableHeaderCell>CUIT</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">Neto</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">IVA</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Total</CTableHeaderCell>
                   <CTableHeaderCell>CAE</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
@@ -329,6 +331,8 @@ export default function VentasList() {
                     <CTableDataCell>{comprobante(v)}</CTableDataCell>
                     <CTableDataCell>{v.cliente_nombre ?? '—'}</CTableDataCell>
                     <CTableDataCell>{v.cuit ?? '—'}</CTableDataCell>
+                    <CTableDataCell className="text-end">{formatImporte(v.neto_gravado)}</CTableDataCell>
+                    <CTableDataCell className="text-end">{formatImporte(v.iva)}</CTableDataCell>
                     <CTableDataCell className="text-end">{formatImporte(v.total)}</CTableDataCell>
                     <CTableDataCell>
                       {v.cae ? <CBadge color="success">CAE</CBadge> : <CBadge color="secondary">—</CBadge>}
@@ -379,7 +383,7 @@ export default function VentasList() {
                 ))}
                 {data.results.length === 0 && (
                   <CTableRow>
-                    <CTableDataCell colSpan={8} className="text-center text-body-secondary py-4">
+                    <CTableDataCell colSpan={10} className="text-center text-body-secondary py-4">
                       Sin comprobantes de venta en este período.
                     </CTableDataCell>
                   </CTableRow>

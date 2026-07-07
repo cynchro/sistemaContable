@@ -87,7 +87,15 @@ class CompraRepository
         }
 
         $orden = ($filtros['orden'] ?? '') === 'nombre' ? 'proveedor_nombre, fecha, id' : 'fecha, id';
-        $query = 'SELECT * FROM compras WHERE ' . implode(' AND ', $where) . ' ORDER BY ' . $orden;
+        // Neto e IVA derivados de las discriminaciones, para verlos en el listado sin abrir el
+        // comprobante (pedido del contador). Subqueries correlacionadas: el WHERE/ORDER usa las
+        // columnas de `compras` (único base del query externo).
+        $query = 'SELECT c.*,'
+            . ' (SELECT COALESCE(SUM(cd.neto_gravado), 0) FROM compra_discriminaciones cd'
+            . '   WHERE cd.compra_id = c.id) AS neto_gravado,'
+            . ' (SELECT COALESCE(SUM(cd.iva_importe), 0) FROM compra_discriminaciones cd'
+            . '   WHERE cd.compra_id = c.id) AS iva'
+            . ' FROM compras c WHERE ' . implode(' AND ', $where) . ' ORDER BY ' . $orden;
 
         return (new PaginatorHelper($this->pdo, $query, $page, $perPage, true, $params))->getPaginatedResults();
     }

@@ -282,6 +282,8 @@ export default function ComprasList() {
                     <CTableHeaderCell>Comprobante</CTableHeaderCell>
                     <CTableHeaderCell>Proveedor</CTableHeaderCell>
                     <CTableHeaderCell>CUIT</CTableHeaderCell>
+                    <CTableHeaderCell className="text-end">Neto</CTableHeaderCell>
+                    <CTableHeaderCell className="text-end">IVA</CTableHeaderCell>
                     <CTableHeaderCell className="text-end">Total</CTableHeaderCell>
                     <CTableHeaderCell className="text-end">Acciones</CTableHeaderCell>
                   </CTableRow>
@@ -300,6 +302,8 @@ export default function ComprasList() {
                       <CTableDataCell>{comprobante(c)}</CTableDataCell>
                       <CTableDataCell>{c.proveedor_nombre ?? '—'}</CTableDataCell>
                       <CTableDataCell>{c.cuit ?? '—'}</CTableDataCell>
+                      <CTableDataCell className="text-end">{formatImporte(c.neto_gravado)}</CTableDataCell>
+                      <CTableDataCell className="text-end">{formatImporte(c.iva)}</CTableDataCell>
                       <CTableDataCell className="text-end">{formatImporte(c.total)}</CTableDataCell>
                       <CTableDataCell className="text-end">
                         <CButton
@@ -331,7 +335,7 @@ export default function ComprasList() {
                   ))}
                   {data.results.length === 0 && (
                     <CTableRow>
-                      <CTableDataCell colSpan={7} className="text-center text-body-secondary py-4">
+                      <CTableDataCell colSpan={9} className="text-center text-body-secondary py-4">
                         Sin comprobantes de compra en este período.
                       </CTableDataCell>
                     </CTableRow>

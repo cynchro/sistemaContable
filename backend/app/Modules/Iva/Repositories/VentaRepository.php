@@ -82,7 +82,14 @@ class VentaRepository
         }
 
         $orden = ($filtros['orden'] ?? '') === 'nombre' ? 'cliente_nombre, fecha, id' : 'fecha, id';
-        $query = 'SELECT * FROM ventas WHERE ' . implode(' AND ', $where) . ' ORDER BY ' . $orden;
+        // Neto e IVA derivados de las discriminaciones, para verlos en el listado sin abrir el
+        // comprobante (pedido del contador). El IVA netea el reintegro de Factura T (débito neto).
+        $query = 'SELECT v.*,'
+            . ' (SELECT COALESCE(SUM(vd.neto_gravado), 0) FROM venta_discriminaciones vd'
+            . '   WHERE vd.venta_id = v.id) AS neto_gravado,'
+            . ' (SELECT COALESCE(SUM(vd.iva_importe), 0) - COALESCE(SUM(vd.reintegro_t), 0)'
+            . '    FROM venta_discriminaciones vd WHERE vd.venta_id = v.id) AS iva'
+            . ' FROM ventas v WHERE ' . implode(' AND ', $where) . ' ORDER BY ' . $orden;
 
         return (new PaginatorHelper($this->pdo, $query, $page, $perPage, true, $params))->getPaginatedResults();
     }

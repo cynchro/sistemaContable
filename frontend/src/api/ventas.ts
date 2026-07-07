@@ -8,6 +8,8 @@ export interface Venta {
   letra: string | null
   punto_venta: number | null
   numero: number | null
+  neto_gravado: string
+  iva: string
   total: string
   cae: string | null
   afip_resultado: string | null
