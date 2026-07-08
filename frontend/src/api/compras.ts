@@ -31,6 +31,8 @@ export interface CompraDiscriminacionInput {
   iva_alicuota: string
   cf_computable?: string | null
   iva_importe?: string | null
+  /** Cuenta de mayorización del neto de la línea (gasto). */
+  cuenta_id?: number | null
 }
 
 /** Cabecera de la compra enviada al backend (las líneas/total los calcula el motor). */
@@ -92,12 +94,14 @@ export interface CompraDetalle {
   actividad_id: number | null
   concepto_dj: number | null
   total: string
+  total_informado: string | null
   discriminaciones: Array<{
     id: number
     neto_gravado: string
     iva_alicuota: string
     iva_importe: string
     cf_computable: string | null
+    cuenta_id: number | null
   }>
   percepciones?: PercepcionDetalle[]
 }

@@ -161,6 +161,7 @@ class CompraService
             $ivaImporte = $calc['lineas'][$i]['iva_importe'];
             $lineas[] = [
                 'neto_gravado'     => $calc['lineas'][$i]['neto_gravado'],
+                'cuenta_id'        => $linea['cuenta_id'],
                 'iva_alicuota'     => $linea['iva_alicuota'],
                 'iva_importe'      => $ivaImporte,
                 'iva_inc_alicuota' => $linea['iva_inc_alicuota'],
@@ -240,6 +241,7 @@ class CompraService
 
             $out[] = [
                 'neto_gravado'     => $linea['neto_gravado'],
+                'cuenta_id'        => $this->normalizarCuentaId($linea['cuenta_id'] ?? null),
                 'iva_alicuota'     => $linea['iva_alicuota'],
                 // Override opcional del importe de IVA (regla del asterisco): sólo si es numérico.
                 'iva_importe'      => $this->esNumerico($linea['iva_importe'] ?? null) ? $linea['iva_importe'] : null,
@@ -289,6 +291,12 @@ class CompraService
     private function esNumerico(mixed $value): bool
     {
         return is_int($value) || is_float($value) || (is_string($value) && is_numeric($value));
+    }
+
+    /** Cuenta de mayorización de la línea: entero positivo o null (sin imputar). */
+    private function normalizarCuentaId(mixed $value): ?int
+    {
+        return $this->esNumerico($value) && (int) $value > 0 ? (int) $value : null;
     }
 
     /** @return array<string, mixed> período validado */

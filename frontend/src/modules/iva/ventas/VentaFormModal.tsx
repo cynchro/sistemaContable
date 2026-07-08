@@ -38,11 +38,13 @@ const lineaSchema = z.object({
   neto_gravado: z.string().min(1, 'Requerido'),
   iva_alicuota: z.string().min(1, 'Requerido'),
   iva_importe: z.string().optional(),
+  cuenta_id: z.string().optional(),
 })
 
 const percepcionSchema = z.object({
   tipo_retencion_id: z.string().min(1, 'Elegí un tipo'),
   alicuota: z.string().optional(),
+  base: z.string().optional(),
   importe: z.string().optional(),
   provincia_id: z.string().optional(),
 })
@@ -116,7 +118,7 @@ const VACIO: FormValues = {
   campo_auxiliar: '',
   actividad_id: '',
   es_bien_uso: false,
-  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '' }],
+  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cuenta_id: '' }],
   percepciones: [],
   comprobantes_asociados: [],
 }
@@ -269,12 +271,14 @@ export default function VentaFormModal({
                   neto_gravado: String(d.neto_gravado),
                   iva_alicuota: String(Number(d.iva_alicuota)),
                   iva_importe: esOverride ? String(d.iva_importe) : '',
+                  cuenta_id: d.cuenta_id != null ? String(d.cuenta_id) : '',
                 }
               })
-            : [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '' }],
+            : [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cuenta_id: '' }],
         percepciones: (detalle.percepciones ?? []).map((p) => ({
           tipo_retencion_id: p.tipo_retencion_id != null ? String(p.tipo_retencion_id) : '',
           alicuota: p.alicuota != null ? String(Number(p.alicuota)) : '',
+          base: p.base != null && Number(p.base) !== 0 ? String(p.base) : '',
           importe: p.importe != null ? String(p.importe) : '',
           provincia_id: p.provincia_id != null ? String(p.provincia_id) : '',
         })),
@@ -312,6 +316,12 @@ export default function VentaFormModal({
     const extra = (Number(netoNoGrav) || 0) + (Number(exento) || 0) + (Number(impInterno) || 0)
     return neto + iva + extra
   })()
+
+  // R4 (alerta): ventas que se mandan todas a exento/no gravado sin neto gravado (típico error
+  // de facturas B a "sujetos exentos" — estado provincial). El operador decide si corresponde gravar.
+  const netoGravadoTotal = (lineas ?? []).reduce((s, l) => s + (Number(l.neto_gravado) || 0), 0)
+  const sinGravadoConExento =
+    netoGravadoTotal === 0 && ((Number(exento) || 0) > 0 || (Number(netoNoGrav) || 0) > 0)
 
   const submit = (v: FormValues) =>
     onSubmit({
@@ -352,6 +362,7 @@ export default function VentaFormModal({
           neto_gravado: d.neto_gravado,
           iva_alicuota: d.iva_alicuota,
           iva_importe: str(d.iva_importe),
+          cuenta_id: num(d.cuenta_id),
           // Factura T: el reintegro iguala al IVA → débito neto = 0 en libro/DDJJ.
           reintegro_t: esFacturaT ? ivaEfectivo : null,
         }
@@ -361,6 +372,7 @@ export default function VentaFormModal({
         .map((p) => ({
           tipo_retencion_id: Number(p.tipo_retencion_id),
           alicuota: str(p.alicuota),
+          base: str(p.base),
           importe: str(p.importe),
           provincia_id: p.provincia_id ? Number(p.provincia_id) : null,
         })),
@@ -589,7 +601,7 @@ export default function VentaFormModal({
                   color="primary"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21', iva_importe: '' })}
+                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cuenta_id: '' })}
                 >
                   + Agregar línea
                 </CButton>
@@ -615,6 +627,7 @@ export default function VentaFormModal({
                     <CTableHeaderCell>Neto gravado</CTableHeaderCell>
                     <CTableHeaderCell>Alícuota %</CTableHeaderCell>
                     <CTableHeaderCell className="text-end">IVA</CTableHeaderCell>
+                    <CTableHeaderCell>Cuenta (mayor)</CTableHeaderCell>
                     <CTableHeaderCell />
                   </CTableRow>
                 </CTableHead>
@@ -650,6 +663,17 @@ export default function VentaFormModal({
                             {...register(`discriminaciones.${i}.iva_importe`)}
                           />
                         </CTableDataCell>
+                        <CTableDataCell>
+                          <CFormSelect size="sm" {...register(`discriminaciones.${i}.cuenta_id`)}>
+                            <option value="">—</option>
+                            {cuentas?.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.codigo ? `${c.codigo} — ` : ''}
+                                {c.nombre}
+                              </option>
+                            ))}
+                          </CFormSelect>
+                        </CTableDataCell>
                         <CTableDataCell className="text-end">
                           <CButton
                             type="button"
@@ -676,7 +700,9 @@ export default function VentaFormModal({
                   color="primary"
                   variant="outline"
                   size="sm"
-                  onClick={() => percAppend({ tipo_retencion_id: '', alicuota: '', importe: '', provincia_id: '' })}
+                  onClick={() =>
+                    percAppend({ tipo_retencion_id: '', alicuota: '', base: '', importe: '', provincia_id: '' })
+                  }
                 >
                   + Agregar percepción
                 </CButton>
@@ -687,6 +713,7 @@ export default function VentaFormModal({
                     <CTableRow>
                       <CTableHeaderCell>Tipo</CTableHeaderCell>
                       <CTableHeaderCell>Alícuota %</CTableHeaderCell>
+                      <CTableHeaderCell>Base</CTableHeaderCell>
                       <CTableHeaderCell>Provincia</CTableHeaderCell>
                       <CTableHeaderCell className="text-end">Importe</CTableHeaderCell>
                       <CTableHeaderCell />
@@ -716,6 +743,14 @@ export default function VentaFormModal({
                             inputMode="decimal"
                             placeholder="del tipo"
                             {...register(`percepciones.${i}.alicuota`)}
+                          />
+                        </CTableDataCell>
+                        <CTableDataCell>
+                          <CFormInput
+                            size="sm"
+                            inputMode="decimal"
+                            placeholder="neto"
+                            {...register(`percepciones.${i}.base`)}
                           />
                         </CTableDataCell>
                         <CTableDataCell>
@@ -835,6 +870,13 @@ export default function VentaFormModal({
                   <CFormInput id="imp_interno" inputMode="decimal" {...register('imp_interno')} />
                 </div>
               </div>
+              {sinGravadoConExento && !esFacturaC && (
+                <CAlert color="warning" className="py-2 small mb-3">
+                  Esta venta no tiene <strong>neto gravado</strong>: todo el importe está en exento / no gravado.
+                  Si el comprobante debía gravar IVA (ej. factura B a un sujeto exento), agregá la línea con la
+                  alícuota que corresponda. Revisá antes de guardar.
+                </CAlert>
+              )}
 
               <div className="row">
                 <div className="col-md-3 mb-3">

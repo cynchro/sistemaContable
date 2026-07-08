@@ -23,7 +23,7 @@ class VentaRepository
     ];
 
     private const DISCRIMINACION_WRITABLE = [
-        'neto_gravado', 'iva_alicuota', 'iva_importe', 'iva_inc_alicuota',
+        'neto_gravado', 'cuenta_id', 'iva_alicuota', 'iva_importe', 'iva_inc_alicuota',
         'iva_inc_importe', 'reintegro_t', 'concepto',
     ];
 

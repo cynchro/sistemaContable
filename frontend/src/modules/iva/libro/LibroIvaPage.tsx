@@ -499,7 +499,7 @@ function Mayor({ eId, pId }: { eId: number; pId: number }) {
         detalle de los comprobantes imputados.
       </div>
       {!resumen || resumen.length === 0 ? (
-        <CAlert color="info">No hay comprobantes mayorizados en este período. Asigná una cuenta Debe/Haber al cargar ventas o compras.</CAlert>
+        <CAlert color="info">No hay comprobantes mayorizados en este período. Asigná una cuenta por línea (neto) o la cuenta Debe/Haber (total) al cargar ventas o compras.</CAlert>
       ) : (
         <CTable small bordered responsive align="middle" className="ledger">
           <CTableHead>
@@ -542,6 +542,7 @@ function Mayor({ eId, pId }: { eId: number; pId: number }) {
                 <CTableHeaderCell>Fecha</CTableHeaderCell>
                 <CTableHeaderCell>Comprobante</CTableHeaderCell>
                 <CTableHeaderCell>Nombre</CTableHeaderCell>
+                <CTableHeaderCell>Concepto</CTableHeaderCell>
                 <CTableHeaderCell>Lado</CTableHeaderCell>
                 <CTableHeaderCell className="text-end">Importe</CTableHeaderCell>
               </CTableRow>
@@ -554,6 +555,7 @@ function Mayor({ eId, pId }: { eId: number; pId: number }) {
                     {`${m.cbte_codigo ?? ''} ${m.letra ?? ''} ${m.punto_venta ?? ''}-${m.numero ?? ''}`.trim()}
                   </CTableDataCell>
                   <CTableDataCell>{m.nombre ?? '—'}</CTableDataCell>
+                  <CTableDataCell>{m.nivel === 'linea' ? 'Neto' : 'Total'}</CTableDataCell>
                   <CTableDataCell>{m.lado}</CTableDataCell>
                   <CTableDataCell className="text-end">{money(m.importe)}</CTableDataCell>
                 </CTableRow>

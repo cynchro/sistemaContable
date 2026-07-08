@@ -39,11 +39,13 @@ const lineaSchema = z.object({
   iva_alicuota: z.string().min(1, 'Requerido'),
   iva_importe: z.string().optional(),
   cf_computable: z.string().optional(),
+  cuenta_id: z.string().optional(),
 })
 
 const percepcionSchema = z.object({
   tipo_retencion_id: z.string().min(1, 'Elegí un tipo'),
   alicuota: z.string().optional(),
+  base: z.string().optional(),
   importe: z.string().optional(),
   provincia_id: z.string().optional(),
 })
@@ -68,6 +70,7 @@ const schema = z.object({
   neto_no_grav: z.string().optional(),
   exento: z.string().optional(),
   imp_interno: z.string().optional(),
+  total_informado: z.string().optional(),
   tipo_moneda_id: z.string().optional(),
   tipo_cambio: z.string().optional(),
   campo_auxiliar: z.string().optional(),
@@ -98,12 +101,13 @@ const VACIO: FormValues = {
   neto_no_grav: '',
   exento: '',
   imp_interno: '',
+  total_informado: '',
   tipo_moneda_id: '',
   tipo_cambio: '',
   campo_auxiliar: '',
   actividad_id: '',
   concepto_dj: '',
-  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '' }],
+  discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '', cuenta_id: '' }],
   percepciones: [],
 }
 
@@ -224,6 +228,7 @@ export default function CompraFormModal({
         neto_no_grav: detalle.neto_no_grav ?? '',
         exento: detalle.exento ?? '',
         imp_interno: detalle.imp_interno ?? '',
+        total_informado: detalle.total_informado ?? '',
         tipo_moneda_id: detalle.tipo_moneda_id != null ? String(detalle.tipo_moneda_id) : '',
         tipo_cambio: detalle.tipo_cambio ?? '',
         campo_auxiliar: detalle.campo_auxiliar ?? '',
@@ -239,12 +244,14 @@ export default function CompraFormModal({
                   iva_alicuota: String(Number(d.iva_alicuota)),
                   iva_importe: esOverride ? String(d.iva_importe) : '',
                   cf_computable: d.cf_computable != null ? String(d.cf_computable) : '',
+                  cuenta_id: d.cuenta_id != null ? String(d.cuenta_id) : '',
                 }
               })
-            : [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '' }],
+            : [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '', cuenta_id: '' }],
         percepciones: (detalle.percepciones ?? []).map((p) => ({
           tipo_retencion_id: p.tipo_retencion_id != null ? String(p.tipo_retencion_id) : '',
           alicuota: p.alicuota != null ? String(Number(p.alicuota)) : '',
+          base: p.base != null && Number(p.base) !== 0 ? String(p.base) : '',
           importe: p.importe != null ? String(p.importe) : '',
           provincia_id: p.provincia_id != null ? String(p.provincia_id) : '',
         })),
@@ -253,10 +260,12 @@ export default function CompraFormModal({
   }, [visible, compraId, detalle, reset, ultimaFecha])
 
   const lineas = watch('discriminaciones')
+  const percepcionesW = watch('percepciones')
   const esFacturaC = (watch('letra') ?? '').trim().toUpperCase() === 'C'
   const netoNoGrav = watch('neto_no_grav')
   const exento = watch('exento')
   const impInterno = watch('imp_interno')
+  const totalInformado = watch('total_informado')
 
   const totalEstimado = (() => {
     let neto = 0
@@ -268,9 +277,18 @@ export default function CompraFormModal({
       neto += n
       iva += l.iva_importe && Number.isFinite(ov) ? ov : (n * a) / 100
     }
+    const perc = (percepcionesW ?? []).reduce((s, p) => s + (Number(p.importe) || 0), 0)
     const extra = (Number(netoNoGrav) || 0) + (Number(exento) || 0) + (Number(impInterno) || 0)
-    return neto + iva + extra
+    return neto + iva + extra + perc
   })()
+
+  // R3 (seguros): las aseguradoras cargan un imp. interno que en el 98% no discriminan;
+  // el resto entre el total del comprobante y lo cargado (neto + IVA + …) es ese imp. interno.
+  const totalInf = Number(totalInformado)
+  const restoImpInterno =
+    Number.isFinite(totalInf) && (totalInformado ?? '').trim() !== ''
+      ? Math.round((totalInf - totalEstimado) * 100) / 100
+      : 0
 
   const submit = (v: FormValues) =>
     onSubmit({
@@ -293,6 +311,7 @@ export default function CompraFormModal({
       neto_no_grav: str(v.neto_no_grav),
       exento: str(v.exento),
       imp_interno: str(v.imp_interno),
+      total_informado: str(v.total_informado),
       tipo_moneda_id: num(v.tipo_moneda_id),
       tipo_cambio: str(v.tipo_cambio),
       campo_auxiliar: str(v.campo_auxiliar),
@@ -303,12 +322,14 @@ export default function CompraFormModal({
         iva_alicuota: d.iva_alicuota,
         iva_importe: str(d.iva_importe),
         cf_computable: str(d.cf_computable),
+        cuenta_id: num(d.cuenta_id),
       })),
       percepciones: v.percepciones
         .filter((p) => p.tipo_retencion_id)
         .map((p) => ({
           tipo_retencion_id: Number(p.tipo_retencion_id),
           alicuota: str(p.alicuota),
+          base: str(p.base),
           importe: str(p.importe),
           provincia_id: p.provincia_id ? Number(p.provincia_id) : null,
         })),
@@ -510,7 +531,7 @@ export default function CompraFormModal({
                   color="primary"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '' })}
+                  onClick={() => append({ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cf_computable: '', cuenta_id: '' })}
                 >
                   + Agregar línea
                 </CButton>
@@ -531,6 +552,7 @@ export default function CompraFormModal({
                     <CTableHeaderCell>Alícuota %</CTableHeaderCell>
                     <CTableHeaderCell className="text-end">IVA</CTableHeaderCell>
                     <CTableHeaderCell>CF computable</CTableHeaderCell>
+                    <CTableHeaderCell>Cuenta (mayor)</CTableHeaderCell>
                     <CTableHeaderCell />
                   </CTableRow>
                 </CTableHead>
@@ -578,6 +600,17 @@ export default function CompraFormModal({
                             {...register(`discriminaciones.${i}.cf_computable`)}
                           />
                         </CTableDataCell>
+                        <CTableDataCell>
+                          <CFormSelect size="sm" {...register(`discriminaciones.${i}.cuenta_id`)}>
+                            <option value="">—</option>
+                            {cuentas?.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.codigo ? `${c.codigo} — ` : ''}
+                                {c.nombre}
+                              </option>
+                            ))}
+                          </CFormSelect>
+                        </CTableDataCell>
                         <CTableDataCell className="text-end">
                           <CButton
                             type="button"
@@ -596,7 +629,10 @@ export default function CompraFormModal({
                 </CTableBody>
               </CTable>
               <div className="text-body-secondary small mb-3">
-                CF computable: dejalo en blanco para computar el 100% del IVA de la línea.
+                CF computable: dejalo en blanco para computar el 100% del IVA de la línea.{' '}
+                <strong>Cuenta (mayor)</strong>: imputa el <em>neto</em> de la línea a esa cuenta del plan (podés
+                usar cuentas distintas por línea, ej. resúmenes bancarios). La contrapartida por el total va en
+                Cuenta Debe/Haber de arriba.
               </div>
 
               <hr />
@@ -607,7 +643,9 @@ export default function CompraFormModal({
                   color="primary"
                   variant="outline"
                   size="sm"
-                  onClick={() => percAppend({ tipo_retencion_id: '', alicuota: '', importe: '', provincia_id: '' })}
+                  onClick={() =>
+                    percAppend({ tipo_retencion_id: '', alicuota: '', base: '', importe: '', provincia_id: '' })
+                  }
                 >
                   + Agregar
                 </CButton>
@@ -618,6 +656,7 @@ export default function CompraFormModal({
                     <CTableRow>
                       <CTableHeaderCell>Tipo</CTableHeaderCell>
                       <CTableHeaderCell>Alícuota %</CTableHeaderCell>
+                      <CTableHeaderCell>Base</CTableHeaderCell>
                       <CTableHeaderCell>Provincia</CTableHeaderCell>
                       <CTableHeaderCell className="text-end">Importe</CTableHeaderCell>
                       <CTableHeaderCell />
@@ -650,6 +689,14 @@ export default function CompraFormModal({
                           />
                         </CTableDataCell>
                         <CTableDataCell>
+                          <CFormInput
+                            size="sm"
+                            inputMode="decimal"
+                            placeholder="neto"
+                            {...register(`percepciones.${i}.base`)}
+                          />
+                        </CTableDataCell>
+                        <CTableDataCell>
                           <CFormSelect size="sm" {...register(`percepciones.${i}.provincia_id`)}>
                             <option value="">—</option>
                             {provincias?.map((p) => (
@@ -678,23 +725,55 @@ export default function CompraFormModal({
                 </CTable>
               )}
               <div className="text-body-secondary small mb-3">
-                Alícuota/importe en blanco → los calcula el sistema según el tipo (integran el total).
+                Alícuota/importe en blanco → los calcula el sistema según el tipo (integran el total).{' '}
+                <strong>Base</strong>: úsala para percibir sobre un valor <em>exento</em> (ej. medicamentos)
+                cuando no hay neto gravado.
               </div>
 
               <div className="row">
-                <div className="col-md-4 mb-3">
+                <div className="col-md-3 mb-3">
                   <CFormLabel htmlFor="neto_no_grav">Neto no gravado</CFormLabel>
                   <CFormInput id="neto_no_grav" inputMode="decimal" {...register('neto_no_grav')} />
                 </div>
-                <div className="col-md-4 mb-3">
+                <div className="col-md-3 mb-3">
                   <CFormLabel htmlFor="exento">Exento</CFormLabel>
                   <CFormInput id="exento" inputMode="decimal" {...register('exento')} />
                 </div>
-                <div className="col-md-4 mb-3">
+                <div className="col-md-3 mb-3">
                   <CFormLabel htmlFor="imp_interno">Imp. internos</CFormLabel>
                   <CFormInput id="imp_interno" inputMode="decimal" {...register('imp_interno')} />
                 </div>
+                <div className="col-md-3 mb-3">
+                  <CFormLabel htmlFor="total_informado">Total del comprobante</CFormLabel>
+                  <CFormInput
+                    id="total_informado"
+                    inputMode="decimal"
+                    placeholder="opcional (el de la factura)"
+                    {...register('total_informado')}
+                  />
+                </div>
               </div>
+              {Math.abs(restoImpInterno) > 0.01 && (
+                <CAlert color="warning" className="py-2 small d-flex justify-content-between align-items-center mb-3">
+                  <span>
+                    El total informado difiere de neto + IVA en{' '}
+                    <strong>{restoImpInterno.toFixed(2)}</strong>. En seguros ese resto suele ser{' '}
+                    <strong>impuesto interno</strong> no discriminado.
+                  </span>
+                  <CButton
+                    type="button"
+                    color="warning"
+                    size="sm"
+                    onClick={() =>
+                      setValue('imp_interno', ((Number(impInterno) || 0) + restoImpInterno).toFixed(2), {
+                        shouldValidate: true,
+                      })
+                    }
+                  >
+                    Imputar a Imp. interno
+                  </CButton>
+                </CAlert>
+              )}
 
               <div className="row">
                 <div className="col-md-3 mb-3">

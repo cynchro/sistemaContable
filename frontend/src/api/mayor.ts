@@ -11,9 +11,11 @@ export interface MayorResumen {
   movimientos: number
 }
 
-/** Movimiento del detalle de una cuenta: un comprobante imputado (como debe o haber). */
+/** Movimiento del detalle de una cuenta: neto de una línea o total de un comprobante. */
 export interface MayorMovimiento {
   origen: 'venta' | 'compra'
+  /** 'linea' = neto de la línea (gasto/ingreso) · 'comprobante' = total (contrapartida). */
+  nivel: 'linea' | 'comprobante'
   lado: 'debe' | 'haber'
   fecha: string | null
   cbte_codigo: string | null

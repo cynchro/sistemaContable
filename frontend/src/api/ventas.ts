@@ -33,6 +33,8 @@ export interface DiscriminacionInput {
   iva_importe?: string | null
   /** Reintegro de IVA (Factura T): iguala al IVA para que el débito neto sea cero. */
   reintegro_t?: string | null
+  /** Cuenta de mayorización del neto de la línea (ingreso). */
+  cuenta_id?: number | null
 }
 
 /**
@@ -151,6 +153,7 @@ export interface VentaDetalle {
     neto_gravado: string
     iva_alicuota: string
     iva_importe: string
+    cuenta_id: number | null
   }>
   percepciones?: PercepcionDetalle[]
   comprobantes_asociados?: ComprobanteAsociadoDetalle[]
