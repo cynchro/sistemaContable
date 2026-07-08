@@ -122,6 +122,10 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     $router->get("{$bajoPeriodo}/mayor", [MayorController::class, 'resumen'], [$perm('iva.libro')]);
     $router->get("{$bajoPeriodo}/mayor/{cuentaId}", [MayorController::class, 'detalle'], [$perm('iva.libro')]);
 
+    // Reporte analítico del Mayor por rango de fechas (empresa-level): filtros + cascada.
+    // Query: ?desde&hasta&cuenta_id&provincia_id&cuit&origen&agrupar=cuenta,proveedor,provincia
+    $router->get("{$base}/reportes/mayor", [MayorController::class, 'reporte'], [$perm('iva.libro')]);
+
     // Actividades (NAES) por empresa + mapa {punto de venta → actividad} (apertura DJ por actividad)
     $router->get("{$base}/actividades", [EmpresaActividadController::class, 'index'], [$perm('iva.libro')]);
     $router->post("{$base}/actividades", [EmpresaActividadController::class, 'create'], [$pw('iva.libro')]);

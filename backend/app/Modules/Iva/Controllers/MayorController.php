@@ -5,11 +5,14 @@ namespace App\Modules\Iva\Controllers;
 use App\Support\Request;
 use App\Support\Response;
 use App\Modules\Iva\Services\MayorService;
+use App\Modules\Iva\Services\ReporteMayorService;
 
 class MayorController
 {
-    public function __construct(private MayorService $service)
-    {
+    public function __construct(
+        private MayorService $service,
+        private ReporteMayorService $reporte,
+    ) {
     }
 
     /** Resumen de Movimientos (Mayor de Cuentas): total por cuenta del período. */
@@ -30,6 +33,19 @@ class MayorController
             (int) $request->route('periodoId'),
             (int) $request->route('cuentaId'),
             (string) $request->tenantId(),
+        ));
+    }
+
+    /**
+     * Reporte analítico del Mayor por rango de fechas (R2): movimientos por línea agrupados
+     * en cascada con subtotales. Query: desde, hasta, cuenta_id, provincia_id, cuit, origen, agrupar.
+     */
+    public function reporte(Request $request): Response
+    {
+        return Response::success($this->reporte->reporte(
+            (int) $request->route('empresaId'),
+            (string) $request->tenantId(),
+            $request->all(),
         ));
     }
 }

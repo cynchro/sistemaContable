@@ -82,7 +82,7 @@
             { "title": "Mayorización por línea: cuenta contable por línea de neto (multi-cuenta por comprobante, ej. resúmenes bancarios)", "status": "completed", "tags": ["backend", "frontend", "db"], "completed_at": "2026-07-08" },
             { "title": "Compras de seguros: imputar el impuesto interno por diferencia (total − IVA − neto)", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" },
             { "title": "Percepción de IIBB sobre base exenta (medicamentos) y alerta de ventas no gravadas", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" },
-            { "title": "Reportes de Mayor filtrables (rango de fechas/anual, proveedor, provincia, cascada) para la DDJJ anual de convenio", "status": "pending", "tags": ["backend", "frontend"] }
+            { "title": "Reportes de Mayor filtrables (rango de fechas/anual, proveedor, provincia, cascada) para la DDJJ anual de convenio", "status": "completed", "tags": ["backend", "frontend"], "completed_at": "2026-07-08" }
           ]
         },
         {

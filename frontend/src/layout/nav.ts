@@ -118,6 +118,13 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
           hint: hintPeriodo,
         },
         {
+          name: 'Reportes de Mayor',
+          to: `/empresas/${emp}/reportes-mayor`,
+          icon: cilBook,
+          disabled: needEmpresa,
+          hint: hintEmpresa,
+        },
+        {
           name: 'Importar comprobantes',
           to: `/empresas/${emp}/periodos/${per}/importar`,
           icon: cilCloudUpload,

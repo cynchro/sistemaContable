@@ -39,3 +39,62 @@ export async function getMayorDetalle(
   const { data } = await api.get(`/empresas/${empresaId}/periodos/${periodoId}/mayor/${cuentaId}`)
   return data.data as MayorMovimiento[]
 }
+
+/** Subtotal/total de un nodo del reporte de Mayor (neto/iva con signo + cantidad). */
+export interface MayorTotales {
+  neto: string
+  iva: string
+  cantidad: number
+}
+
+/** Renglón hoja del reporte: un movimiento (neto de una línea imputada). */
+export interface MayorReporteHoja {
+  fecha: string | null
+  origen: 'venta' | 'compra' | null
+  comprobante: string
+  sujeto: string | null
+  cuit: string | null
+  provincia: string | null
+  cuenta: string | null
+  neto: string
+  iva: string
+}
+
+/** Nodo de grupo del reporte (cascada): subtotal + hijos (subgrupos u hojas). */
+export interface MayorReporteGrupo {
+  dimension: 'cuenta' | 'proveedor' | 'provincia'
+  clave: string
+  etiqueta: string
+  subtotal: MayorTotales
+  hijos: MayorReporteGrupo[] | MayorReporteHoja[]
+}
+
+export interface MayorReporte {
+  grupos: MayorReporteGrupo[]
+  totales: MayorTotales
+  filtros: Record<string, unknown>
+  agrupar: string[]
+}
+
+export interface MayorReporteFiltros {
+  desde?: string
+  hasta?: string
+  cuenta_id?: number | null
+  provincia_id?: number | null
+  cuit?: string
+  origen?: 'venta' | 'compra' | ''
+  agrupar?: string
+}
+
+export async function getReporteMayor(empresaId: number, filtros: MayorReporteFiltros): Promise<MayorReporte> {
+  const params: Record<string, string | number> = {}
+  if (filtros.desde) params.desde = filtros.desde
+  if (filtros.hasta) params.hasta = filtros.hasta
+  if (filtros.cuenta_id) params.cuenta_id = filtros.cuenta_id
+  if (filtros.provincia_id) params.provincia_id = filtros.provincia_id
+  if (filtros.cuit) params.cuit = filtros.cuit
+  if (filtros.origen) params.origen = filtros.origen
+  if (filtros.agrupar) params.agrupar = filtros.agrupar
+  const { data } = await api.get(`/empresas/${empresaId}/reportes/mayor`, { params })
+  return data.data as MayorReporte
+}

@@ -61,6 +61,9 @@ use App\Modules\Iva\Controllers\SifereController;
 use App\Modules\Iva\Repositories\MayorRepository;
 use App\Modules\Iva\Services\MayorService;
 use App\Modules\Iva\Controllers\MayorController;
+use App\Modules\Iva\Repositories\ReporteMayorRepository;
+use App\Modules\Iva\Calc\MayorReporteCalculator;
+use App\Modules\Iva\Services\ReporteMayorService;
 use App\Modules\Iva\Repositories\AuditoriaRepository;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
@@ -245,9 +248,17 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(EmpresaRepository::class),
             $c->get(PeriodoRepository::class),
         ));
+        // Reporte analítico del Mayor por rango de fechas (R2): filtros + cascada con subtotales.
+        $c->singleton(MayorReporteCalculator::class, fn () => new MayorReporteCalculator());
+        $c->singleton(ReporteMayorRepository::class, fn () => new ReporteMayorRepository($c->get(PDO::class)));
+        $c->singleton(ReporteMayorService::class, fn () => new ReporteMayorService(
+            $c->get(ReporteMayorRepository::class),
+            $c->get(MayorReporteCalculator::class),
+            $c->get(EmpresaRepository::class),
+        ));
         $c->singleton(
             MayorController::class,
-            fn () => new MayorController($c->get(MayorService::class)),
+            fn () => new MayorController($c->get(MayorService::class), $c->get(ReporteMayorService::class)),
         );
 
         // Actividades por empresa (NAES) + mapa de puntos de venta (apertura DJ por actividad).

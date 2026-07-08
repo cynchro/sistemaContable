@@ -50,7 +50,7 @@
         "test": "vendor/bin/phpunit",
         "lint": "vendor/bin/phpcs",
         "fix": "vendor/bin/phpcbf",
-        "analyse": "vendor/bin/phpstan analyse --no-progress"
+        "analyse": "vendor/bin/phpstan analyse --no-progress --memory-limit=512M"
     },
     "bin": [
         "modux"

@@ -209,6 +209,10 @@ producción) → #3 (SIFERE, dolor mensual concreto) → #4 (mayorización, la m
    + 4 por comprobante); el detalle marca `nivel` (linea=neto / comprobante=total). Frontend: columna **Cuenta
    (mayor)** por línea en ambos modales + columna **Concepto** (Neto/Total) en el detalle del Mayor. Tests
    `MayorTest::test_mayorizacion_por_linea_imputa_el_neto_a_cada_cuenta`. 551 tests, PHPStan/PHPCS OK.
-5. **Motor de reportes filtrable con cascada** (R2): PENDIENTE — ahora desbloqueado por R1. Reportes de Mayor
-   **por rango de fechas / anual** con filtros (cuenta/proveedor/provincia) y subtotales en cascada (cuenta →
-   proveedor → comprobantes), para la DDJJ anual de convenio y pedidos random de clientes.
+5. **Motor de reportes filtrable con cascada** (R2): ✅ HECHO. `GET /empresas/{id}/reportes/mayor` (empresa-level,
+   cruza todos los períodos por rango de fechas). `ReporteMayorRepository` (movimientos por línea = neto con signo,
+   enriquecidos con cuenta/sujeto/CUIT/provincia; filtros desde/hasta/cuenta_id/provincia_id/cuit/origen) +
+   `MayorReporteCalculator` (puro: agrupa en cascada con subtotales, dimensiones cuenta/proveedor/provincia) +
+   `ReporteMayorService`. Frontend: página **Reportes de Mayor** (`/empresas/:id/reportes-mayor`, ítem en el
+   sidebar IVA) con filtros + cascada colapsable con subtotales + Imprimir/PDF. Tests `ReporteMayorTest`
+   (cascada + filtro por rango). 553 tests, PHPStan/PHPCS OK. **Cierra R2** — el frente de reportes de convenio.
