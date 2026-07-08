@@ -78,7 +78,11 @@
             { "title": "Exportación de asientos contables (integración con módulo Contable)", "status": "pending", "tags": ["backend"] },
             { "title": "Régimen de información: archivo de comprobantes anulados (Libro IVA Digital)", "status": "pending", "tags": ["backend"] },
             { "title": "Auditoría de operaciones (registro de cambios)", "status": "completed", "tags": ["backend"], "completed_at": "2026-06-25" },
-            { "title": "Retenciones/percepciones sufridas en la DDJJ IVA Simple (origen de datos)", "status": "completed", "tags": ["backend", "analisis"], "completed_at": "2026-06-25" }
+            { "title": "Retenciones/percepciones sufridas en la DDJJ IVA Simple (origen de datos)", "status": "completed", "tags": ["backend", "analisis"], "completed_at": "2026-06-25" },
+            { "title": "Mayorización por línea: cuenta contable por línea de neto (multi-cuenta por comprobante, ej. resúmenes bancarios)", "status": "completed", "tags": ["backend", "frontend", "db"], "completed_at": "2026-07-08" },
+            { "title": "Compras de seguros: imputar el impuesto interno por diferencia (total − IVA − neto)", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" },
+            { "title": "Percepción de IIBB sobre base exenta (medicamentos) y alerta de ventas no gravadas", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" },
+            { "title": "Reportes de Mayor filtrables (rango de fechas/anual, proveedor, provincia, cascada) para la DDJJ anual de convenio", "status": "pending", "tags": ["backend", "frontend"] }
           ]
         },
         {

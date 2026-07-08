@@ -176,17 +176,39 @@ repos actualizados. 53 tests verdes.
 | 2 | **Validar LAVALLE mayo/2026** (regenerar Libro IVA Digital y comparar) | Verificación | 🥇 Alta (cierra "producción") | — |
 | 3 | **SIFERE Convenio Multilateral V4** (percepciones) ✅ HECHO · retenciones + otras jurisdicciones pendientes | Back+Front | 🥈 Alta (mensual, 7-8 clientes) | datos de percepción por provincia (ya están) |
 | 4 | **Mayorización**: cuenta debe/haber por comprobante + 2 reportes de Mayor ✅ HECHO (v1) | Back+Front | 🥈 Alta (uso diario) | migración + UI |
-| 5 | Resto de exportaciones IIBB por jurisdicción (Santa Fe, Córdoba, SIRCAR, ATER…) | Back | 🥉 Media | spec de cada layout |
-| 6 | Reportes **por provincia** (anual de convenio) | Back+Front | 🥉 Media/Baja (futuro) | #4 (mayorización) |
+| 5 | ~~Resto de exportaciones IIBB por jurisdicción~~ → **DESCARTADO** (R6: solo SIFERE CM Perc.) | — | ❌ N/A | — |
+| 6 | Reportes **por provincia / rango / cascada** (convenio anual + pedidos random) — R2 | Back+Front | 🥇 Alta | #4 (mayorización por línea) |
 | 7 | Pulido de reportes en general ("meterle cabeza") | Front | 🥉 Media | — |
 
 **Orden recomendado para arrancar:** #1 (rápido, lo ve enseguida) → #2 (validación que cierra
 producción) → #3 (SIFERE, dolor mensual concreto) → #4 (mayorización, la más estructural).
 
-### Preguntas abiertas para Federico (para no inventar)
-- **Mayorización:** ¿la cuenta se imputa **por comprobante** (una debe / una haber) o **por línea
-  de neto** (como muestra IMG-0015)? ¿Alcanza con una sola cuenta por comprobante para los reportes?
-- **SIFERE V4:** confirmar el **layout exacto** (posiciones/anchos) — tenemos un ejemplo pero
-  conviene el diseño de registro oficial. ¿La jurisdicción sale de la **provincia de la percepción**
-  cargada en el comprobante?
-- **LAVALLE:** ¿qué cosas "manuales" agregan sobre lo de ARCA (para reproducirlo)?
+### Preguntas abiertas para Federico → ✅ RESPONDIDAS (07/07, ver `0707preguntas.md`)
+- **Mayorización (R1):** **por línea/alícuota** (multi-cuenta por comprobante) y sobre el **neto**.
+- **SIFERE V4 / IIBB (R6):** **cerrado** — solo SIFERE CM Percepciones; el resto no se usa.
+- **LAVALLE/manuales (R5):** catálogo de comprobantes manuales confirmado (tickets cód. 81, resúmenes
+  bancarios, cuotas de préstamo, liquidaciones de tarjeta, servicios públicos 27%, pólizas, planes de ahorro).
+- **Seguros (R3):** el "resto" = **imp. interno** (`total − iva − neto`).
+- **Exento + percepción (R4):** cargar percepción con **base propia** aunque neto=0 (farmacia Galíndez);
+  **alerta** en ventas sin neto gravado.
+
+## 6. RESOLUCIONES 07/07 — impacto en el backlog
+1. **IIBB export CERRADO** (R6): se descarta todo el frente de otras jurisdicciones. SIFERE CM Perc. es lo único. ✅
+2. **Seguros → imp. interno por diferencia** (R3): ✅ HECHO (frontend). El modal de compra tiene el campo
+   **Total del comprobante** y, cuando difiere de neto+IVA+…, un aviso con botón **"Imputar a Imp. interno"**
+   (setea `imp_interno = imp_interno + (total_informado − total_estimado)`). Reusa `total_informado` (migr. 0041).
+3. **Percepción sobre base exenta** (R4): ✅ HECHO (frontend). Columna **Base** en la grilla de percepciones de
+   compra y venta → permite percibir sobre un valor exento (farmacia Galíndez) sin neto gravado (el backend ya
+   aceptaba `base` override en `PercepcionCalculator`). + **alerta de ventas no gravadas** ✅ (aviso cuando la
+   venta no tiene neto gravado y todo va a exento/no gravado — salvo Factura C).
+4. **Mayorización por línea + neto** (R1): ✅ HECHO. Migración 0043 (`cuenta_id` en `venta_discriminaciones`
+   y `compra_discriminaciones`, FK a `cuentas` ON DELETE SET NULL). El Mayor imputa el **neto de cada línea**
+   a su cuenta (compra→debe/gasto, venta→haber/ingreso), además de la contrapartida por comprobante (total,
+   migr. 0042). Un mismo comprobante puede repartirse en varias cuentas (resumen bancario: 21%→"Gastos y
+   comisiones", 10,5%→"Intereses por giro en descubierto"). `MayorRepository` reescrito (6 lados: 2 por línea
+   + 4 por comprobante); el detalle marca `nivel` (linea=neto / comprobante=total). Frontend: columna **Cuenta
+   (mayor)** por línea en ambos modales + columna **Concepto** (Neto/Total) en el detalle del Mayor. Tests
+   `MayorTest::test_mayorizacion_por_linea_imputa_el_neto_a_cada_cuenta`. 551 tests, PHPStan/PHPCS OK.
+5. **Motor de reportes filtrable con cascada** (R2): PENDIENTE — ahora desbloqueado por R1. Reportes de Mayor
+   **por rango de fechas / anual** con filtros (cuenta/proveedor/provincia) y subtotales en cascada (cuenta →
+   proveedor → comprobantes), para la DDJJ anual de convenio y pedidos random de clientes.
