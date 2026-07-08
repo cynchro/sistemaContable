@@ -298,15 +298,30 @@ class ServiceProvider extends BaseServiceProvider
             (int) Config::get('afip.ta_margin', 600),
         ));
 
-        // Padrón AFIP (consulta por CUIT). Reusa el WSAA para autenticarse. El alcance
-        // (a13 por defecto / a5) define el WSDL y el nombre del WS (ws_sr_padron_<alcance>).
+        // Padrón AFIP (consulta por CUIT). Usa su PROPIO WSAA (certificado + ambiente de
+        // padrón), que puede diferir del de WSFE: p. ej. padrón en producción y WSFE en
+        // homologación. El alcance (a13 por defecto / a5) define el WSDL y el WS.
         $alcancePadron = (string) Config::get('afip.padron_alcance', 'a13');
+        $envPadron     = (string) Config::get('afip.padron_env', 'homologacion');
         $c->singleton(PadronClient::class, fn () => new AfipPadronClient(
-            $c->get(WsaaClient::class),
+            new WsaaClient(
+                new FileCmsSigner(
+                    Config::get('afip.padron_cert_path'),
+                    Config::get('afip.padron_key_path'),
+                    (string) Config::get('afip.padron_key_passphrase', ''),
+                    Config::get('afip.padron_cert_pem'),
+                    Config::get('afip.padron_key_pem'),
+                ),
+                $c->get(SoapTransport::class),
+                $c->get(TicketStore::class),
+                (string) Config::get('afip.wsaa.' . $envPadron),
+                (string) Config::get('afip.cuit', ''),
+                (int) Config::get('afip.ta_margin', 600),
+            ),
             // El WSDL del padrón (A5/A13) declara binding SOAP 1.1; el transporte por defecto
             // usa 1.2 (para WSFE). Un transporte 1.1 dedicado evita el fault vacío de getPersona.
             new ExtSoapTransport(['soap_version' => SOAP_1_1]),
-            (string) Config::get("afip.padron.{$alcancePadron}." . Config::get('afip.env', 'homologacion')),
+            (string) Config::get("afip.padron.{$alcancePadron}.{$envPadron}"),
             (string) Config::get('afip.cuit', ''),
             'ws_sr_padron_' . $alcancePadron,
         ));

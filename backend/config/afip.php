@@ -34,6 +34,16 @@ return [
     'key_pem'        => $pem($_ENV['AFIP_KEY_PEM'] ?? null),
     'key_passphrase' => $_ENV['AFIP_KEY_PASSPHRASE'] ?? '',
 
+    // El PADRÓN puede usar un certificado y ambiente DISTINTOS a los de WSFE: p. ej. padrón
+    // en producción (datos reales) y WSFE en homologación (no emitir facturas reales mientras
+    // se prueba). Si no se definen los AFIP_PADRON_*, caen al certificado/ambiente global.
+    'padron_env'            => $_ENV['AFIP_PADRON_ENV'] ?? ($_ENV['AFIP_ENV'] ?? 'homologacion'),
+    'padron_cert_path'      => $_ENV['AFIP_PADRON_CERT_PATH'] ?? ($_ENV['AFIP_CERT_PATH'] ?? null),
+    'padron_key_path'       => $_ENV['AFIP_PADRON_KEY_PATH'] ?? ($_ENV['AFIP_KEY_PATH'] ?? null),
+    'padron_cert_pem'       => $pem($_ENV['AFIP_PADRON_CERT_PEM'] ?? null) ?? $pem($_ENV['AFIP_CERT_PEM'] ?? null),
+    'padron_key_pem'        => $pem($_ENV['AFIP_PADRON_KEY_PEM'] ?? null) ?? $pem($_ENV['AFIP_KEY_PEM'] ?? null),
+    'padron_key_passphrase' => $_ENV['AFIP_PADRON_KEY_PASSPHRASE'] ?? ($_ENV['AFIP_KEY_PASSPHRASE'] ?? ''),
+
     // Endpoints WSAA (LoginCms) por ambiente.
     'wsaa' => [
         'homologacion' => 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl',
