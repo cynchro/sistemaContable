@@ -54,6 +54,49 @@ class PersonaPadronTest extends UnitTestCase
         $this->assertNull($p->estadoClave);
     }
 
+    public function test_a13_lee_nodo_persona_y_domicilio_fiscal_de_la_lista(): void
+    {
+        // Estructura real del padrón A13: personaReturn.persona + domicilio[] (elige el FISCAL,
+        // usa codigoPostal). Verificado en vivo contra ARCA (SAUCEDO ALEXIS GUSTAVO).
+        $personaReturn = (object) [
+            'metadata' => (object) ['servidor' => 'x'],
+            'persona'  => (object) [
+                'tipoPersona' => 'FISICA',
+                'idPersona'   => '23321452639',
+                'estadoClave' => 'ACTIVO',
+                'apellido'    => 'SAUCEDO',
+                'nombre'      => 'ALEXIS GUSTAVO',
+                'domicilio'   => [
+                    (object) [
+                        'tipoDomicilio'        => 'LEGAL/REAL',
+                        'direccion'            => 'OTRO 1',
+                        'localidad'            => 'OTRA',
+                        'idProvincia'          => 1,
+                    ],
+                    (object) [
+                        'tipoDomicilio'        => 'FISCAL',
+                        'direccion'            => 'AV GDOR FELIPE FIGUEROA 0 Piso:1',
+                        'localidad'            => 'SAN FERNANDO DEL VALLE DE CATAMARCA',
+                        'codigoPostal'         => '4700',
+                        'idProvincia'          => 2,
+                        'descripcionProvincia' => 'CATAMARCA',
+                    ],
+                ],
+            ],
+        ];
+
+        $p = PersonaPadron::fromSoapResponse($personaReturn);
+
+        $this->assertSame('23321452639', $p->cuit);
+        $this->assertSame('SAUCEDO ALEXIS GUSTAVO', $p->denominacion);
+        $this->assertSame('ACTIVO', $p->estadoClave);
+        // Toma el domicilio FISCAL de la lista, no el primero.
+        $this->assertSame('AV GDOR FELIPE FIGUEROA 0 Piso:1', $p->domicilio['direccion']);
+        $this->assertSame('4700', $p->domicilio['cod_postal']);
+        $this->assertSame(2, $p->domicilio['id_provincia']);
+        $this->assertSame('CATAMARCA', $p->domicilio['provincia']);
+    }
+
     public function test_lee_impuestos_activos_como_lista(): void
     {
         $personaReturn = (object) [

@@ -33,7 +33,10 @@ final class PersonaPadron
      */
     public static function fromSoapResponse(object|array $personaReturn): self
     {
-        $datos = self::pick($personaReturn, 'datosGenerales') ?? $personaReturn;
+        // A5/A4/A10 anidan en `datosGenerales`; A13 (constancia de inscripción) en `persona`.
+        $datos = self::pick($personaReturn, 'datosGenerales')
+            ?? self::pick($personaReturn, 'persona')
+            ?? $personaReturn;
 
         $tipoPersona = (string) (self::pick($datos, 'tipoPersona') ?? '');
         $razonSocial = self::pick($datos, 'razonSocial');
@@ -44,12 +47,15 @@ final class PersonaPadron
             ? (string) $razonSocial
             : trim(((string) ($apellido ?? '')) . ' ' . ((string) ($nombre ?? '')));
 
+        // Domicilio: A5 lo trae en `domicilioFiscal` (uno); A13 en `domicilio` (lista → el fiscal).
+        $dom = self::pick($datos, 'domicilioFiscal') ?? self::pick($datos, 'domicilio');
+
         return new self(
             cuit: (string) (self::pick($datos, 'idPersona') ?? ''),
             tipoPersona: $tipoPersona,
             estadoClave: self::nullableString(self::pick($datos, 'estadoClave')),
             denominacion: $denominacion,
-            domicilio: self::domicilio(self::pick($datos, 'domicilioFiscal')),
+            domicilio: self::domicilio($dom),
             impuestos: self::impuestos(self::pick($datos, 'impuesto')),
         );
     }
@@ -61,9 +67,10 @@ final class PersonaPadron
             return [];
         }
 
-        // domicilioFiscal puede venir como objeto único o, en algunos alcances, como lista.
+        // Puede venir como objeto único o como lista (A13: `domicilio[]`). De la lista se
+        // prefiere el domicilio FISCAL; si no hay marca, el primero.
         if (is_array($dom) && array_is_list($dom)) {
-            $dom = $dom[0] ?? null;
+            $dom = self::domicilioFiscalDeLista($dom);
             if ($dom === null) {
                 return [];
             }
@@ -72,10 +79,29 @@ final class PersonaPadron
         return [
             'direccion'   => self::nullableString(self::pick($dom, 'direccion')),
             'localidad'   => self::nullableString(self::pick($dom, 'localidad')),
-            'cod_postal'  => self::nullableString(self::pick($dom, 'codPostal')),
+            // A5 usa `codPostal`; A13 usa `codigoPostal`.
+            'cod_postal'  => self::nullableString(self::pick($dom, 'codPostal') ?? self::pick($dom, 'codigoPostal')),
             'id_provincia' => self::nullableInt(self::pick($dom, 'idProvincia')),
             'provincia'   => self::nullableString(self::pick($dom, 'descripcionProvincia')),
         ];
+    }
+
+    /**
+     * De una lista de domicilios (A13), devuelve el marcado como FISCAL; si ninguno lo
+     * está, el primero.
+     *
+     * @param list<mixed> $lista
+     */
+    private static function domicilioFiscalDeLista(array $lista): mixed
+    {
+        foreach ($lista as $item) {
+            $tipo = strtoupper((string) (self::pick($item, 'tipoDomicilio') ?? ''));
+            if (str_contains($tipo, 'FISCAL')) {
+                return $item;
+            }
+        }
+
+        return $lista[0] ?? null;
     }
 
     /** @return list<int> */

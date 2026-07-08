@@ -7,8 +7,10 @@ use App\Modules\Iva\Afip\Wsaa\WsaaClient;
 use App\Modules\Iva\Afip\Soap\SoapTransport;
 
 /**
- * Cliente del padrón de AFIP (ws_sr_padron_a5). Autentica con el WSAA (servicio
- * propio del padrón) y llama a `getPersona(token, sign, cuitRepresentada, idPersona)`.
+ * Cliente del padrón de AFIP (ws_sr_padron_a5 / a13, configurable). Autentica con el WSAA
+ * (servicio propio del padrón) y llama a `getPersona(token, sign, cuitRepresentada, idPersona)`
+ * — el método es el mismo en A5 y A13; cambian el WSDL, el nombre del servicio y la forma de
+ * la respuesta (que normaliza {@see PersonaPadron}).
  */
 final class AfipPadronClient implements PadronClient
 {

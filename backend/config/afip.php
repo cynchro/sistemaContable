@@ -22,10 +22,20 @@ return [
         'produccion'   => 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl',
     ],
 
-    // Endpoints del padrón alcance 5 (consulta de contribuyentes por CUIT).
-    'padron_a5' => [
-        'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
-        'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
+    // Alcance del padrón a usar ('a13' por defecto: constancia de inscripción, es el que
+    // ARCA habilita hoy; 'a5' sigue soportado). Define WSDL + nombre del WS (ws_sr_padron_<alcance>).
+    'padron_alcance' => $_ENV['AFIP_PADRON_ALCANCE'] ?? 'a13',
+
+    // Endpoints del padrón por alcance (consulta de contribuyentes por CUIT).
+    'padron' => [
+        'a5' => [
+            'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
+            'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
+        ],
+        'a13' => [
+            'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA13?wsdl',
+            'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA13?wsdl',
+        ],
     ],
 
     // Endpoints WSFEv1 (factura electrónica) por ambiente.

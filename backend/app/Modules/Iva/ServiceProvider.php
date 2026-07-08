@@ -296,12 +296,17 @@ class ServiceProvider extends BaseServiceProvider
             (int) Config::get('afip.ta_margin', 600),
         ));
 
-        // Padrón AFIP (consulta por CUIT). Reusa el WSAA para autenticarse.
+        // Padrón AFIP (consulta por CUIT). Reusa el WSAA para autenticarse. El alcance
+        // (a13 por defecto / a5) define el WSDL y el nombre del WS (ws_sr_padron_<alcance>).
+        $alcancePadron = (string) Config::get('afip.padron_alcance', 'a13');
         $c->singleton(PadronClient::class, fn () => new AfipPadronClient(
             $c->get(WsaaClient::class),
-            $c->get(SoapTransport::class),
-            (string) Config::get('afip.padron_a5.' . Config::get('afip.env', 'homologacion')),
+            // El WSDL del padrón (A5/A13) declara binding SOAP 1.1; el transporte por defecto
+            // usa 1.2 (para WSFE). Un transporte 1.1 dedicado evita el fault vacío de getPersona.
+            new ExtSoapTransport(['soap_version' => SOAP_1_1]),
+            (string) Config::get("afip.padron.{$alcancePadron}." . Config::get('afip.env', 'homologacion')),
             (string) Config::get('afip.cuit', ''),
+            'ws_sr_padron_' . $alcancePadron,
         ));
         $c->singleton(PadronService::class, fn () => new PadronService($c->get(PadronClient::class)));
         $c->singleton(PadronController::class, fn () => new PadronController($c->get(PadronService::class)));
