@@ -18,6 +18,7 @@ import {
   cilCalculator,
   cilBriefcase,
   cilShieldAlt,
+  cilChartPie,
 } from '@coreui/icons'
 
 /** Ítem de menú (hoja). Puede depender del contexto activo (empresa/período). */
@@ -132,6 +133,13 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
           hint: hintPeriodo,
         },
         { name: 'Factura electrónica (AFIP)', to: '/afip', icon: cilFile },
+        {
+          name: 'Panel',
+          to: `/empresas/${emp}/periodos/${per}/panel`,
+          icon: cilChartPie,
+          disabled: needPeriodo,
+          hint: hintPeriodo,
+        },
       ],
     },
 
@@ -154,5 +162,7 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
         { name: 'Utilidades', to: '/utilidades', icon: cilStorage },
       ],
     },
+
+    { type: 'item', name: 'Manuales', to: '/manuales', icon: cilBook },
   ]
 }

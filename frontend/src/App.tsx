@@ -13,6 +13,8 @@ import LibroIvaPage from './modules/iva/libro/LibroIvaPage'
 import ActividadesPage from './modules/iva/actividades/ActividadesPage'
 import CuentasList from './modules/iva/cuentas/CuentasList'
 import ReporteMayorPage from './modules/iva/reportes/ReporteMayorPage'
+import PanelPage from './modules/iva/panel/PanelPage'
+import ManualesPage from './modules/manuales/ManualesPage'
 import ImportarPage from './modules/iva/importar/ImportarPage'
 import AfipPage from './modules/afip/AfipPage'
 import SueldosPage from './modules/sueldos/SueldosPage'
@@ -38,6 +40,7 @@ function App() {
           <Route path="empresas/:empresaId/periodos/:periodoId/compras" element={<ComprasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/libro-iva" element={<LibroIvaPage />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/importar" element={<ImportarPage />} />
+          <Route path="empresas/:empresaId/periodos/:periodoId/panel" element={<PanelPage />} />
           <Route path="iva" element={<EnConstruccion titulo="Comprobantes de IVA" />} />
           <Route path="iva/libro" element={<EnConstruccion titulo="Libro IVA y DDJJ" />} />
           <Route path="afip" element={<AfipPage />} />
@@ -45,6 +48,7 @@ function App() {
           <Route path="gestion" element={<GestionPage />} />
           <Route path="admin" element={<AdminPage />} />
           <Route path="utilidades" element={<UtilidadesPage />} />
+          <Route path="manuales" element={<ManualesPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -84,7 +84,9 @@
             { "title": "Percepción de IIBB sobre base exenta (medicamentos) y alerta de ventas no gravadas", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" },
             { "title": "Reportes de Mayor filtrables (rango de fechas/anual, proveedor, provincia, cascada) para la DDJJ anual de convenio", "status": "completed", "tags": ["backend", "frontend"], "completed_at": "2026-07-08" },
             { "title": "Presets de carga para comprobantes manuales (resúmenes bancarios, tickets, préstamos, tarjetas, servicios públicos, pólizas)", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" },
-            { "title": "Autocompletar el alta de empresa con el padrón de ARCA (botón Buscar por CUIT)", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" }
+            { "title": "Autocompletar el alta de empresa con el padrón de ARCA (botón Buscar por CUIT)", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" },
+            { "title": "Manuales de uso del sistema (sección con guía por área, en el menú principal)", "status": "completed", "tags": ["frontend", "docs"], "completed_at": "2026-07-08" },
+            { "title": "Panel de indicadores de IVA con gráficos (muestra)", "status": "completed", "tags": ["frontend"], "completed_at": "2026-07-08" }
           ]
         },
         {
