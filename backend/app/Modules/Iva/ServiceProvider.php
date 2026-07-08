@@ -288,6 +288,8 @@ class ServiceProvider extends BaseServiceProvider
                 Config::get('afip.cert_path'),
                 Config::get('afip.key_path'),
                 (string) Config::get('afip.key_passphrase', ''),
+                Config::get('afip.cert_pem'),
+                Config::get('afip.key_pem'),
             ),
             $c->get(SoapTransport::class),
             $c->get(TicketStore::class),

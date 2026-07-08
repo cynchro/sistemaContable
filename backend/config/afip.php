@@ -9,11 +9,29 @@
  * a futuro, cuando se guarden credenciales por CUIT en la base).
  */
 
+// Normaliza un PEM inline (AFIP_CERT_PEM / AFIP_KEY_PEM): acepta el PEM crudo o su base64
+// (más cómodo en variables de entorno de un PaaS, que suelen ser de una línea).
+$pem = static function (?string $v): ?string {
+    if ($v === null || $v === '') {
+        return null;
+    }
+    if (str_contains($v, '-----BEGIN')) {
+        return $v; // ya es PEM crudo
+    }
+    $decoded = base64_decode($v, true);
+
+    return ($decoded !== false && str_contains($decoded, '-----BEGIN')) ? $decoded : $v;
+};
+
 return [
     'env'            => $_ENV['AFIP_ENV'] ?? 'homologacion',
     'cuit'           => $_ENV['AFIP_CUIT'] ?? null,
+    // El certificado y la clave se pueden dar como archivo (*_PATH, dev) o inline (*_PEM,
+    // recomendado en producción/PaaS: sobrevive a redeploys sin filesystem persistente).
     'cert_path'      => $_ENV['AFIP_CERT_PATH'] ?? null,
     'key_path'       => $_ENV['AFIP_KEY_PATH'] ?? null,
+    'cert_pem'       => $pem($_ENV['AFIP_CERT_PEM'] ?? null),
+    'key_pem'        => $pem($_ENV['AFIP_KEY_PEM'] ?? null),
     'key_passphrase' => $_ENV['AFIP_KEY_PASSPHRASE'] ?? '',
 
     // Endpoints WSAA (LoginCms) por ambiente.
