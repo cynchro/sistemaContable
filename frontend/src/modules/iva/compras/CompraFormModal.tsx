@@ -30,6 +30,7 @@ import { listRubros } from '../../../api/rubros'
 import { listCuentas } from '../../../api/cuentas'
 import { getCompra, type CompraInput } from '../../../api/compras'
 import SujetoTypeahead from '../SujetoTypeahead'
+import type { CompraPreset } from './compraPresets'
 
 /** Alícuotas habilitadas por AFIP (%). El motor usa el %. */
 const ALICUOTAS = ['0', '10.5', '21', '27', '2.5', '5']
@@ -120,6 +121,8 @@ interface Props {
   errorMsg?: string | null
   /** Fecha a pre-cargar en una compra nueva (última cargada del período). */
   ultimaFecha?: string
+  /** Preset de comprobante manual a pre-armar (solo en alta): tipo, letra, concepto, líneas. */
+  preset?: CompraPreset | null
   onClose: () => void
   onSubmit: (values: CompraInput) => void
 }
@@ -135,6 +138,7 @@ export default function CompraFormModal({
   saving,
   errorMsg,
   ultimaFecha,
+  preset,
   onClose,
   onSubmit,
 }: Props) {
@@ -205,7 +209,25 @@ export default function CompraFormModal({
   useEffect(() => {
     if (!visible) return
     if (compraId == null) {
-      reset({ ...VACIO, fecha: ultimaFecha ?? '' })
+      if (preset) {
+        const tipoId = tiposComprobante?.find((t) => t.codigo === preset.tipoCodigo)?.id
+        reset({
+          ...VACIO,
+          fecha: ultimaFecha ?? '',
+          tipo_comprobante_id: tipoId != null ? String(tipoId) : '',
+          letra: preset.letra ?? '',
+          concepto_dj: preset.conceptoDj ?? '',
+          discriminaciones: preset.alicuotas.map((a) => ({
+            neto_gravado: '',
+            iva_alicuota: a,
+            iva_importe: '',
+            cf_computable: '',
+            cuenta_id: '',
+          })),
+        })
+      } else {
+        reset({ ...VACIO, fecha: ultimaFecha ?? '' })
+      }
     } else if (detalle) {
       reset({
         fecha: detalle.fecha ?? '',
@@ -257,7 +279,7 @@ export default function CompraFormModal({
         })),
       })
     }
-  }, [visible, compraId, detalle, reset, ultimaFecha])
+  }, [visible, compraId, detalle, reset, ultimaFecha, preset, tiposComprobante])
 
   const lineas = watch('discriminaciones')
   const percepcionesW = watch('percepciones')
@@ -335,7 +357,8 @@ export default function CompraFormModal({
         })),
     })
 
-  const titulo = compraId == null ? 'Nueva compra' : 'Editar compra'
+  const titulo =
+    compraId == null ? (preset ? `Nueva compra — ${preset.label}` : 'Nueva compra') : 'Editar compra'
   const mostrarForm = compraId == null || !!detalle
 
   return (
@@ -353,6 +376,11 @@ export default function CompraFormModal({
           )}
           {mostrarForm && (
             <>
+              {preset && compraId == null && (
+                <CAlert color="info" className="py-2 small">
+                  <strong>{preset.label}.</strong> {preset.hint}
+                </CAlert>
+              )}
               <div className="row">
                 <div className="col-md-3 mb-3">
                   <CFormLabel htmlFor="fecha">Fecha *</CFormLabel>

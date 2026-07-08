@@ -131,8 +131,12 @@ Tipos que agregan por fuera de ARCA (esto explica los "agregados manuales" de MA
 - **Servicios públicos** (luz/agua): impresos, **al 27%**.
 - **Pólizas de seguro de vehículos**, **cuotas de planes de ahorro**, **facturas manuales** (facturero/matricial):
   impresos, se cargan a mano.
-→ **Resolución:** el modelo ya permite carga manual + importador CSV con mapeo. Estos casos son plantillas/UX;
-las convenciones de PV/número las arma el operador. Oportunidad: presets de importación por tipo (fase futura).
+→ **Resolución:** el modelo ya permite carga manual + importador CSV con mapeo. **Presets de carga por tipo
+HECHO** (2026-07-08): el listado de Compras tiene un menú **"Nueva compra ▾"** con presets de comprobante manual
+(`compraPresets.ts`): Resumen bancario (21%+10,5%), Ticket combustible cód. 81 (TF, 21% + imp. interno por
+diferencia), Cuota de préstamo (10,5%), Liquidación de tarjeta (21%+10,5%), Servicio público (LA, 27%), Póliza de
+seguro (21% + imp. interno). Cada preset pre-arma tipo/letra/concepto DJ/líneas de alícuota y muestra la convención
+de PV/número en un aviso. Verificado E2E en navegador. Las convenciones de PV/número las completa el operador.
 
 ## R6. Exportación IIBB → **solo SIFERE CM Percepciones (YA HECHO). NADA MÁS.**
 Era **solo** el caso de convenio multilateral. Los contribuyentes **locales** de IIBB (ej. Catamarca): el

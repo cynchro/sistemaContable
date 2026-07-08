@@ -19,6 +19,11 @@ import {
   CFormCheck,
   CSpinner,
   CAlert,
+  CDropdown,
+  CDropdownToggle,
+  CDropdownMenu,
+  CDropdownItem,
+  CDropdownDivider,
 } from '@coreui/react'
 import {
   listCompras,
@@ -32,6 +37,7 @@ import {
 } from '../../../api/compras'
 import CompraFormModal from './CompraFormModal'
 import MoverComprobanteModal from '../MoverComprobanteModal'
+import { COMPRA_PRESETS, type CompraPreset } from './compraPresets'
 
 const PER_PAGE = 50
 
@@ -74,6 +80,7 @@ export default function ComprasList() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [preset, setPreset] = useState<CompraPreset | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -115,6 +122,7 @@ export default function ComprasList() {
   const closeModal = () => {
     setModalOpen(false)
     setEditingId(null)
+    setPreset(null)
     setFormError(null)
   }
 
@@ -128,14 +136,16 @@ export default function ComprasList() {
     onError: (e) => setFormError(apiError(e)),
   })
 
-  const nuevaCompra = () => {
+  const nuevaCompra = (p: CompraPreset | null = null) => {
     setEditingId(null)
+    setPreset(p)
     setFormError(null)
     setModalOpen(true)
   }
 
   const editarCompra = (id: number) => {
     setEditingId(id)
+    setPreset(null)
     setFormError(null)
     setModalOpen(true)
   }
@@ -224,9 +234,23 @@ export default function ComprasList() {
                 Eliminar seleccionados ({selected.size})
               </CButton>
             )}
-            <CButton color="primary" size="sm" onClick={nuevaCompra}>
-              Nueva compra
-            </CButton>
+            <CDropdown variant="btn-group">
+              <CButton color="primary" size="sm" onClick={() => nuevaCompra()}>
+                Nueva compra
+              </CButton>
+              <CDropdownToggle color="primary" size="sm" split title="Comprobantes manuales" />
+              <CDropdownMenu>
+                <CDropdownItem disabled className="small text-body-secondary">
+                  Comprobante manual (preset)
+                </CDropdownItem>
+                <CDropdownDivider />
+                {COMPRA_PRESETS.map((p) => (
+                  <CDropdownItem key={p.id} role="button" onClick={() => nuevaCompra(p)}>
+                    {p.label}
+                  </CDropdownItem>
+                ))}
+              </CDropdownMenu>
+            </CDropdown>
           </div>
         </CCardHeader>
         <CCardBody>
@@ -382,6 +406,7 @@ export default function ComprasList() {
         saving={saveM.isPending}
         errorMsg={formError}
         ultimaFecha={ultimaFecha}
+        preset={preset}
         onClose={closeModal}
         onSubmit={(v) => saveM.mutate(v)}
       />
