@@ -15,6 +15,9 @@ import {
   CBadge,
   CSpinner,
   CAlert,
+  CForm,
+  CFormInput,
+  CFormSelect,
 } from '@coreui/react'
 import {
   listSujetos,
@@ -37,10 +40,16 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
   const qc = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Sujeto | null>(null)
+  const [q, setQ] = useState('')
+  const [busqueda, setBusqueda] = useState('')
+  const [orden, setOrden] = useState('')
 
-  const queryKey = [recurso, id]
-  const { data, isLoading, isError } = useQuery({ queryKey, queryFn: () => listSujetos(recurso, id) })
-  const invalidate = () => qc.invalidateQueries({ queryKey })
+  const { data, isLoading, isError } = useQuery({
+    queryKey: [recurso, id, busqueda, orden],
+    queryFn: () => listSujetos(recurso, id, { q: busqueda || undefined, orden: orden || undefined }),
+  })
+  // Invalida por prefijo: refresca esta lista filtrada y también el typeahead ([recurso, id]).
+  const invalidate = () => qc.invalidateQueries({ queryKey: [recurso, id] })
   const closeModal = () => {
     setModalOpen(false)
     setEditing(null)
@@ -84,8 +93,56 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
           </CButton>
         </CCardHeader>
         <CCardBody>
+          <CForm
+            className="row g-2 align-items-end mb-3"
+            onSubmit={(e) => {
+              e.preventDefault()
+              setBusqueda(q.trim())
+            }}
+          >
+            <div className="col-sm-6 col-md-5">
+              <CFormInput
+                size="sm"
+                placeholder="Buscar por nombre o CUIT…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </div>
+            <div className="col-auto">
+              <CButton type="submit" color="primary" variant="outline" size="sm">
+                Buscar
+              </CButton>
+            </div>
+            {busqueda && (
+              <div className="col-auto">
+                <CButton
+                  type="button"
+                  color="secondary"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setQ('')
+                    setBusqueda('')
+                  }}
+                >
+                  Limpiar
+                </CButton>
+              </div>
+            )}
+            <div className="col-auto ms-auto">
+              <CFormSelect size="sm" value={orden} onChange={(e) => setOrden(e.target.value)} title="Ordenar por">
+                <option value="">Orden: Nombre</option>
+                <option value="cuit">Orden: CUIT</option>
+              </CFormSelect>
+            </div>
+          </CForm>
           {isLoading && <CSpinner />}
           {isError && <CAlert color="danger">No se pudieron cargar los {titulo.toLowerCase()}.</CAlert>}
+          {data && data.length === 0 && busqueda && (
+            <CAlert color="info" className="py-2">
+              Sin resultados para “{busqueda}”.
+            </CAlert>
+          )}
           {data && (
             <CTable hover responsive align="middle" className="mb-0">
               <CTableHead>

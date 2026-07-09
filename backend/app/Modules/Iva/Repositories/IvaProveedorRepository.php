@@ -22,16 +22,32 @@ class IvaProveedorRepository
     }
 
     /** @return list<array<string, mixed>> */
-    public function findAllByEmpresa(int $empresaId, string $tenantId): array
+    /**
+     * Listado de proveedores de la empresa (+ globales del tenant), con búsqueda por
+     * nombre/CUIT y orden (nombre default | cuit; columna de una lista blanca).
+     *
+     * @param array{q?: ?string, orden?: ?string} $filtros
+     * @return list<array<string, mixed>>
+     */
+    public function findAllByEmpresa(int $empresaId, string $tenantId, array $filtros = []): array
     {
+        $where  = ['(p.empresa_id = ? OR (p.esglobal = ? AND e.tenant_id = ?))'];
+        $params = [$empresaId, 'S', $tenantId];
+
+        if (!empty($filtros['q'])) {
+            $where[]  = '(p.nombre LIKE ? OR p.cuit LIKE ?)';
+            $q        = '%' . $filtros['q'] . '%';
+            $params[] = $q;
+            $params[] = $q;
+        }
+
+        $orden = ($filtros['orden'] ?? '') === 'cuit' ? 'p.cuit, p.nombre' : 'p.nombre';
+
         $stmt = $this->pdo->prepare(
-            'SELECT p.* FROM iva_proveedores p
-               JOIN empresas e ON p.empresa_id = e.id
-              WHERE p.empresa_id = ?
-                 OR (p.esglobal = ? AND e.tenant_id = ?)
-              ORDER BY p.nombre'
+            'SELECT p.* FROM iva_proveedores p JOIN empresas e ON p.empresa_id = e.id'
+            . ' WHERE ' . implode(' AND ', $where) . ' ORDER BY ' . $orden
         );
-        $stmt->execute([$empresaId, 'S', $tenantId]);
+        $stmt->execute($params);
 
         return array_map([$this, 'decode'], (array) $stmt->fetchAll(PDO::FETCH_ASSOC));
     }

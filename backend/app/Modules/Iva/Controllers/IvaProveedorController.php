@@ -19,6 +19,10 @@ class IvaProveedorController
         return Response::success($this->service->list(
             (int) $request->route('empresaId'),
             (string) $request->tenantId(),
+            [
+                'q'     => $request->input('q'),
+                'orden' => $request->input('orden'),
+            ],
         ));
     }
 

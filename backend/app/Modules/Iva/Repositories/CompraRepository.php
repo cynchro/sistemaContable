@@ -86,7 +86,15 @@ class CompraRepository
             $params[] = '%' . $filtros['numero'] . '%';
         }
 
-        $orden = ($filtros['orden'] ?? '') === 'nombre' ? 'proveedor_nombre, fecha, id' : 'fecha, id';
+        // Orden por lista blanca (nombres de columna fijos, no input crudo del usuario).
+        $orden = match ($filtros['orden'] ?? '') {
+            'fecha_desc' => 'fecha DESC, id DESC',
+            'nombre'     => 'proveedor_nombre, fecha, id',
+            'numero'     => 'CAST(numero AS UNSIGNED), id',
+            'total'      => 'total, id',
+            'total_desc' => 'total DESC, id',
+            default      => 'fecha, id',
+        };
         // Neto e IVA derivados de las discriminaciones, para verlos en el listado sin abrir el
         // comprobante (pedido del contador). Subqueries correlacionadas: el WHERE/ORDER usa las
         // columnas de `compras` (único base del query externo).

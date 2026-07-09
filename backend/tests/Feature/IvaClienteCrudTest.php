@@ -42,6 +42,32 @@ class IvaClienteCrudTest extends FeatureTestCase
         $this->assertSame(404, $this->getJson("/empresas/{$empresaId}/clientes/{$id}", $auth)['status']);
     }
 
+    public function test_busqueda_por_nombre_o_cuit_y_orden(): void
+    {
+        [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
+
+        $this->postJson("/empresas/{$empresaId}/clientes", ['nombre' => 'Zeta SA', 'cuit' => '30111111118'], $auth);
+        $this->postJson("/empresas/{$empresaId}/clientes", ['nombre' => 'Alfa SRL', 'cuit' => '30999999990'], $auth);
+
+        // Búsqueda por nombre.
+        $r = $this->getJson("/empresas/{$empresaId}/clientes?q=alfa", $auth);
+        $this->assertCount(1, $r['json']['data']);
+        $this->assertSame('Alfa SRL', $r['json']['data'][0]['nombre']);
+
+        // Búsqueda por CUIT (parcial).
+        $r = $this->getJson("/empresas/{$empresaId}/clientes?q=3011", $auth);
+        $this->assertCount(1, $r['json']['data']);
+        $this->assertSame('Zeta SA', $r['json']['data'][0]['nombre']);
+
+        // Orden por nombre (default): Alfa antes que Zeta.
+        $r = $this->getJson("/empresas/{$empresaId}/clientes", $auth);
+        $this->assertSame('Alfa SRL', $r['json']['data'][0]['nombre']);
+
+        // Orden por CUIT: el 3011… antes que el 3099…
+        $r = $this->getJson("/empresas/{$empresaId}/clientes?orden=cuit", $auth);
+        $this->assertSame('30111111118', $r['json']['data'][0]['cuit']);
+    }
+
     public function test_crear_sin_nombre_falla(): void
     {
         [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());

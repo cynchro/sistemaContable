@@ -278,8 +278,12 @@ export default function ComprasList() {
             <div className="col-auto">
               <CFormLabel className="small mb-1">Orden</CFormLabel>
               <CFormSelect size="sm" value={orden} onChange={(e) => setOrden(e.target.value)}>
-                <option value="">Fecha</option>
+                <option value="">Fecha ↑</option>
+                <option value="fecha_desc">Fecha ↓</option>
                 <option value="nombre">Proveedor</option>
+                <option value="numero">Número</option>
+                <option value="total">Total ↑</option>
+                <option value="total_desc">Total ↓</option>
               </CFormSelect>
             </div>
             <div className="col-auto">

@@ -47,8 +47,15 @@ export interface SujetoInput {
 
 const base = (recurso: RecursoSujeto, empresaId: number) => `/empresas/${empresaId}/${recurso}`
 
-export async function listSujetos(recurso: RecursoSujeto, empresaId: number): Promise<Sujeto[]> {
-  const { data } = await api.get(base(recurso, empresaId))
+export async function listSujetos(
+  recurso: RecursoSujeto,
+  empresaId: number,
+  filtros?: { q?: string; orden?: string },
+): Promise<Sujeto[]> {
+  const params: Record<string, string> = {}
+  if (filtros?.q) params.q = filtros.q
+  if (filtros?.orden) params.orden = filtros.orden
+  const { data } = await api.get(base(recurso, empresaId), { params })
   return data.data as Sujeto[]
 }
 

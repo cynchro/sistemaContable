@@ -20,11 +20,12 @@ class IvaProveedorService
     }
 
     /** @return list<array<string, mixed>> */
-    public function list(int $empresaId, string $tenantId): array
+    /** @param array{q?: ?string, orden?: ?string} $filtros */
+    public function list(int $empresaId, string $tenantId, array $filtros = []): array
     {
         $this->assertEmpresa($empresaId, $tenantId);
 
-        return $this->proveedores->findAllByEmpresa($empresaId, $tenantId);
+        return $this->proveedores->findAllByEmpresa($empresaId, $tenantId, $filtros);
     }
 
     /** @return array<string, mixed> */
