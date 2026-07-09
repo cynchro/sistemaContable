@@ -108,7 +108,25 @@ export async function presentarIvaSimple(
  * dispara la descarga en el navegador con el nombre que sugiere el backend.
  */
 async function descargar(url: string, params?: Record<string, string>): Promise<void> {
-  const res = await api.get(url, { params, responseType: 'blob' })
+  let res
+  try {
+    res = await api.get(url, { params, responseType: 'blob' })
+  } catch (e) {
+    // El backend puede devolver un error JSON (ej. 422 "faltan actividades"); como pedimos
+    // blob, viene como Blob. Lo leemos para mostrar el motivo real en vez de un genérico.
+    const data = (e as { response?: { data?: unknown } })?.response?.data
+    if (data instanceof Blob) {
+      let msg = ''
+      try {
+        const j = JSON.parse(await data.text()) as { message?: string; errors?: Record<string, string[]> }
+        msg = j.errors ? Object.values(j.errors).flat().join(' ') : (j.message ?? '')
+      } catch {
+        /* la respuesta no era JSON */
+      }
+      if (msg) throw new Error(msg)
+    }
+    throw e
+  }
   const disposition: string = res.headers['content-disposition'] ?? ''
   const match = /filename="?([^"]+)"?/.exec(disposition)
   const nombre = match?.[1] ?? url.split('/').pop() ?? 'descarga.txt'

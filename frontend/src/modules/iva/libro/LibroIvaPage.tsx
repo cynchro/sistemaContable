@@ -581,7 +581,9 @@ function Descargas({ eId, pId }: { eId: number; pId: number }) {
   })
   const run = (fn: () => Promise<void>) => {
     setError(null)
-    fn().catch(() => setError('No se pudo generar la descarga.'))
+    fn().catch((e: unknown) =>
+      setError(e instanceof Error && e.message ? e.message : 'No se pudo generar la descarga.'),
+    )
   }
 
   return (
