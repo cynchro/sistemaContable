@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -30,6 +30,8 @@ import {
 } from '../../../api/sujetos'
 import SujetoFormModal from './SujetoFormModal'
 
+const PER_PAGE = 20
+
 export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
   const esProveedor = recurso === 'proveedores'
   const titulo = esProveedor ? 'Proveedores' : 'Clientes'
@@ -43,11 +45,19 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
   const [q, setQ] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [orden, setOrden] = useState('')
+  const [page, setPage] = useState(1)
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [recurso, id, busqueda, orden],
     queryFn: () => listSujetos(recurso, id, { q: busqueda || undefined, orden: orden || undefined }),
   })
+
+  // Paginación del lado del cliente (la lista se trae completa para el typeahead).
+  useEffect(() => setPage(1), [busqueda, orden])
+  const total = data?.length ?? 0
+  const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
+  const pagina = Math.min(page, totalPaginas)
+  const paginados = (data ?? []).slice((pagina - 1) * PER_PAGE, pagina * PER_PAGE)
   // Invalida por prefijo: refresca esta lista filtrada y también el typeahead ([recurso, id]).
   const invalidate = () => qc.invalidateQueries({ queryKey: [recurso, id] })
   const closeModal = () => {
@@ -155,7 +165,7 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {data.map((s) => {
+                {paginados.map((s) => {
                   // Un global de OTRA empresa se administra desde su empresa de origen.
                   const ajeno = s.esglobal === 'S' && s.empresa_id !== id
                   return (
@@ -200,7 +210,7 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
                     </CTableRow>
                   )
                 })}
-                {data.length === 0 && (
+                {total === 0 && !busqueda && (
                   <CTableRow>
                     <CTableDataCell colSpan={5} className="text-center text-body-secondary py-4">
                       Sin {titulo.toLowerCase()} cargados.
@@ -209,6 +219,36 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
                 )}
               </CTableBody>
             </CTable>
+          )}
+          {total > 0 && (
+            <div className="d-flex justify-content-between align-items-center mt-2 small">
+              <span className="text-body-secondary">
+                {total} {total === 1 ? singular : `${singular}s`}
+                {total > PER_PAGE ? ` · pág. ${pagina}/${totalPaginas}` : ''}
+              </span>
+              {total > PER_PAGE && (
+                <div className="d-flex gap-2">
+                  <CButton
+                    color="secondary"
+                    variant="outline"
+                    size="sm"
+                    disabled={pagina <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    ← Anterior
+                  </CButton>
+                  <CButton
+                    color="secondary"
+                    variant="outline"
+                    size="sm"
+                    disabled={pagina >= totalPaginas}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Siguiente →
+                  </CButton>
+                </div>
+              )}
+            </div>
           )}
         </CCardBody>
       </CCard>
