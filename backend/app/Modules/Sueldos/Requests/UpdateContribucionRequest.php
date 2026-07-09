@@ -14,6 +14,10 @@ class UpdateContribucionRequest extends FormRequest
             'porcentaje'    => 'nullable|numeric',
             'importe_fijo'  => 'nullable|numeric',
             'incluye_norem' => 'nullable|in:S,N',
+            'aplica_detraccion' => 'nullable|in:S,N',
+            'aplica_topes'      => 'nullable|in:S,N',
+            'tope_min'          => 'nullable|numeric',
+            'tope_max'          => 'nullable|numeric',
             'cuenta_id'     => 'nullable|integer',
             'orden'         => 'nullable|integer',
         ];

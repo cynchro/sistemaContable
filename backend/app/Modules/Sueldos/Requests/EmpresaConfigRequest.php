@@ -17,6 +17,7 @@ class EmpresaConfigRequest extends FormRequest
             'lugar_pago'           => 'nullable|string|max:100',
             'jornada_horas'        => 'nullable|numeric',
             'jornada_dias'         => 'nullable|numeric',
+            'detraccion_monto'     => 'nullable|numeric',
             'ultimo_recibo'        => 'nullable|integer',
             'decimales_en_importe' => 'nullable|in:S,N',
             'exporta_conta'        => 'nullable|in:S,N',

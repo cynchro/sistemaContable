@@ -13,6 +13,7 @@ class EmpresaConfigRepository
     private const WRITABLE = [
         'nro_anses', 'caja', 'actividad_id', 'tipo_recibo', 'lugar_pago',
         'jornada_horas', 'jornada_dias', 'ultimo_recibo', 'decimales_en_importe', 'exporta_conta',
+        'detraccion_monto',
     ];
 
     public function __construct(private PDO $pdo)

@@ -84,6 +84,7 @@ class ContribucionService
         $resultado = $this->calculator->calcular(
             $this->contribuciones->baseImponible($liqId, $empleadoId),
             $this->contribuciones->findAllByEmpresa($empresaId),
+            $this->contribuciones->detraccionMonto($empresaId),
         );
 
         $this->db->withTransaction(

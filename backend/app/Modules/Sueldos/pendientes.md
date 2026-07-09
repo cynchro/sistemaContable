@@ -23,9 +23,12 @@ reconstruyó desde el modelo + la semántica de fórmulas. Confirmar:
       BASICO/CAN/IMP/ANTIG/NOREM (revisar `VARIABLES_CONCEPTOS` y fórmulas reales).
 
 ## B) Contribuciones — nuances diferidas
-- [ ] **Detracción** (DEC 14/2020 y sucesores) y **topes** (mínimos/máximos de base
-      imponible) de `CONTRIBUCIONES_PATRONALES` (el schema extraído está incompleto en
-      esos campos). Hoy: `importe = base·% + fijo`, base = remunerativo (+no rem opcional).
+- [x] **Detracción** (Dto 99/2019) y **topes** (mín/máx de base) — HECHO (migr. 0044, 2026-07-09),
+      a partir del manual oficial "Contribuciones Patronales v5.80". Por contribución: `aplica_detraccion`,
+      `aplica_topes`, `tope_min`, `tope_max`; detracción a nivel empresa (`detraccion_monto`).
+      `ContribucionCalculator`: base → topes → −detracción → ×% + fijo. Los valores son parámetros del estudio.
+      Pendiente menor: control de "en qué liquidación del mes aplica la detracción" (Todas/1ª/2ª/3ª) para
+      no duplicar el beneficio con sueldo+SAC en el mismo mes.
 - [ ] Conceptos incluidos/excluidos por contribución (`CONCEPTOS_EXCLUIDOS`).
 - [ ] Aportes del empleado vs contribuciones patronales (hoy modeladas las patronales).
 

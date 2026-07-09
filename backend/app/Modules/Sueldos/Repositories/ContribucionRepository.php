@@ -11,7 +11,20 @@ use App\Exceptions\NotFoundException;
  */
 class ContribucionRepository
 {
-    private const WRITABLE = ['descripcion', 'porcentaje', 'importe_fijo', 'incluye_norem', 'cuenta_id', 'orden'];
+    private const WRITABLE = [
+        'descripcion', 'porcentaje', 'importe_fijo', 'incluye_norem',
+        'aplica_detraccion', 'aplica_topes', 'tope_min', 'tope_max', 'cuenta_id', 'orden',
+    ];
+
+    /** Monto de la detracción vigente (Dto 99/2019) configurado a nivel de empresa. */
+    public function detraccionMonto(int $empresaId): string
+    {
+        $stmt = $this->pdo->prepare('SELECT detraccion_monto FROM sueldos_empresa_config WHERE empresa_id = ?');
+        $stmt->execute([$empresaId]);
+        $v = $stmt->fetchColumn();
+
+        return ($v === false || $v === null) ? '0' : (string) $v;
+    }
 
     public function __construct(private PDO $pdo)
     {

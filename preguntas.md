@@ -63,7 +63,14 @@ cuando el legajo no tiene un básico propio cargado?
 que se resta de la base, Dto. 14/2020 y siguientes) y los **topes** (base imponible mínima/máxima)?
 ¿Con qué valores vigentes?
 **Hoy asumimos:** contribución = base × % + monto fijo, **sin** detracción ni topes.
-**Respuesta:**
+**Respuesta:** ✅ RESUELTO por el **manual oficial** "Contribuciones Patronales v5.80" (Visual Sueldos),
+que es normativo (Dto 99/2019, Dto 814/2001). Implementado (migr. 0044): por contribución se marca
+`aplica_detraccion` y `aplica_topes` (con `tope_min`/`tope_max`); la **detracción** es un monto a nivel de
+empresa (`sueldos_empresa_config.detraccion_monto`) que se resta de la base de las contribuciones a SIPA.
+`ContribucionCalculator`: base → topes(base) → base − detracción → × % + fijo. Los **valores vigentes**
+(monto de detracción, topes) son **parámetros que carga el estudio por período** (como el % y el fijo), no
+se hardcodean. El sistema soporta ambos casos (flags default 'N'), así que anda use o no el estudio la
+detracción; solo resta confirmar con Federico si la aplican para dejar los flags/monto por defecto.
 
 ### B7. 🟢 Ganancias 4ta categoría
 **Pregunta:** ¿necesitan el cálculo de retención de **Ganancias** sobre sueldos? Si sí,
