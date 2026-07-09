@@ -80,6 +80,95 @@ body,
     border: none !important;
     box-shadow: none !important;
   }
+
+  /* Oculta el chrome que no es el reporte (breadcrumb, cabecera de la card, tabs). */
+  .breadcrumb,
+  .card-header {
+    display: none !important;
+  }
+
+  /* Fuerza salida en CLARO (negro sobre blanco), aunque la app esté en dark mode. */
+  html,
+  body,
+  #root,
+  .wrapper,
+  .body,
+  main,
+  .card,
+  .card-body {
+    background: #fff !important;
+    color: #000 !important;
+    color-scheme: light !important;
+  }
+  .print-area,
+  .print-area section,
+  .print-area > div,
+  .reporte-header {
+    background: #fff !important;
+  }
+  .print-area {
+    color: #000 !important;
+    /* Override de las variables de CoreUI que leen las tablas/tema. */
+    --cui-body-bg: #fff;
+    --cui-body-color: #000;
+    --cui-table-color: #000;
+    --cui-table-bg: #fff;
+    --cui-table-striped-color: #000;
+    --cui-table-border-color: #999;
+    --cui-border-color: #999;
+    --cui-secondary-color: #333;
+  }
+  .print-area * {
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+  .print-area table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9.5pt;
+  }
+  .print-area th,
+  .print-area td {
+    border: 1px solid #999 !important;
+    padding: 2px 5px !important;
+    background: #fff !important;
+  }
+  .print-area thead th {
+    background: #e9e9e9 !important;
+  }
+  /* Repite el encabezado de la tabla en cada página impresa. */
+  .print-area thead {
+    display: table-header-group;
+  }
+  .print-area tr {
+    page-break-inside: avoid;
+  }
+  /* Cada sección del reporte arranca en su propia hoja. */
+  .reporte-seccion + .reporte-seccion {
+    page-break-before: always;
+  }
+  .reporte-header {
+    display: block !important;
+  }
+
+  /* Los subdiarios son anchos (muchas columnas) → orientación apaisada para que entren. */
+  @page {
+    size: A4 landscape;
+    margin: 1.1cm;
+  }
+}
+
+/* Encabezado de los reportes (visible en pantalla y, sobre todo, al imprimir/PDF). */
+.reporte-header {
+  border-bottom: 2px solid var(--cui-border-color, #ccc);
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+}
+.reporte-header .reporte-estudio {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
 }
 
 /* Pantalla de login: fondo background.png atenuado + card centrada. Se muestra

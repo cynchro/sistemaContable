@@ -26,6 +26,8 @@ import {
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
 import { getMayorResumen, getMayorDetalle } from '../../../api/mayor'
+import { listEmpresas } from '../../../api/empresas'
+import { listPeriodos } from '../../../api/periodos'
 import {
   getTotales,
   getReintegroT,
@@ -391,6 +393,32 @@ function TablaSubdiario({ data, sujeto, conCf }: { data: Subdiario; sujeto: stri
   )
 }
 
+/** Encabezado del reporte (estudio + empresa/CUIT + período + fecha). Clave para el PDF.
+ * Toma empresa/período de los listados cacheados (confiable en carga directa/impresión). */
+function ReporteHeader({ eId, pId, titulo }: { eId: number; pId: number; titulo: string }) {
+  const { data: empresas } = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
+  const { data: periodos } = useQuery({ queryKey: ['periodos', eId], queryFn: () => listPeriodos(eId) })
+  const empresa = empresas?.find((e) => e.id === eId)
+  const periodo = periodos?.find((p) => p.id === pId)
+  const hoy = new Date().toLocaleDateString('es-AR')
+  return (
+    <div className="reporte-header">
+      <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <div className="reporte-estudio">Estudio Haddad</div>
+          <div className="fw-bold fs-5">{empresa?.nombre ?? 'Empresa'}</div>
+          <div className="text-body-secondary small">CUIT: {empresa?.cuit ?? '—'}</div>
+        </div>
+        <div className="text-end">
+          <div className="fw-semibold">{titulo}</div>
+          <div className="small">Período: {periodo?.nombre ?? '—'}</div>
+          <div className="text-body-secondary small">Emitido: {hoy}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Reportes({ eId, pId }: { eId: number; pId: number }) {
   const ventas = useQuery({ queryKey: ['subdiario-ventas', eId, pId], queryFn: () => getSubdiarioVentas(eId, pId) })
   const compras = useQuery({ queryKey: ['subdiario-compras', eId, pId], queryFn: () => getSubdiarioCompras(eId, pId) })
@@ -409,15 +437,21 @@ function Reportes({ eId, pId }: { eId: number; pId: number }) {
         </CButton>
       </div>
       <div className="print-area">
-        <h6>Subdiario de ventas</h6>
-        <TablaSubdiario data={ventas.data!} sujeto="Cliente" />
+        <section className="reporte-seccion">
+          <ReporteHeader eId={eId} pId={pId} titulo="Subdiario de IVA — Ventas" />
+          <TablaSubdiario data={ventas.data!} sujeto="Cliente" />
+        </section>
 
-        <h6>Subdiario de compras</h6>
-        <TablaSubdiario data={compras.data!} sujeto="Proveedor" conCf />
+        <section className="reporte-seccion">
+          <ReporteHeader eId={eId} pId={pId} titulo="Subdiario de IVA — Compras" />
+          <TablaSubdiario data={compras.data!} sujeto="Proveedor" conCf />
+        </section>
 
-        <h6>Percepciones por tipo</h6>
-        <TablaPercepciones titulo="Ventas" grupos={percep.data!.ventas} total={percep.data!.totales.ventas} />
-        <TablaPercepciones titulo="Compras" grupos={percep.data!.compras} total={percep.data!.totales.compras} />
+        <section className="reporte-seccion">
+          <ReporteHeader eId={eId} pId={pId} titulo="Percepciones y retenciones" />
+          <TablaPercepciones titulo="Ventas (percepciones)" grupos={percep.data!.ventas} total={percep.data!.totales.ventas} />
+          <TablaPercepciones titulo="Compras (retenciones)" grupos={percep.data!.compras} total={percep.data!.totales.compras} />
+        </section>
       </div>
     </>
   )
