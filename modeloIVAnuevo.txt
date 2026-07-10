@@ -311,6 +311,14 @@ Pantalla: IVA > Importar comprobantes (requiere empresa + período)
   percepción/retención.
 - ALÍCUOTA DERIVADA: si no se mapea la alícuota pero sí el IVA, la deduce de
   IVA/neto y la encaja a la vigente.
+- MULTI-ALÍCUOTA POR FILA: sección "Alícuotas adicionales" para comprobantes con
+  más de una alícuota en la misma fila (columnas separadas, p. ej. un resumen
+  bancario con "Neto 21"/"IVA 21" y "Neto 10,5"/"IVA 10,5"): cada línea con neto
+  suma una discriminación.
+- PERFILES DE MAPEO REUTILIZABLES: el mapeo (columnas + percepciones + alícuotas
+  adicionales) se guarda como "perfil" y se reaplica a archivos del mismo origen
+  sin re-mapear. Se indexa por nombre de encabezado (tolera cambios de orden de
+  columnas). Se guarda en el navegador.
 - VALIDACIÓN PREVIA (antes de enviar): marca por fila, con color y badge, las
   filas con falta de fecha, sin importes, fecha fuera del período o CUIT ≠ 11
   dígitos. Resumen "válidas / con aviso / con error" + opción de omitir las filas

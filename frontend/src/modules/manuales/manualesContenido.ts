@@ -165,8 +165,21 @@ export const MANUALES: ManualSeccion[] = [
       {
         titulo: 'Importar comprobantes',
         cuerpo: [
-          'Carga masiva desde un CSV (por ejemplo el de "Mis Comprobantes" de ARCA). Se sube el archivo, se ' +
-            'mapean las columnas a los campos del sistema (el mapeo se auto-detecta) y se importan al período activo.',
+          'Carga masiva desde un CSV (por ejemplo el de "Mis Comprobantes" de ARCA, o cualquier export). Se sube ' +
+            'el archivo, se mapean las columnas a los campos del sistema (el mapeo se auto-detecta) y se importan ' +
+            'al período activo. El IVA y el total los calcula el motor, igual que en la carga manual.',
+          'Antes de importar, cada fila se valida y se marca con color: en rojo las que tienen error (falta la ' +
+            'fecha, o no tiene ningún importe) y en amarillo los avisos (fecha fuera del período, CUIT que no ' +
+            'tiene 11 dígitos). Un resumen indica cuántas son válidas, cuántas con aviso y cuántas con error, y ' +
+            'podés tildar "omitir las filas con error" para importar solo las válidas. Si el período está cerrado, ' +
+            'avisa y no deja importar.',
+          'Si no mapeás la columna de alícuota pero sí la del IVA, el sistema deduce la alícuota (IVA ÷ neto). ' +
+            'Para comprobantes con más de una alícuota en la misma fila (por ejemplo un resumen bancario con ' +
+            'columnas separadas de 21% y 10,5%), usá "Alícuotas adicionales" para sumar cada línea con su neto y ' +
+            'su alícuota.',
+          'El mapeo se puede guardar como Perfil reutilizable: una vez que armaste el mapeo de un origen (tu banco, ' +
+            'tu punto de venta), tocá "Guardar mapeo actual…" y la próxima vez lo elegís del desplegable "Perfil de ' +
+            'mapeo" sin volver a mapear. Los perfiles quedan guardados en este navegador.',
         ],
       },
       {

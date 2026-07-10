@@ -509,6 +509,46 @@
                 "frontend"
               ],
               "completed_at": "2026-07-08"
+            },
+            {
+              "title": "Importador de comprobantes: validación previa por fila (fecha, importes, período, CUIT) con resumen y aviso de período cerrado",
+              "status": "completed",
+              "tags": [
+                "frontend"
+              ],
+              "completed_at": "2026-07-10"
+            },
+            {
+              "title": "Importador de comprobantes: alícuota derivada de IVA/neto, multi-alícuota por fila y perfiles de mapeo reutilizables",
+              "status": "completed",
+              "tags": [
+                "frontend"
+              ],
+              "completed_at": "2026-07-10"
+            },
+            {
+              "title": "Reportes de IVA con membrete del estudio e impresión a PDF (apaisada y en claro)",
+              "status": "completed",
+              "tags": [
+                "frontend"
+              ],
+              "completed_at": "2026-07-10"
+            },
+            {
+              "title": "Búsqueda y orden en los listados de clientes y proveedores",
+              "status": "completed",
+              "tags": [
+                "frontend"
+              ],
+              "completed_at": "2026-07-10"
+            },
+            {
+              "title": "Manual de navegación: cómo se activan las pantallas del menú según empresa y período activos",
+              "status": "completed",
+              "tags": [
+                "frontend"
+              ],
+              "completed_at": "2026-07-10"
             }
           ]
         },
