@@ -13,6 +13,7 @@ export interface Venta {
   total: string
   cae: string | null
   afip_resultado: string | null
+  anulado: string | null
 }
 
 export interface VentasFiltros {
@@ -113,6 +114,8 @@ export interface VentaInput {
   cuenta_haber_id?: number | null
   actividad_id?: number | null
   es_bien_uso?: string | null
+  anulado?: string | null
+  fecha_anulacion?: string | null
   discriminaciones: DiscriminacionInput[]
   percepciones?: PercepcionInput[]
   comprobantes_asociados?: ComprobanteAsociadoInput[]
@@ -147,6 +150,8 @@ export interface VentaDetalle {
   campo_auxiliar: string | null
   actividad_id: number | null
   es_bien_uso: string | null
+  anulado: string | null
+  fecha_anulacion: string | null
   total: string
   discriminaciones: Array<{
     id: number

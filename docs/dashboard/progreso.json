@@ -420,10 +420,11 @@
             },
             {
               "title": "Régimen de información: archivo de comprobantes anulados (Libro IVA Digital)",
-              "status": "pending",
+              "status": "completed",
               "tags": [
                 "backend"
-              ]
+              ],
+              "completed_at": "2026-07-10"
             },
             {
               "title": "Auditoría de operaciones (registro de cambios)",

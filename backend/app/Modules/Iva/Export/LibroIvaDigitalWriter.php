@@ -24,6 +24,7 @@ final class LibroIvaDigitalWriter
     private const LEN_VENTAS_ALICUOTAS = 62;
     private const LEN_COMPRAS_CBTE     = 325;
     private const LEN_COMPRAS_ALICUOTAS = 84;
+    private const LEN_VENTAS_ANULADOS  = 44;
 
     private const EOL = "\r\n";
 
@@ -114,6 +115,23 @@ final class LibroIvaDigitalWriter
             ->entero($this->alicuota($r), 4)
             ->importe($r['iva_importe'] ?? 0)
             ->build(self::LEN_COMPRAS_ALICUOTAS), $rows));
+    }
+
+    /**
+     * Comprobantes de venta ANULADOS (44 pos.): fecha, tipo, punto de venta, número y
+     * fecha de anulación. Diseño de registro de ARCA (pág. 8 del diseño oficial).
+     *
+     * @param list<array<string, mixed>> $rows
+     */
+    public function ventasAnulados(array $rows): string
+    {
+        return $this->unir(array_map(fn (array $r): string => (new RegistroFijo())
+            ->fecha($this->str($r, 'fecha'))
+            ->entero($this->cbteTipo($r), 3)
+            ->entero($this->str($r, 'punto_venta'), 5)
+            ->entero($this->str($r, 'numero'), 20)
+            ->fecha($this->str($r, 'fecha_anulacion'))
+            ->build(self::LEN_VENTAS_ANULADOS), $rows));
     }
 
     /** @param array<string, mixed> $r */

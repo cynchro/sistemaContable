@@ -62,7 +62,11 @@ class ContribucionTest extends FeatureTestCase
 
         $this->putJson("/empresas/{$e}/sueldos/config", ['detraccion_monto' => '300000'], $auth);
 
-        $empId = (int) $this->postJson("/empresas/{$e}/empleados", ['nombres' => 'Ana', 'basico' => '1000000'], $auth)['json']['data']['id'];
+        $empId = (int) $this->postJson(
+            "/empresas/{$e}/empleados",
+            ['nombres' => 'Ana', 'basico' => '1000000'],
+            $auth,
+        )['json']['data']['id'];
         $c1 = (int) $this->postJson("/empresas/{$e}/conceptos", [
             'codigo' => '001', 'descripcion' => 'Basico', 'formula' => 'BASICO', 'tipo' => 1,
         ], $auth)['json']['data']['id'];
@@ -70,7 +74,11 @@ class ContribucionTest extends FeatureTestCase
             'descripcion' => 'Jub (SIPA)', 'porcentaje' => '10', 'aplica_detraccion' => 'S',
         ], $auth);
 
-        $liqId = (int) $this->postJson("/empresas/{$e}/liquidaciones", ['periodo_liquidado' => '2026-01'], $auth)['json']['data']['id'];
+        $liqId = (int) $this->postJson(
+            "/empresas/{$e}/liquidaciones",
+            ['periodo_liquidado' => '2026-01'],
+            $auth,
+        )['json']['data']['id'];
         $base = "/empresas/{$e}/liquidaciones/{$liqId}/empleados/{$empId}";
         $this->putJson("{$base}/novedades", ['novedades' => [['concepto_id' => $c1, 'cantidad' => 1]]], $auth);
         $this->postJson("{$base}/liquidar", [], $auth);

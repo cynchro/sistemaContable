@@ -332,7 +332,14 @@ export default function VentasList() {
                       />
                     </CTableDataCell>
                     <CTableDataCell>{v.fecha ?? '—'}</CTableDataCell>
-                    <CTableDataCell>{comprobante(v)}</CTableDataCell>
+                    <CTableDataCell>
+                      {comprobante(v)}
+                      {v.anulado === 'S' && (
+                        <CBadge color="warning" className="ms-2">
+                          Anulado
+                        </CBadge>
+                      )}
+                    </CTableDataCell>
                     <CTableDataCell>{v.cliente_nombre ?? '—'}</CTableDataCell>
                     <CTableDataCell>{v.cuit ?? '—'}</CTableDataCell>
                     <CTableDataCell className="text-end">{formatImporte(v.neto_gravado)}</CTableDataCell>

@@ -660,6 +660,9 @@ function Descargas({ eId, pId }: { eId: number; pId: number }) {
         <CButton color="success" variant="outline" onClick={() => run(() => descargarLibroIvaDigital(eId, pId, 'ventas-alicuotas'))}>
           Ventas — alícuotas
         </CButton>
+        <CButton color="success" variant="outline" onClick={() => run(() => descargarLibroIvaDigital(eId, pId, 'ventas-anulados'))}>
+          Ventas — anulados
+        </CButton>
         <CButton color="success" variant="outline" onClick={() => run(() => descargarLibroIvaDigital(eId, pId, 'compras-cbte'))}>
           Compras — comprobantes
         </CButton>

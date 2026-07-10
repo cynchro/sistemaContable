@@ -85,6 +85,8 @@ const schema = z.object({
   campo_auxiliar: z.string().optional(),
   actividad_id: z.string().optional(),
   es_bien_uso: z.boolean().optional(),
+  anulado: z.boolean().optional(),
+  fecha_anulacion: z.string().optional(),
   discriminaciones: z.array(lineaSchema).min(1, 'Agregá al menos una línea de IVA'),
   percepciones: z.array(percepcionSchema),
   comprobantes_asociados: z.array(asociadoSchema),
@@ -118,6 +120,8 @@ const VACIO: FormValues = {
   campo_auxiliar: '',
   actividad_id: '',
   es_bien_uso: false,
+  anulado: false,
+  fecha_anulacion: '',
   discriminaciones: [{ neto_gravado: '', iva_alicuota: '21', iva_importe: '', cuenta_id: '' }],
   percepciones: [],
   comprobantes_asociados: [],
@@ -260,6 +264,8 @@ export default function VentaFormModal({
         campo_auxiliar: detalle.campo_auxiliar ?? '',
         actividad_id: detalle.actividad_id != null ? String(detalle.actividad_id) : '',
         es_bien_uso: detalle.es_bien_uso === 'S',
+        anulado: detalle.anulado === 'S',
+        fecha_anulacion: detalle.fecha_anulacion ?? '',
         discriminaciones:
           detalle.discriminaciones.length > 0
             ? detalle.discriminaciones.map((d) => {
@@ -351,6 +357,8 @@ export default function VentaFormModal({
       campo_auxiliar: str(v.campo_auxiliar),
       actividad_id: v.actividad_id ? Number(v.actividad_id) : null,
       es_bien_uso: v.es_bien_uso ? 'S' : 'N',
+      anulado: v.anulado ? 'S' : 'N',
+      fecha_anulacion: v.anulado ? str(v.fecha_anulacion) : null,
       discriminaciones: v.discriminaciones.map((d) => {
         const neto = Number(d.neto_gravado) || 0
         const alic = Number(d.iva_alicuota) || 0
@@ -524,6 +532,22 @@ export default function VentaFormModal({
                       Bien de uso
                     </label>
                   </div>
+                </div>
+                <div className="col-md-3 mb-3">
+                  <div className="form-check">
+                    <input className="form-check-input" type="checkbox" id="anulado" {...register('anulado')} />
+                    <label className="form-check-label" htmlFor="anulado">
+                      Comprobante anulado
+                    </label>
+                  </div>
+                  {watch('anulado') && (
+                    <div className="mt-2">
+                      <CFormLabel htmlFor="fecha_anulacion" className="small mb-1">
+                        Fecha de anulación
+                      </CFormLabel>
+                      <CFormInput id="fecha_anulacion" type="date" {...register('fecha_anulacion')} />
+                    </div>
+                  )}
                 </div>
               </div>
 

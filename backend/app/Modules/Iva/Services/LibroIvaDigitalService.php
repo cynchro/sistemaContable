@@ -21,6 +21,7 @@ class LibroIvaDigitalService
     private const ARCHIVOS = [
         'ventas-cbte'       => ['archivo' => 'LIBRO_IVA_DIGITAL_VENTAS_CBTE'],
         'ventas-alicuotas'  => ['archivo' => 'LIBRO_IVA_DIGITAL_VENTAS_ALICUOTAS'],
+        'ventas-anulados'   => ['archivo' => 'LIBRO_IVA_DIGITAL_CBTES_VENTAS_ANULADOS'],
         'compras-cbte'      => ['archivo' => 'LIBRO_IVA_DIGITAL_COMPRAS_CBTE'],
         'compras-alicuotas' => ['archivo' => 'LIBRO_IVA_DIGITAL_COMPRAS_ALICUOTAS'],
     ];
@@ -50,6 +51,7 @@ class LibroIvaDigitalService
         $contenido = match ($slug) {
             'ventas-cbte'       => $this->writer->ventasCbte($this->datos->ventasCbte($periodoId)),
             'ventas-alicuotas'  => $this->writer->ventasAlicuotas($this->datos->ventasAlicuotas($periodoId)),
+            'ventas-anulados'   => $this->writer->ventasAnulados($this->datos->ventasAnulados($periodoId)),
             'compras-cbte'      => $this->writer->comprasCbte($this->datos->comprasCbte($periodoId)),
             'compras-alicuotas' => $this->writer->comprasAlicuotas($this->datos->comprasAlicuotas($periodoId)),
         };

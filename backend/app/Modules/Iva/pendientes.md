@@ -89,8 +89,13 @@
         anuladas** "el Visual no lo genera". Tipos de comprobante: usan factura/ticket/recibo/ND/NC
         (A7); FCE MiPyME/liquidaciones/exportación aún sin confirmar (A11) → si aparece, `CbteTipoResolver`
         lanza en vez de inventar.
-      - Pendiente (no usan hoy): importaciones de bienes/servicios. **Archivo de ventas anuladas**
-        (`CBTES_VENTAS_ANULADOS`, 44 pos.): factible con nuestros datos, agregarlo si lo presentan (A11-bis).
+      - Pendiente (no usan hoy): importaciones de bienes/servicios.
+      - [x] **Archivo de ventas anuladas** (`LIBRO_IVA_DIGITAL_CBTES_VENTAS_ANULADOS`, 44 pos.) HECHO.
+        Migración 0045 (`ventas.anulado` CHAR + `fecha_anulacion` DATE). `LibroIvaDigitalWriter::ventasAnulados`
+        (5 campos: fecha/tipo/pv/número/fecha de anulación, validado contra el diseño oficial pág. 8) +
+        `LibroIvaDigitalRepository::ventasAnulados` (WHERE anulado='S') + slug `ventas-anulados` en el Service.
+        Frontend: checkbox "Comprobante anulado" + fecha en `VentaFormModal`, badge "Anulado" en el listado, y
+        botón "Ventas — anulados" en la pestaña Descargas. Test `LibroIvaDigitalTest` (largo 44, byte-exacto).
       - [x] ✅ **Mapeo de tipos de comprobante ampliado (A11, `GUIA_LIQUIDACION.pdf`)**: el
         `CbteTipoResolver` ahora cubre, además de Factura/ND/NC/Recibo A/B/C/E/M, los comprobantes
         que el estudio usa de verdad: **Tique Factura** (TF → 81/82/83/118), **FCE MiPyME** (FE/DE/CE

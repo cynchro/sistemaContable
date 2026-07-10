@@ -152,7 +152,12 @@ export function descargarSubdiario(
 }
 
 /** Archivos del Libro IVA Digital (Portal IVA, ancho fijo). */
-export type ArchivoDigital = 'ventas-cbte' | 'ventas-alicuotas' | 'compras-cbte' | 'compras-alicuotas'
+export type ArchivoDigital =
+  | 'ventas-cbte'
+  | 'ventas-alicuotas'
+  | 'ventas-anulados'
+  | 'compras-cbte'
+  | 'compras-alicuotas'
 
 export function descargarLibroIvaDigital(
   empresaId: number,

@@ -109,6 +109,30 @@ class LibroIvaDigitalTest extends FeatureTestCase
         $this->assertSame(84, strlen($alic[0]));
     }
 
+    public function test_ventas_anulados_descarga_con_largo_44(): void
+    {
+        $ctx = $this->escenario();
+        // Un comprobante normal (no debe aparecer en anulados) + uno anulado.
+        $this->crearVenta($ctx);
+        $this->postJson("/empresas/{$ctx['empresaId']}/periodos/{$ctx['periodoId']}/ventas", [
+            'fecha' => '2026-01-11', 'tipo_comprobante_id' => 9, 'tipo_documento_id' => 1, 'condicion_iva_id' => 1,
+            'cliente_nombre' => 'Anulada SA', 'cuit' => '30711217920',
+            'letra' => 'A', 'punto_venta' => '2', 'numero' => '41',
+            'anulado' => 'S', 'fecha_anulacion' => '2026-01-15',
+            'discriminaciones' => [['neto_gravado' => '500.00', 'iva_alicuota' => '21.000']],
+        ], $ctx['auth']);
+
+        $lineas = $this->descargar($ctx, 'ventas-anulados');
+
+        $this->assertCount(1, $lineas);                          // solo el anulado
+        $this->assertSame(44, strlen($lineas[0]));
+        $this->assertSame('20260111', substr($lineas[0], 0, 8));  // fecha del comprobante
+        $this->assertSame('001', substr($lineas[0], 8, 3));       // FA + A → CbteTipo 1
+        $this->assertSame('00002', substr($lineas[0], 11, 5));    // punto de venta
+        $this->assertSame('00000000000000000041', substr($lineas[0], 16, 20)); // número
+        $this->assertSame('20260115', substr($lineas[0], 36, 8)); // fecha de anulación
+    }
+
     public function test_archivo_desconocido_da_422(): void
     {
         $ctx = $this->escenario();

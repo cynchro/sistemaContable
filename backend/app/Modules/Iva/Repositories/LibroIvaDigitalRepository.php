@@ -74,6 +74,21 @@ class LibroIvaDigitalRepository
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /** @return list<array<string, mixed>> Comprobantes de venta ANULADOS del período. */
+    public function ventasAnulados(int $periodoId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT v.fecha, tc.codigo AS cbte_codigo, v.letra, v.punto_venta, v.numero, v.fecha_anulacion
+               FROM ventas v
+               LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
+              WHERE v.periodo_id = ? AND v.anulado = \'S\'
+              ORDER BY v.fecha, v.id'
+        );
+        $stmt->execute([$periodoId]);
+
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     /** @return list<array<string, mixed>> Cabeceras de compras del período. */
     public function comprasCbte(int $periodoId): array
     {
