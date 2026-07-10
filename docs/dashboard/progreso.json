@@ -386,7 +386,8 @@
               "status": "pending",
               "tags": [
                 "infra"
-              ]
+              ],
+              "description": "Depende de un trámite externo del estudio: el certificado de PRODUCCIÓN de ARCA. El circuito de emisión (WSAA + WSFEv1 + CAE) ya está desarrollado y validado en el ambiente de homologación de ARCA; queda solo habilitarlo en producción cuando el estudio tramite el certificado."
             },
             {
               "title": "Reportes en PDF (subdiario, libro IVA, DDJJ)",
@@ -406,17 +407,20 @@
             },
             {
               "title": "DDJJ de IVA para Monotributo",
-              "status": "pending",
+              "status": "completed",
               "tags": [
                 "backend"
-              ]
+              ],
+              "description": "No aplica: los contribuyentes monotributistas no presentan declaración jurada de IVA (el Monotributo es un régimen simplificado que reemplaza al IVA y a Ganancias). Se evaluó el reporte del sistema legacy (IVA_DDJJMonotributo) y se determinó que no corresponde desarrollarla. Queda cerrada como 'no aplica'.",
+              "completed_at": "2026-07-10"
             },
             {
               "title": "Exportación de asientos contables (integración con módulo Contable)",
               "status": "pending",
               "tags": [
                 "backend"
-              ]
+              ],
+              "description": "Depende del módulo Contable del ecosistema, que todavía no está desarrollado. La exportación de asientos se conectará cuando ese módulo exista; no es un bloqueo del módulo IVA en sí."
             },
             {
               "title": "Régimen de información: archivo de comprobantes anulados (Libro IVA Digital)",
