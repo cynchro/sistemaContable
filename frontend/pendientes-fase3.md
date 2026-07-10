@@ -25,15 +25,20 @@ Detalle en `../CLAUDE.md` (sección "Frontend guiado por Visual IVA").
 - [ ] **Resolver campos por catálogo**: hoy `tipo_comprobante`, `condición IVA`, `provincia`,
   `tipo_operación`, `tipo_documento`, `moneda` quedan en `null` (se completan editando). Agregar un
   resolver texto/código → id (p. ej. "Factura A" → tipo_comprobante_id) para que el import los complete.
-- [ ] **Alícuota / multi-alícuota**: la v1 arma **una** línea de discriminación y usa 21% por defecto
-  si no se mapea. Falta: derivar la alícuota desde el importe de IVA (`iva = neto*al/100`) y soportar
-  comprobantes con más de una alícuota por fila.
+  ⚠️ **Bloqueado**: la "Mis Comprobantes" trae el código numérico de comprobante de AFIP (1/6/11…),
+  que codifica tipo+letra; nuestro catálogo guarda `codigo`(FA/NC) + `cod_citi`, no ese código AFIP.
+  Resolverlo bien requiere la tabla AFIP-code→(tipo,letra) + un CSV real de ARCA para validar byte a
+  byte (mismo insumo que E). No hornear un mapeo parcial sin ese CSV.
+- [x] **Alícuota derivada** (HECHO): si no se mapea la alícuota pero sí el importe de IVA, se deduce de
+  `IVA/neto` y se encaja a la alícuota vigente más cercana (`derivarAlicuota`, tolerancia 1,5 pts). El
+  soporte multi-alícuota por fila sigue pendiente (la v1 arma una sola línea de discriminación).
 - [ ] **Guardar el mapeo por formato** (reutilizable, estilo `iva_export_formatos`): que el estudio
   defina "perfiles" de importación y no re-mapee cada vez.
-- [ ] **Validación previa en el preview**: marcar en el preview las filas con fecha fuera del período,
-  neto faltante o CUIT inválido **antes** de enviar (hoy el error vuelve del backend por fila).
-- [ ] **Aviso de período cerrado**: si el período activo está cerrado, avisar antes de importar (hoy
-  cada fila falla con el conflicto y se ve como N errores iguales).
+- [x] **Validación previa en el preview** (HECHO): `validarComprobante` marca por fila (badge + color)
+  falta de fecha, sin importes (neto/no gravado/exento), fecha fuera del período y CUIT ≠ 11 díg. Resumen
+  válidas/aviso/error + checkbox "omitir filas con error". Errores bloquean esa fila; los avisos importan.
+- [x] **Aviso de período cerrado** (HECHO): si el período activo está cerrado, un alert lo avisa y
+  deshabilita el botón de importar (antes cada fila fallaba con el conflicto = N errores iguales).
 - [ ] **Detección de duplicados**: el backend ya valida no-duplicado por fila; falta mostrarlo de forma
   agrupada / permitir "omitir duplicados".
 - [ ] **Archivos grandes**: hoy se manda todo en un request. Para miles de filas, chunking + barra de

@@ -7,6 +7,7 @@ import {
   CCardBody,
   CButton,
   CButtonGroup,
+  CFormCheck,
   CFormInput,
   CFormLabel,
   CFormSelect,
@@ -22,6 +23,7 @@ import {
 import { parseCsv, normNumber, normDate, type CsvParsed } from './csv'
 import { importVentas, importCompras, type ImportResultado } from '../../../api/importar'
 import { listTiposRetencionAbm } from '../../../api/tiposRetencion'
+import { listPeriodos } from '../../../api/periodos'
 import type { VentaInput, DiscriminacionInput, PercepcionInput } from '../../../api/ventas'
 import type { CompraInput } from '../../../api/compras'
 
@@ -71,6 +73,24 @@ const PISTAS: Record<string, RegExp> = {
 
 type Mapping = Record<string, string> // key destino → índice de columna (string) o ''
 
+/** Alícuotas de IVA vigentes: se usan para "encajar" la que se deriva de IVA/neto. */
+const ALICUOTAS = [0, 2.5, 5, 10.5, 21, 27]
+
+/** Deriva la alícuota desde el importe de IVA y el neto (iva = neto × alíc./100) y la
+ * encaja a la alícuota vigente más cercana. Devuelve '' si no se puede derivar. */
+function derivarAlicuota(neto: string | undefined, iva: string | undefined): string {
+  const n = Number(neto)
+  const i = Number(iva)
+  if (!Number.isFinite(n) || !Number.isFinite(i) || n === 0 || i === 0) return ''
+  const pct = (i / n) * 100
+  let best = ALICUOTAS[0]
+  for (const a of ALICUOTAS) {
+    if (Math.abs(a - pct) < Math.abs(best - pct)) best = a
+  }
+  // Solo la aceptamos si está razonablemente cerca (evita ruido por redondeos raros).
+  return Math.abs(best - pct) <= 1.5 ? String(best) : ''
+}
+
 /** Asocia una columna del CSV (importe) a un tipo de percepción/retención del catálogo. */
 interface PercepMapping {
   col: string // índice de columna (string) o ''
@@ -102,13 +122,16 @@ function buildComprobante(
     return idx === '' || idx == null ? undefined : row[Number(idx)]
   }
 
+  const neto = normNumber(get('neto_gravado')) || '0'
+  const ivaImporte = normNumber(get('iva_importe'))
+  // Alícuota: la mapeada; si no, la derivada de IVA/neto; y como último recurso, 21%.
+  const alicuota = normNumber(get('iva_alicuota')) || derivarAlicuota(neto, ivaImporte) || '21'
   const disc: DiscriminacionInput = {
-    neto_gravado: normNumber(get('neto_gravado')) || '0',
-    iva_alicuota: normNumber(get('iva_alicuota')) || '21',
+    neto_gravado: neto,
+    iva_alicuota: alicuota,
   }
   // Override del IVA (regla del asterisco): si el CSV trae el importe de IVA (p. ej. el de
   // AFIP) lo respetamos; si no, lo calcula el motor desde neto × alícuota.
-  const ivaImporte = normNumber(get('iva_importe'))
   if (ivaImporte) disc.iva_importe = ivaImporte
 
   // Percepciones/retenciones: cada mapeo lee su columna; se agrega solo si trae un importe ≠ 0.
@@ -143,6 +166,57 @@ function buildComprobante(
     : ({ ...base, proveedor_nombre: nombre } as CompraInput)
 }
 
+/** Un problema detectado en una fila del preview. `error` bloquea la importación de esa
+ * fila; `warning` la deja pasar pero avisa (el backend igual la valida). */
+interface Issue {
+  nivel: 'error' | 'warning'
+  texto: string
+}
+
+/** Valida un comprobante ya construido contra reglas locales (sin ir al backend), para
+ * marcar en el preview lo que va a fallar o merece revisión antes de importar. */
+function validarComprobante(
+  c: VentaInput | CompraInput,
+  destino: Destino,
+  periodo: { fecha_ini: string | null; fecha_fin: string | null } | undefined,
+): Issue[] {
+  const issues: Issue[] = []
+  const nombre = (c as unknown as Record<string, unknown>)[
+    destino === 'ventas' ? 'cliente_nombre' : 'proveedor_nombre'
+  ] as string | null
+
+  if (!c.fecha) {
+    issues.push({ nivel: 'error', texto: 'Falta la fecha' })
+  } else if (periodo?.fecha_ini && periodo.fecha_fin) {
+    // YYYY-MM-DD compara lexicográfico.
+    if (c.fecha < periodo.fecha_ini || c.fecha > periodo.fecha_fin) {
+      issues.push({ nivel: 'warning', texto: 'Fecha fuera del período' })
+    }
+  }
+
+  const d = c.discriminaciones[0]
+  const neto = Number(d?.neto_gravado ?? 0)
+  const noGrav = Number(c.neto_no_grav ?? 0)
+  const exento = Number(c.exento ?? 0)
+  if (neto === 0 && noGrav === 0 && exento === 0) {
+    issues.push({ nivel: 'error', texto: 'Sin importes (neto, no gravado ni exento)' })
+  }
+
+  // CUIT/documento: si viene, avisamos cuando no parece un CUIT de 11 dígitos.
+  if (c.cuit) {
+    const soloDig = c.cuit.replace(/\D/g, '')
+    if (soloDig.length !== 11) {
+      issues.push({ nivel: 'warning', texto: 'CUIT/Doc. no tiene 11 dígitos' })
+    }
+  }
+
+  if (!nombre) {
+    issues.push({ nivel: 'warning', texto: 'Sin nombre / razón social' })
+  }
+
+  return issues
+}
+
 export default function ImportarPage() {
   const { empresaId, periodoId } = useParams()
   const eId = Number(empresaId)
@@ -155,11 +229,19 @@ export default function ImportarPage() {
   const [percepMappings, setPercepMappings] = useState<PercepMapping[]>([])
   const [parseError, setParseError] = useState<string | null>(null)
   const [result, setResult] = useState<ImportResultado | null>(null)
+  const [omitirConError, setOmitirConError] = useState(true)
 
   const { data: tipos = [] } = useQuery({
     queryKey: ['tipos-retencion-abm'],
     queryFn: listTiposRetencionAbm,
   })
+
+  const { data: periodos = [] } = useQuery({
+    queryKey: ['periodos', eId],
+    queryFn: () => listPeriodos(eId),
+  })
+  const periodo = periodos.find((p) => p.id === pId)
+  const periodoCerrado = periodo?.cerrado === 'S'
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -184,9 +266,22 @@ export default function ImportarPage() {
     }
   }
 
-  const comprobantes = useMemo(
-    () => (parsed ? parsed.rows.map((r) => buildComprobante(r, mapping, destino, percepMappings)) : []),
-    [parsed, mapping, destino, percepMappings],
+  const filas = useMemo(() => {
+    if (!parsed) return []
+    return parsed.rows.map((r) => {
+      const comp = buildComprobante(r, mapping, destino, percepMappings)
+      return { comp, issues: validarComprobante(comp, destino, periodo) }
+    })
+  }, [parsed, mapping, destino, percepMappings, periodo])
+
+  const conError = filas.filter((f) => f.issues.some((i) => i.nivel === 'error')).length
+  const conAviso = filas.filter(
+    (f) => !f.issues.some((i) => i.nivel === 'error') && f.issues.length > 0,
+  ).length
+  // Lo que realmente se envía: si "omitir con error" está activo, se filtran esas filas.
+  const aImportar = useMemo(
+    () => (omitirConError ? filas.filter((f) => !f.issues.some((i) => i.nivel === 'error')) : filas).map((f) => f.comp),
+    [filas, omitirConError],
   )
 
   const nombreCampo = destino === 'ventas' ? 'cliente_nombre' : 'proveedor_nombre'
@@ -194,8 +289,8 @@ export default function ImportarPage() {
   const importM = useMutation({
     mutationFn: () =>
       destino === 'ventas'
-        ? importVentas(eId, pId, comprobantes as VentaInput[])
-        : importCompras(eId, pId, comprobantes as CompraInput[]),
+        ? importVentas(eId, pId, aImportar as VentaInput[])
+        : importCompras(eId, pId, aImportar as CompraInput[]),
     onSuccess: (r) => setResult(r),
   })
 
@@ -238,7 +333,9 @@ export default function ImportarPage() {
         <p className="text-body-secondary">
           Subí un CSV (Mis Comprobantes de ARCA, o cualquier export). Se detectan las columnas y las
           mapeás a los campos del sistema; el total y el IVA los calcula el motor (salvo que mapees el
-          importe de IVA). Los comprobantes se crean en el período activo (empresa #{eId}, período #{pId}).
+          importe de IVA). Si no mapeás la alícuota pero sí el IVA, se deduce de IVA/neto. Cada fila se
+          valida antes de importar (fecha, importes, CUIT, período). Los comprobantes se crean en el
+          período activo (empresa #{eId}, período #{pId}).
         </p>
 
         <div className="mb-3" style={{ maxWidth: 420 }}>
@@ -353,11 +450,12 @@ export default function ImportarPage() {
             )}
 
             <div className="mb-2">
-              <strong>Vista previa</strong> <span className="text-body-secondary small">(primeras 6 filas)</span>
+              <strong>Vista previa</strong> <span className="text-body-secondary small">(primeras 8 filas)</span>
             </div>
             <CTable small bordered responsive align="middle" className="ledger mb-3">
               <CTableHead>
                 <CTableRow>
+                  <CTableHeaderCell style={{ width: 40 }}>#</CTableHeaderCell>
                   <CTableHeaderCell>Fecha</CTableHeaderCell>
                   <CTableHeaderCell>Comprobante</CTableHeaderCell>
                   <CTableHeaderCell>Nombre</CTableHeaderCell>
@@ -366,15 +464,18 @@ export default function ImportarPage() {
                   <CTableHeaderCell className="text-end">Alíc. %</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">IVA</CTableHeaderCell>
                   <CTableHeaderCell className="text-end">Perc.</CTableHeaderCell>
+                  <CTableHeaderCell>Estado</CTableHeaderCell>
                 </CTableRow>
               </CTableHead>
               <CTableBody>
-                {comprobantes.slice(0, 6).map((c, i) => {
+                {filas.slice(0, 8).map(({ comp: c, issues }, i) => {
                   const d = c.discriminaciones[0]
                   const nombre = (c as unknown as Record<string, unknown>)[nombreCampo] as string | null
                   const perc = c.percepciones ?? []
+                  const tieneError = issues.some((x) => x.nivel === 'error')
                   return (
-                    <CTableRow key={i}>
+                    <CTableRow key={i} color={tieneError ? 'danger' : issues.length > 0 ? 'warning' : undefined}>
+                      <CTableDataCell className="text-body-secondary">{i + 1}</CTableDataCell>
                       <CTableDataCell>{c.fecha || <span className="text-danger">—</span>}</CTableDataCell>
                       <CTableDataCell>
                         {`${c.letra ?? ''} ${c.punto_venta ?? ''}-${c.numero ?? ''}`.trim()}
@@ -387,11 +488,62 @@ export default function ImportarPage() {
                       <CTableDataCell className="text-end">
                         {perc.length > 0 ? perc.reduce((s, p) => s + Number(p.importe ?? 0), 0) : '—'}
                       </CTableDataCell>
+                      <CTableDataCell>
+                        {issues.length === 0 ? (
+                          <CBadge color="success">OK</CBadge>
+                        ) : (
+                          <span title={issues.map((x) => x.texto).join(' · ')}>
+                            {issues.map((x, k) => (
+                              <CBadge key={k} color={x.nivel === 'error' ? 'danger' : 'warning'} className="me-1">
+                                {x.texto}
+                              </CBadge>
+                            ))}
+                          </span>
+                        )}
+                      </CTableDataCell>
                     </CTableRow>
                   )
                 })}
               </CTableBody>
             </CTable>
+
+            {(conError > 0 || conAviso > 0) && (
+              <div className="d-flex flex-wrap gap-3 align-items-center mb-2 small">
+                <span>
+                  <CBadge color="success" className="me-1">
+                    {filas.length - conError - conAviso}
+                  </CBadge>
+                  válidas
+                </span>
+                {conAviso > 0 && (
+                  <span>
+                    <CBadge color="warning" className="me-1">
+                      {conAviso}
+                    </CBadge>
+                    con aviso (se importan igual)
+                  </span>
+                )}
+                {conError > 0 && (
+                  <span>
+                    <CBadge color="danger" className="me-1">
+                      {conError}
+                    </CBadge>
+                    con error
+                  </span>
+                )}
+              </div>
+            )}
+
+            {conError > 0 && (
+              <div className="mb-3">
+                <CFormCheck
+                  id="omitir-error"
+                  checked={omitirConError}
+                  onChange={(e) => setOmitirConError(e.target.checked)}
+                  label={`Omitir las ${conError} fila(s) con error (importar solo las válidas)`}
+                />
+              </div>
+            )}
 
             {faltaObligatorio.length > 0 && (
               <CAlert color="warning">
@@ -399,14 +551,26 @@ export default function ImportarPage() {
               </CAlert>
             )}
 
+            {periodoCerrado && (
+              <CAlert color="danger">
+                El período activo está <strong>cerrado</strong>: no se pueden importar comprobantes. Abrilo desde
+                Períodos para poder cargar.
+              </CAlert>
+            )}
+
             <CButton
               color="primary"
-              disabled={importM.isPending || faltaObligatorio.length > 0 || comprobantes.length === 0}
+              disabled={
+                importM.isPending ||
+                faltaObligatorio.length > 0 ||
+                aImportar.length === 0 ||
+                periodoCerrado
+              }
               onClick={() => importM.mutate()}
             >
               {importM.isPending
                 ? 'Importando…'
-                : `Importar ${comprobantes.length} comprobante(s) a ${destino === 'ventas' ? 'Ventas' : 'Compras'}`}
+                : `Importar ${aImportar.length} comprobante(s) a ${destino === 'ventas' ? 'Ventas' : 'Compras'}`}
             </CButton>
             {importM.isError && <CAlert color="danger" className="mt-3">No se pudo importar.</CAlert>}
           </>
