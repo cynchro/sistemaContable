@@ -1,0 +1,375 @@
+================================================================================
+  SISTEMA IVA NUEVO — QUÉ HACE HOY, PASO A PASO
+  Ecosistema Contable · Estudio Haddad
+  (reemplazo del Visual IVA 6.10 de escritorio)
+  Documento generado: 2026-07-10
+================================================================================
+
+Este documento describe, en orden de uso, TODO lo que el sistema IVA nuevo hace
+hoy: desde que el usuario entra hasta que exporta las declaraciones para ARCA.
+Es el comportamiento real de la versión en producción (VPS), no un plan.
+
+Convención: donde dice "el motor calcula" significa que el usuario NO carga ese
+número a mano; el sistema lo deriva. La filosofía es la del Visual IVA: se cargan
+los datos del comprobante y el IVA/total/subtotales salen solos.
+
+
+================================================================================
+0. IDEA GENERAL (el modelo mental)
+================================================================================
+
+- Es un sistema WEB multi-estudio (multi-tenant). Cada "estudio contable" (tenant)
+  ve solo sus datos.
+- La entidad central es la EMPRESA / CONTRIBUYENTE (el cliente del estudio).
+- Cada empresa tiene PERÍODOS (normalmente un mes de IVA: mayo 2026, etc.).
+- Dentro de un período se cargan los COMPROBANTES de VENTAS (emitidos) y de
+  COMPRAS (recibidos).
+- A partir de esos comprobantes el sistema deriva TODO lo demás: libro IVA, DDJJ,
+  subdiarios, mayor, y los archivos que se suben a ARCA.
+- Nada se guarda "totalizado": los totales del período se calculan on-the-fly
+  sumando los comprobantes con su signo (las notas de crédito restan).
+
+
+================================================================================
+1. INGRESO Y CONTEXTO ACTIVO
+================================================================================
+
+PASO 1 — Login
+  El usuario entra con email + contraseña. El sistema devuelve un token JWT que
+  identifica al usuario, su rol y su estudio (tenant). Todas las pantallas de IVA
+  exigen estar logueado (y tener permiso, ver sección 12 - RBAC).
+
+PASO 2 — Elegir "Empresa activa" y "Período activo" (en el header)
+  Arriba de todo hay dos selectores:
+    a) Empresa: — elegir —   → se elige la empresa/contribuyente sobre la que se
+       va a trabajar.
+    b) Período: — elegir —   → se habilita recién después de elegir empresa; lista
+       los períodos de esa empresa y muestra si cada uno está ABIERTO o CERRADO.
+  Esta elección es la "llave" que desbloquea el menú lateral:
+    - Con empresa activa se habilitan: Períodos, Clientes, Proveedores, Cuentas,
+      Actividades, Reportes de Mayor.
+    - Con empresa + período activos se habilitan: Ventas, Compras, Libro IVA/DDJJ,
+      Importar comprobantes, Panel.
+  El contexto queda guardado (sobrevive recargas). Cambiar de empresa resetea el
+  período. (Detalle completo del menú en la conversación / manuales in-app.)
+
+
+================================================================================
+2. ALTA / GESTIÓN DE EMPRESAS (CONTRIBUYENTES)
+================================================================================
+
+Pantalla: IVA > Empresas / Contribuyentes
+
+- Alta, edición, baja y listado de empresas del estudio.
+- Datos: razón social, CUIT, condición de IVA, domicilio, localidad, provincia,
+  y datos de CRM (email, contacto, tipo de persona, inscripción, etc.).
+- AUTOCOMPLETAR CON ARCA: al dar de alta una empresa se puede poner el CUIT y
+  tocar "Buscar" → el sistema consulta el PADRÓN de ARCA (web service) y rellena
+  nombre, domicilio y localidad. (Si falta el certificado de ARCA, avisa con un
+  mensaje claro y se puede cargar a mano.)
+- La empresa es la entidad canónica que comparten todos los módulos (IVA,
+  Sueldos, Fiscal…), sin duplicar.
+
+
+================================================================================
+3. PERÍODOS
+================================================================================
+
+Pantalla: IVA > Períodos (requiere empresa activa)
+
+- Alta, edición, baja y listado de períodos de la empresa.
+- Cada período tiene nombre, fecha de inicio y fecha de fin.
+- CERRAR / ABRIR período:
+    * Un período CERRADO no admite cargar/editar/borrar comprobantes (queda
+      "congelado", ya declarado). Se puede reabrir si hace falta corregir.
+    * Reglas validadas: no se puede modificar ni borrar un período cerrado; las
+      fechas deben ser coherentes.
+- Al cargar un comprobante se valida que su fecha caiga dentro del rango del
+  período y que el período esté abierto.
+
+
+================================================================================
+4. SUJETOS: CLIENTES Y PROVEEDORES
+================================================================================
+
+Pantallas: IVA > Clientes  y  IVA > Proveedores (requieren empresa activa)
+
+- ABM completo de clientes (para ventas) y proveedores (para compras) por empresa.
+- Datos: nombre/razón social, CUIT, condición de IVA, provincia, domicilio,
+  localidad, teléfono, ingresos brutos, CAI/fecha CAI.
+- BÚSQUEDA Y ORDEN: buscar por nombre o CUIT, ordenar por nombre o CUIT, con
+  paginación y contador.
+- AUTOCOMPLETAR CON PADRÓN ARCA: botón "AFIP" por CUIT en el alta → trae los
+  datos del contribuyente desde el padrón.
+- SUJETOS GLOBALES (compartidos): un cliente/proveedor se puede marcar como
+  "compartido con todas las empresas del estudio" (badge "Global"); aparece en el
+  listado de cualquier empresa del tenant. Se administra desde su empresa de
+  origen (en las demás, editar/borrar quedan deshabilitados).
+- SUJETO OCASIONAL: en la carga de un comprobante no es obligatorio elegir un
+  cliente/proveedor del listado; se puede tipear el nombre suelto (typeahead
+  inteligente por nombre/CUIT).
+- PROVEEDORES CON MÚLTIPLES CAI: un proveedor puede guardar hasta 5 CAI
+  (número + vencimiento), además del principal.
+
+
+================================================================================
+5. CATÁLOGOS Y DATOS AUXILIARES
+================================================================================
+
+- CUENTAS (plan de cuentas por empresa): IVA > Cuentas. Se usan para la
+  MAYORIZACIÓN (ver sección 9).
+- ACTIVIDADES (IVA > Actividades): actividades económicas de la empresa (NAES),
+  con el mapa que decide a qué actividad se imputa cada operación en la DJ IVA
+  Simple por actividad (por punto de venta / alícuota / receptor / coeficientes).
+- RUBROS: clasificación para la DDJJ (F2002), editable en Utilidades.
+- CATÁLOGOS AFIP (solo lectura, ya sembrados con datos reales): condiciones de
+  IVA, tipos de comprobante (con signo), tipos de documento, provincias, tipos de
+  retención/percepción, tipos de operación, monedas. Se ven en Utilidades >
+  Catálogos base.
+- TIPOS DE RETENCIÓN/PERCEPCIÓN: los estándar de AFIP son de solo lectura; el
+  estudio puede crear los suyos propios (editables), con su base de cálculo.
+
+
+================================================================================
+6. CARGA DE COMPROBANTES DE VENTA
+================================================================================
+
+Pantalla: IVA > Ventas (requiere empresa + período activos)
+
+6.1 Listado
+  - Muestra los comprobantes de venta del período: fecha, comprobante (letra +
+    punto de venta - número), cliente, CUIT, neto, IVA, total, estado de CAE.
+  - FILTROS: fecha desde/hasta, letra, cliente (nombre), número; ORDEN por fecha,
+    cliente, número o total; con paginación.
+  - Acciones: nueva venta, editar, mover a otro período, eliminar; SELECCIÓN
+    MÚLTIPLE para borrar en lote; emitir CAE (ver sección 11).
+
+6.2 Alta / edición (ficha del comprobante)
+  El usuario carga:
+    - Cabecera: fecha, tipo de comprobante, letra, punto de venta, número,
+      cliente (del listado o suelto), tipo de documento, moneda + cotización,
+      rubro, campo auxiliar.
+    - DISCRIMINACIÓN DE IVA por alícuota (una o varias líneas): neto gravado +
+      alícuota (0 / 2,5 / 5 / 10,5 / 21 / 27). También no gravado, exento e
+      impuesto interno.
+    - Cada línea puede llevar una CUENTA (para el mayor).
+    - PERCEPCIONES a nivel comprobante (IIBB, IVA, etc.): se elige el tipo del
+      catálogo y el sistema resuelve la base y la alícuota (o se ingresa importe/
+      base a mano). Las percepciones INTEGRAN el total.
+    - COMPROBANTES ASOCIADOS (para NC/ND): se referencia el comprobante original.
+    - CAI/CAE, número final.
+
+  Lo que EL MOTOR CALCULA solo (no se carga a mano):
+    - El IVA de cada línea = neto × alícuota / 100.
+      (Salvo la "regla del asterisco": si el usuario escribe el importe de IVA a
+       mano, el motor lo respeta en vez de recalcularlo.)
+    - El total del comprobante = Σ netos + Σ IVA + no gravado + exento +
+      imp. interno + Σ percepciones.
+    - El SIGNO según el tipo de comprobante: las notas de crédito llevan signo
+      negativo y RESTAN en todos los totales y libros.
+
+  Casos especiales que ya contempla:
+    - Factura C (sin IVA): avisa que el importe va en "no gravado".
+    - Factura T (reintegro del turista): netea el débito fiscal y reporta el
+      reintegro aparte en las exportaciones.
+    - Aviso si una venta queda sin neto gravado (todo exento/no gravado).
+
+
+================================================================================
+7. CARGA DE COMPROBANTES DE COMPRA
+================================================================================
+
+Pantalla: IVA > Compras (requiere empresa + período activos)
+
+- Igual que ventas, pero del lado del proveedor. Además:
+    - CRÉDITO FISCAL COMPUTABLE: cada compra marca si su IVA es computable
+      (cf_computable). Solo el CF computable resta en la DDJJ.
+    - CONCEPTO para la DJ IVA Simple por actividad.
+    - Cuenta por línea (mayor: la compra imputa al debe/gasto).
+- PRESETS de comprobantes manuales (menú "Nueva compra ▾"): resumen bancario
+  (21% + 10,5%), ticket de combustible (código 81), cuota de préstamo (10,5%),
+  liquidación de tarjeta (21% + 10,5%), servicio público (27%), póliza de seguro.
+  Cada preset pre-arma tipo/letra/concepto/líneas de alícuota.
+- SEGUROS con impuesto interno por diferencia: se carga el "Total del comprobante"
+  y, si total ≠ neto + IVA, el sistema imputa la diferencia a impuesto interno
+  (el 98% de las pólizas no lo discriminan).
+- PERCEPCIÓN sobre base exenta: se puede percibir IIBB sobre un valor exento sin
+  neto gravado (columna Base en la grilla de percepciones).
+
+
+================================================================================
+8. LIBRO IVA Y DECLARACIONES (lo que se deriva del período)
+================================================================================
+
+Pantalla: IVA > Libro IVA / DDJJ (requiere empresa + período)
+Todo esto se CALCULA a partir de los comprobantes cargados; nada se carga a mano.
+
+8.1 Resumen / Totales
+    - Total de ventas y compras, IVA débito y crédito, saldo de IVA del período.
+    - Las NC restan por signo.
+
+8.2 Libro IVA detallado (base de la DDJJ)
+    - Agrupa por condición de IVA + alícuota, ponderado por signo.
+    - Subtotales de ventas y de compras por alícuota (compras solo con CF
+      computable).
+
+8.3 DDJJ de IVA F2002
+    - Débito fiscal (ventas) vs crédito fiscal computable (compras) = saldo
+      técnico. Conceptos firmados.
+
+8.4 DDJJ IVA Simple F2051 (con presentación)
+    - Encadena la ecuación del formulario en dos bloques (determinación del
+      impuesto y de la posición mensual), tomando automáticamente los arrastres
+      (saldo técnico y de libre disponibilidad) de la DDJJ del período anterior.
+    - Se puede PRESENTAR (persistir) la DDJJ del período; queda el historial.
+
+
+================================================================================
+9. MAYORIZACIÓN (contabilización interna)
+================================================================================
+
+- Cada comprobante imputa a cuentas contables:
+    * el NETO de cada línea a su cuenta (compra → debe/gasto, venta → haber/
+      ingreso), soportando comprobantes multi-cuenta (p. ej. resumen bancario:
+      21% a "Gastos y comisiones", 10,5% a "Intereses giro descubierto");
+    * la contrapartida por el total del comprobante.
+- MAYOR por cuenta: resumen y detalle (con nivel línea/comprobante).
+- REPORTES DE MAYOR (IVA > Reportes de Mayor, a nivel empresa, cruza todos los
+  períodos por rango de fechas): filtros por fecha, cuenta, provincia, CUIT,
+  origen; salida en cascada con subtotales (por cuenta / proveedor / provincia),
+  colapsable, con Imprimir/PDF.
+
+
+================================================================================
+10. REPORTES Y EXPORTACIONES (lo que se entrega / presenta)
+================================================================================
+
+Pantalla: pestañas "Reportes" y "Descargas" del Libro IVA.
+
+10.1 Subdiarios (reportes en pantalla / PDF)
+     - Subdiario de IVA Ventas y Compras: un renglón por comprobante con los
+       importes calculados y los nombres de catálogo, más totales al pie.
+     - Reporte de Percepciones/Retenciones (agrupado por tipo + provincia).
+     - Impresión a PDF profesional: membrete del estudio + datos de la empresa +
+       período, salida en claro (negro sobre blanco) y en orientación apaisada
+       para que entren todas las columnas.
+
+10.2 Exportaciones a archivo (descargables)
+     - Subdiario a CSV / TXT (formato RFC 4180).
+     - LIBRO IVA DIGITAL (Portal IVA de ARCA): los 4 archivos de ancho fijo
+       (VENTAS_CBTE, VENTAS_ALICUOTAS, COMPRAS_CBTE, COMPRAS_ALICUOTAS), validados
+       byte a byte contra los ejemplos de ARCA.
+     - DJ IVA SIMPLE por actividad: los 4 archivos (débito fiscal, restitución de
+       débito, crédito fiscal, restitución de crédito), con apertura por actividad
+       según la estrategia configurada (override del comprobante / punto de venta /
+       alícuota / receptor / coeficientes fijos).
+     - EXPORTADOR TXT CONFIGURABLE: el estudio define sus propios formatos
+       (delimitado o ancho fijo) sobre el subdiario, eligiendo campos de una lista
+       blanca.
+     - Aviso del reintegro total a informar en el aplicativo cuando hay Facturas T.
+
+10.3 PANEL (IVA > Panel)
+     - Tablero visual del período: gráficos de cantidades, débito/crédito y montos
+       (a modo de muestra).
+
+
+================================================================================
+11. FACTURA ELECTRÓNICA E INTEGRACIÓN CON ARCA (AFIP)
+================================================================================
+
+Pantalla: IVA > Factura electrónica (AFIP)
+
+- CONSULTA DE PADRÓN por CUIT (web service de ARCA): trae los datos del
+  contribuyente. Se usa también para el autocompletar de empresas y sujetos.
+  * En el VPS el padrón está operativo con certificado de PRODUCCIÓN.
+- PUNTOS DE VENTA: ABM por empresa.
+- EMISIÓN DE CAE (WSFEv1): desde el listado de ventas, el botón "Emitir CAE"
+  solicita el CAE a ARCA:
+    * numera el comprobante (último autorizado + 1 por punto de venta),
+    * arma el pedido (alícuotas, condición del receptor RG5616, tributos,
+      comprobantes asociados para NC/ND),
+    * persiste CAE + vencimiento, o devuelve el rechazo de ARCA.
+  * El circuito completo (WSAA → WSFE → CAE) ya se validó en vivo en homologación.
+  * En el VPS la emisión de CAE requiere el certificado de PRODUCCIÓN de ARCA
+    (trámite pendiente del lado del estudio); mientras tanto degrada con un
+    mensaje claro.
+- Todo lo de ARCA degrada elegantemente si falta el certificado: nunca rompe la
+  pantalla, avisa qué falta.
+
+
+================================================================================
+12. IMPORTACIÓN MASIVA DE COMPROBANTES
+================================================================================
+
+Pantalla: IVA > Importar comprobantes (requiere empresa + período)
+
+- Sube un CSV (p. ej. "Mis Comprobantes" de ARCA, o cualquier export). Parser
+  propio: detecta separador, respeta comillas, normaliza números "1.234,56" y
+  fechas dd/mm/aaaa.
+- MAPEO DE COLUMNAS: auto-mapea por heurística de encabezado y permite ajustar
+  qué columna va a cada campo. También asocia columnas de importe a tipos de
+  percepción/retención.
+- ALÍCUOTA DERIVADA: si no se mapea la alícuota pero sí el IVA, la deduce de
+  IVA/neto y la encaja a la vigente.
+- VALIDACIÓN PREVIA (antes de enviar): marca por fila, con color y badge, las
+  filas con falta de fecha, sin importes, fecha fuera del período o CUIT ≠ 11
+  dígitos. Resumen "válidas / con aviso / con error" + opción de omitir las filas
+  con error. Avisa y bloquea si el período está cerrado.
+- Importa creando cada comprobante con el mismo motor y validaciones que la carga
+  manual; resiliente (cada fila su transacción, reporte de errores por fila).
+- Limitación conocida: los campos que referencian catálogos por ID (tipo de
+  comprobante, condición) quedan por completar editando; resolverlos automático
+  desde "Mis Comprobantes" está pendiente (requiere un CSV real de ARCA para
+  validar el layout).
+
+
+================================================================================
+13. SEGURIDAD, PERMISOS Y AUDITORÍA
+================================================================================
+
+- MULTI-TENANT: cada estudio ve solo sus empresas y datos.
+- RBAC (roles y permisos): las rutas de IVA exigen permisos por recurso
+  (iva.clientes, iva.ventas, iva.compras, iva.libro, iva.padron, iva.facturacion,
+  iva.puntos-venta, iva.auditoria), distinguiendo lectura (GET) de escritura
+  (POST/PUT/DELETE). El rol Administrador con "Acceso Total" pasa a todo.
+- AUDITORÍA DE OPERACIONES: cada escritura exitosa queda registrada (tenant,
+  usuario, método, URL, parámetros, payload). Se consulta en Utilidades >
+  Auditoría de operaciones.
+
+
+================================================================================
+14. RESUMEN DEL FLUJO TÍPICO (de principio a fin)
+================================================================================
+
+  1. Login.
+  2. Elegir empresa activa + período activo (header).
+  3. (Una vez) cargar clientes, proveedores, cuentas, actividades.
+  4. Cargar comprobantes de ventas y compras del período
+     (a mano, con presets, o importando un CSV) → el motor calcula IVA y totales.
+  5. Revisar el Libro IVA / totales / detalle por alícuota.
+  6. Ver la DDJJ (F2002 y/o IVA Simple F2051) y presentarla.
+  7. Imprimir subdiarios (PDF) y descargar el Libro IVA Digital / DJ IVA Simple
+     para subir al Portal IVA de ARCA.
+  8. (Opcional) emitir CAE de las facturas electrónicas y consultar padrón.
+  9. Cerrar el período.
+ 10. Mayor y reportes de mayor para el control contable interno.
+
+
+================================================================================
+15. QUÉ QUEDA FUERA / PENDIENTE (a la fecha)
+================================================================================
+
+- Bloqueado por insumo externo:
+    * Emisión de CAE en vivo desde el VPS: falta el certificado de PRODUCCIÓN de
+      ARCA (trámite del estudio). El padrón sí funciona en producción.
+    * Resolver automático del tipo de comprobante al importar "Mis Comprobantes"
+      (requiere un CSV real de ARCA para validar byte a byte).
+    * Export al módulo Contable (el módulo Contable todavía no existe en el
+      ecosistema).
+- Add-ons no construidos (o descartados por el contador): constatación de
+  comprobantes en línea, DDJJ Monotributo (no aplica), otros regímenes de IIBB
+  distintos a SIFERE (los contribuyentes locales cargan por rentas provincial).
+
+--------------------------------------------------------------------------------
+FIN DEL DOCUMENTO
+--------------------------------------------------------------------------------

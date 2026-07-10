@@ -19,6 +19,57 @@ export interface ManualSeccion {
 
 export const MANUALES: ManualSeccion[] = [
   {
+    id: 'navegacion',
+    titulo: 'Navegación / Cómo moverse por el sistema',
+    estado: 'disponible',
+    intro:
+      'El sistema trabaja siempre sobre una "empresa activa" y un "período activo" que se eligen en la barra ' +
+      'superior (el encabezado). Es el mismo modelo del Visual IVA de escritorio: primero se activan empresa y ' +
+      'período, y recién ahí se habilitan las pantallas que operan sobre ellos. Por eso los ítems del menú ' +
+      'lateral se van "encendiendo" a medida que elegís ese contexto.',
+    subsecciones: [
+      {
+        titulo: 'La única acción que desbloquea el menú: elegir empresa y período (en el encabezado)',
+        cuerpo: [
+          'Arriba de todo hay dos selectores: "Empresa: — elegir —" y "Período: — elegir —". El de período está ' +
+            'deshabilitado hasta que elijas una empresa; una vez elegida, lista sus períodos y muestra si cada uno ' +
+            'está Abierto o Cerrado.',
+          'Elegir la empresa (y luego el período) es lo que habilita los ítems del menú. La elección queda ' +
+            'guardada y sobrevive a recargas de la página.',
+          'Ojo: cambiar de empresa borra el período activo (el período pertenece a la empresa), así que los ítems ' +
+            'que dependen del período se vuelven a bloquear hasta que elijas un período nuevo.',
+        ],
+      },
+      {
+        titulo: 'Qué necesita cada ítem del menú',
+        cuerpo: [
+          'Siempre habilitados (no dependen del contexto): Inicio, IVA › Empresas / Contribuyentes, ' +
+            'IVA › Factura electrónica (AFIP), Estudio (Sueldos, Vencimientos y tareas), Administración ' +
+            '(Administración, Utilidades) y Manuales.',
+          'Requieren una EMPRESA activa: Períodos, Clientes, Proveedores, Cuentas, Actividades y ' +
+            'Reportes de Mayor. Se desbloquean al elegir empresa en el encabezado.',
+          'Requieren EMPRESA + PERÍODO activos: Ventas, Compras, Libro IVA / DDJJ, Importar comprobantes y Panel. ' +
+            'Se desbloquean al elegir empresa y período.',
+          'En resumen hay dos "llaves": elegir empresa abre el bloque de pantallas por-empresa; elegir empresa ' +
+            'más período abre el bloque de pantallas del período.',
+        ],
+      },
+      {
+        titulo: 'Detalles útiles',
+        cuerpo: [
+          'Un ítem deshabilitado se ve gris; al pasar el mouse muestra un aviso con lo que falta ("Elegí una ' +
+            'empresa activa en el header" o "Elegí empresa y período activos en el header").',
+          'El período no necesita estar Abierto para entrar a las pantallas: con un período Cerrado igual podés ' +
+            'ver Ventas/Compras/Libro IVA; lo que se bloquea es cargar o editar (no la navegación).',
+          'Los grupos del menú (IVA / Estudio / Administración) se abren solos cuando estás parado en una de sus ' +
+            'pantallas.',
+          'Un enlace directo (por ejemplo el que te comparte un compañero apuntando a una venta puntual) funciona ' +
+            'igual aunque el menú esté bloqueado: el contexto activo es solo para navegar por el costado.',
+        ],
+      },
+    ],
+  },
+  {
     id: 'iva',
     titulo: 'IVA',
     estado: 'disponible',
