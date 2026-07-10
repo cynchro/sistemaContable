@@ -97,6 +97,51 @@ interface PercepMapping {
   tipoId: string // id de tipo_retencion (string) o ''
 }
 
+/** Línea de IVA adicional para comprobantes con más de una alícuota por fila (p. ej. un
+ * resumen bancario con columnas "Neto 21" / "IVA 21" y "Neto 10,5" / "IVA 10,5"). */
+interface AlicuotaExtra {
+  netoCol: string // índice de columna del neto (string) o ''
+  alicuota: string // alícuota fija de esta línea (%)
+  ivaCol: string // índice de columna del IVA (opcional; '' = lo calcula el motor)
+}
+
+/** Perfil de mapeo reutilizable, guardado en el navegador. Las columnas se guardan por
+ * NOMBRE de encabezado (no por índice) para que un mismo perfil sirva en archivos del
+ * mismo origen aunque cambie el orden de las columnas. */
+interface PerfilMapeo {
+  nombre: string
+  mapping: Record<string, string> // key destino → nombre de encabezado
+  percep: { colHeader: string; tipoId: string }[]
+  alicuota: { netoHeader: string; alicuota: string; ivaHeader: string }[]
+}
+
+const PERFILES_KEY = 'iva_import_perfiles'
+
+function leerPerfiles(): PerfilMapeo[] {
+  try {
+    const raw = localStorage.getItem(PERFILES_KEY)
+    return raw ? (JSON.parse(raw) as PerfilMapeo[]) : []
+  } catch {
+    return []
+  }
+}
+
+function guardarPerfiles(perfiles: PerfilMapeo[]): void {
+  localStorage.setItem(PERFILES_KEY, JSON.stringify(perfiles))
+}
+
+/** índice de columna (string) → nombre de encabezado; '' si no está mapeada. */
+function idxToHeader(idx: string, headers: string[]): string {
+  return idx === '' || idx == null ? '' : (headers[Number(idx)] ?? '')
+}
+
+/** nombre de encabezado → índice de columna (string); '' si el archivo no lo tiene. */
+function headerToIdx(header: string, headers: string[]): string {
+  if (!header) return ''
+  const i = headers.indexOf(header)
+  return i >= 0 ? String(i) : ''
+}
+
 function autoMap(headers: string[]): Mapping {
   const m: Mapping = {}
   for (const c of CAMPOS) {
@@ -116,11 +161,13 @@ function buildComprobante(
   map: Mapping,
   destino: Destino,
   percepMappings: PercepMapping[],
+  alicuotaExtra: AlicuotaExtra[] = [],
 ): VentaInput | CompraInput {
   const get = (key: string): string | undefined => {
     const idx = map[key]
     return idx === '' || idx == null ? undefined : row[Number(idx)]
   }
+  const celda = (idx: string): string | undefined => (idx === '' || idx == null ? undefined : row[Number(idx)])
 
   const neto = normNumber(get('neto_gravado')) || '0'
   const ivaImporte = normNumber(get('iva_importe'))
@@ -133,6 +180,17 @@ function buildComprobante(
   // Override del IVA (regla del asterisco): si el CSV trae el importe de IVA (p. ej. el de
   // AFIP) lo respetamos; si no, lo calcula el motor desde neto × alícuota.
   if (ivaImporte) disc.iva_importe = ivaImporte
+
+  // Líneas de IVA adicionales (multi-alícuota): cada una con neto ≠ 0 suma una discriminación.
+  const discriminaciones: DiscriminacionInput[] = [disc]
+  for (const ax of alicuotaExtra) {
+    const netoAx = normNumber(celda(ax.netoCol))
+    if (!netoAx || Number(netoAx) === 0) continue
+    const ivaAx = normNumber(celda(ax.ivaCol))
+    const d: DiscriminacionInput = { neto_gravado: netoAx, iva_alicuota: ax.alicuota || '21' }
+    if (ivaAx) d.iva_importe = ivaAx
+    discriminaciones.push(d)
+  }
 
   // Percepciones/retenciones: cada mapeo lee su columna; se agrega solo si trae un importe ≠ 0.
   const percepciones: PercepcionInput[] = []
@@ -157,7 +215,7 @@ function buildComprobante(
     // Total informado (el del comprobante/ARCA): si viene, el Libro IVA Digital lo usa en vez
     // del derivado (neto+iva), para paridad byte a byte con lo que ya presenta el estudio.
     total_informado: normNumber(get('total_informado')) || null,
-    discriminaciones: [disc],
+    discriminaciones,
     ...(percepciones.length > 0 ? { percepciones } : {}),
   }
   const nombre = get('nombre') || null
@@ -194,8 +252,8 @@ function validarComprobante(
     }
   }
 
-  const d = c.discriminaciones[0]
-  const neto = Number(d?.neto_gravado ?? 0)
+  // Suma el neto de TODAS las líneas de discriminación (soporta multi-alícuota).
+  const neto = c.discriminaciones.reduce((s, d) => s + Number(d?.neto_gravado ?? 0), 0)
   const noGrav = Number(c.neto_no_grav ?? 0)
   const exento = Number(c.exento ?? 0)
   if (neto === 0 && noGrav === 0 && exento === 0) {
@@ -227,9 +285,12 @@ export default function ImportarPage() {
   const [parsed, setParsed] = useState<CsvParsed | null>(null)
   const [mapping, setMapping] = useState<Mapping>({})
   const [percepMappings, setPercepMappings] = useState<PercepMapping[]>([])
+  const [alicuotaExtra, setAlicuotaExtra] = useState<AlicuotaExtra[]>([])
   const [parseError, setParseError] = useState<string | null>(null)
   const [result, setResult] = useState<ImportResultado | null>(null)
   const [omitirConError, setOmitirConError] = useState(true)
+  const [perfiles, setPerfiles] = useState<PerfilMapeo[]>(() => leerPerfiles())
+  const [perfilSel, setPerfilSel] = useState('')
 
   const { data: tipos = [] } = useQuery({
     queryKey: ['tipos-retencion-abm'],
@@ -260,19 +321,72 @@ export default function ImportarPage() {
       setParsed(p)
       setMapping(autoMap(p.headers))
       setPercepMappings([])
+      setAlicuotaExtra([])
+      setPerfilSel('')
     } catch {
       setParseError('No se pudo leer el archivo.')
       setParsed(null)
     }
   }
 
+  /** Aplica un perfil guardado: resuelve los nombres de encabezado a las columnas del
+   * archivo actual (las que no existan quedan sin mapear). */
+  const aplicarPerfil = (nombre: string) => {
+    setPerfilSel(nombre)
+    const perfil = perfiles.find((p) => p.nombre === nombre)
+    if (!perfil || !parsed) return
+    const headers = parsed.headers
+    const m: Mapping = {}
+    for (const c of CAMPOS) m[c.key] = headerToIdx(perfil.mapping[c.key] ?? '', headers)
+    setMapping(m)
+    setPercepMappings(perfil.percep.map((x) => ({ col: headerToIdx(x.colHeader, headers), tipoId: x.tipoId })))
+    setAlicuotaExtra(
+      perfil.alicuota.map((x) => ({
+        netoCol: headerToIdx(x.netoHeader, headers),
+        alicuota: x.alicuota,
+        ivaCol: headerToIdx(x.ivaHeader, headers),
+      })),
+    )
+  }
+
+  /** Guarda el mapeo actual como perfil reutilizable (por nombre de encabezado). */
+  const guardarPerfil = () => {
+    if (!parsed) return
+    const nombre = window.prompt('Nombre del perfil de mapeo:', perfilSel || fileName.replace(/\.csv$/i, ''))
+    if (!nombre?.trim()) return
+    const headers = parsed.headers
+    const nuevo: PerfilMapeo = {
+      nombre: nombre.trim(),
+      mapping: Object.fromEntries(CAMPOS.map((c) => [c.key, idxToHeader(mapping[c.key] ?? '', headers)])),
+      percep: percepMappings.map((pm) => ({ colHeader: idxToHeader(pm.col, headers), tipoId: pm.tipoId })),
+      alicuota: alicuotaExtra.map((ax) => ({
+        netoHeader: idxToHeader(ax.netoCol, headers),
+        alicuota: ax.alicuota,
+        ivaHeader: idxToHeader(ax.ivaCol, headers),
+      })),
+    }
+    const resto = perfiles.filter((p) => p.nombre !== nuevo.nombre)
+    const actualizados = [...resto, nuevo].sort((a, b) => a.nombre.localeCompare(b.nombre))
+    setPerfiles(actualizados)
+    guardarPerfiles(actualizados)
+    setPerfilSel(nuevo.nombre)
+  }
+
+  const borrarPerfil = () => {
+    if (!perfilSel || !window.confirm(`¿Borrar el perfil "${perfilSel}"?`)) return
+    const actualizados = perfiles.filter((p) => p.nombre !== perfilSel)
+    setPerfiles(actualizados)
+    guardarPerfiles(actualizados)
+    setPerfilSel('')
+  }
+
   const filas = useMemo(() => {
     if (!parsed) return []
     return parsed.rows.map((r) => {
-      const comp = buildComprobante(r, mapping, destino, percepMappings)
+      const comp = buildComprobante(r, mapping, destino, percepMappings, alicuotaExtra)
       return { comp, issues: validarComprobante(comp, destino, periodo) }
     })
-  }, [parsed, mapping, destino, percepMappings, periodo])
+  }, [parsed, mapping, destino, percepMappings, alicuotaExtra, periodo])
 
   const conError = filas.filter((f) => f.issues.some((i) => i.nivel === 'error')).length
   const conAviso = filas.filter(
@@ -348,6 +462,36 @@ export default function ImportarPage() {
 
         {parsed && (
           <>
+            <div className="d-flex flex-wrap align-items-end gap-2 mb-3 p-2 rounded bg-body-tertiary">
+              <div>
+                <CFormLabel className="small mb-1">Perfil de mapeo</CFormLabel>
+                <CFormSelect
+                  size="sm"
+                  style={{ minWidth: 220 }}
+                  value={perfilSel}
+                  onChange={(e) => aplicarPerfil(e.target.value)}
+                >
+                  <option value="">— sin perfil (auto-mapeo) —</option>
+                  {perfiles.map((p) => (
+                    <option key={p.nombre} value={p.nombre}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <CButton size="sm" color="secondary" variant="outline" onClick={guardarPerfil}>
+                Guardar mapeo actual…
+              </CButton>
+              {perfilSel && (
+                <CButton size="sm" color="danger" variant="outline" onClick={borrarPerfil}>
+                  Borrar perfil
+                </CButton>
+              )}
+              <span className="text-body-secondary small ms-auto">
+                Los perfiles se guardan en este navegador y sirven para archivos con las mismas columnas.
+              </span>
+            </div>
+
             <div className="mb-2">
               <strong>Mapeo de columnas</strong>{' '}
               <span className="text-body-secondary small">
@@ -449,6 +593,88 @@ export default function ImportarPage() {
               </div>
             )}
 
+            <div className="mb-2 d-flex align-items-center gap-2">
+              <strong>Alícuotas adicionales</strong>
+              <span className="text-body-secondary small">
+                (para comprobantes con más de una alícuota por fila: p. ej. resumen bancario 21% + 10,5%)
+              </span>
+              <CButton
+                size="sm"
+                color="secondary"
+                variant="outline"
+                className="ms-auto"
+                onClick={() => setAlicuotaExtra((a) => [...a, { netoCol: '', alicuota: '10.5', ivaCol: '' }])}
+              >
+                + Agregar alícuota
+              </CButton>
+            </div>
+            {alicuotaExtra.length > 0 && (
+              <div className="row g-2 mb-3">
+                {alicuotaExtra.map((ax, idx) => (
+                  <div className="col-12 d-flex gap-2 align-items-end flex-wrap" key={idx}>
+                    <div style={{ flex: 1, maxWidth: 260 }}>
+                      <CFormLabel className="small mb-1">Columna del neto</CFormLabel>
+                      <CFormSelect
+                        size="sm"
+                        value={ax.netoCol}
+                        onChange={(e) =>
+                          setAlicuotaExtra((a) => a.map((x, i) => (i === idx ? { ...x, netoCol: e.target.value } : x)))
+                        }
+                      >
+                        <option value="">—</option>
+                        {parsed.headers.map((h, i) => (
+                          <option key={i} value={i}>
+                            {h || `Columna ${i + 1}`}
+                          </option>
+                        ))}
+                      </CFormSelect>
+                    </div>
+                    <div style={{ width: 120 }}>
+                      <CFormLabel className="small mb-1">Alícuota %</CFormLabel>
+                      <CFormSelect
+                        size="sm"
+                        value={ax.alicuota}
+                        onChange={(e) =>
+                          setAlicuotaExtra((a) => a.map((x, i) => (i === idx ? { ...x, alicuota: e.target.value } : x)))
+                        }
+                      >
+                        {ALICUOTAS.map((a) => (
+                          <option key={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                      </CFormSelect>
+                    </div>
+                    <div style={{ flex: 1, maxWidth: 260 }}>
+                      <CFormLabel className="small mb-1">Columna del IVA (opcional)</CFormLabel>
+                      <CFormSelect
+                        size="sm"
+                        value={ax.ivaCol}
+                        onChange={(e) =>
+                          setAlicuotaExtra((a) => a.map((x, i) => (i === idx ? { ...x, ivaCol: e.target.value } : x)))
+                        }
+                      >
+                        <option value="">— lo calcula el motor —</option>
+                        {parsed.headers.map((h, i) => (
+                          <option key={i} value={i}>
+                            {h || `Columna ${i + 1}`}
+                          </option>
+                        ))}
+                      </CFormSelect>
+                    </div>
+                    <CButton
+                      size="sm"
+                      color="danger"
+                      variant="outline"
+                      onClick={() => setAlicuotaExtra((a) => a.filter((_, i) => i !== idx))}
+                    >
+                      Quitar
+                    </CButton>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="mb-2">
               <strong>Vista previa</strong> <span className="text-body-secondary small">(primeras 8 filas)</span>
             </div>
@@ -469,7 +695,14 @@ export default function ImportarPage() {
               </CTableHead>
               <CTableBody>
                 {filas.slice(0, 8).map(({ comp: c, issues }, i) => {
-                  const d = c.discriminaciones[0]
+                  const discs = c.discriminaciones
+                  const netoTotal = discs.reduce((s, d) => s + Number(d.neto_gravado || 0), 0)
+                  const alicuotasTxt = [...new Set(discs.map((d) => d.iva_alicuota))].join(' / ')
+                  const ivaOverride = discs.filter((d) => d.iva_importe != null)
+                  const ivaTxt =
+                    ivaOverride.length > 0
+                      ? String(ivaOverride.reduce((s, d) => s + Number(d.iva_importe || 0), 0))
+                      : '—'
                   const nombre = (c as unknown as Record<string, unknown>)[nombreCampo] as string | null
                   const perc = c.percepciones ?? []
                   const tieneError = issues.some((x) => x.nivel === 'error')
@@ -482,9 +715,9 @@ export default function ImportarPage() {
                       </CTableDataCell>
                       <CTableDataCell>{nombre ?? '—'}</CTableDataCell>
                       <CTableDataCell>{c.cuit ?? '—'}</CTableDataCell>
-                      <CTableDataCell className="text-end">{d.neto_gravado}</CTableDataCell>
-                      <CTableDataCell className="text-end">{d.iva_alicuota}</CTableDataCell>
-                      <CTableDataCell className="text-end">{d.iva_importe ?? '—'}</CTableDataCell>
+                      <CTableDataCell className="text-end">{netoTotal}</CTableDataCell>
+                      <CTableDataCell className="text-end">{alicuotasTxt}</CTableDataCell>
+                      <CTableDataCell className="text-end">{ivaTxt}</CTableDataCell>
                       <CTableDataCell className="text-end">
                         {perc.length > 0 ? perc.reduce((s, p) => s + Number(p.importe ?? 0), 0) : '—'}
                       </CTableDataCell>

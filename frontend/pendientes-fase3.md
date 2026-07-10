@@ -29,11 +29,18 @@ Detalle en `../CLAUDE.md` (sección "Frontend guiado por Visual IVA").
   que codifica tipo+letra; nuestro catálogo guarda `codigo`(FA/NC) + `cod_citi`, no ese código AFIP.
   Resolverlo bien requiere la tabla AFIP-code→(tipo,letra) + un CSV real de ARCA para validar byte a
   byte (mismo insumo que E). No hornear un mapeo parcial sin ese CSV.
-- [x] **Alícuota derivada** (HECHO): si no se mapea la alícuota pero sí el importe de IVA, se deduce de
-  `IVA/neto` y se encaja a la alícuota vigente más cercana (`derivarAlicuota`, tolerancia 1,5 pts). El
-  soporte multi-alícuota por fila sigue pendiente (la v1 arma una sola línea de discriminación).
-- [ ] **Guardar el mapeo por formato** (reutilizable, estilo `iva_export_formatos`): que el estudio
-  defina "perfiles" de importación y no re-mapee cada vez.
+- [x] **Alícuota derivada + multi-alícuota** (HECHO): si no se mapea la alícuota pero sí el importe de
+  IVA, se deduce de `IVA/neto` y se encaja a la alícuota vigente más cercana (`derivarAlicuota`,
+  tolerancia 1,5 pts). **Multi-alícuota por fila** (HECHO): sección "Alícuotas adicionales" — se agregan
+  líneas {columna del neto, alícuota fija, columna del IVA opcional} y cada una con neto ≠ 0 suma otra
+  discriminación (caso resumen bancario 21% + 10,5% con columnas separadas). El preview suma el neto y
+  lista las alícuotas ("21 / 10.5").
+- [x] **Guardar el mapeo por perfil** (HECHO): perfiles de mapeo reutilizables guardados en el
+  navegador (`localStorage`, key `iva_import_perfiles`), indexados por NOMBRE de encabezado para servir
+  a archivos del mismo origen aunque cambie el orden de columnas. Barra "Perfil de mapeo": seleccionar y
+  aplicar, "Guardar mapeo actual…" (nombre por prompt), "Borrar perfil". Guarda mapping + percepciones +
+  alícuotas adicionales. (v1 per-browser; una versión compartida por tenant estilo `iva_export_formatos`
+  quedaría como mejora futura si se pide.)
 - [x] **Validación previa en el preview** (HECHO): `validarComprobante` marca por fila (badge + color)
   falta de fecha, sin importes (neto/no gravado/exento), fecha fuera del período y CUIT ≠ 11 díg. Resumen
   válidas/aviso/error + checkbox "omitir filas con error". Errores bloquean esa fila; los avisos importan.
