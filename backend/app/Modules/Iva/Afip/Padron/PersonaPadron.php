@@ -153,14 +153,18 @@ final class PersonaPadron
 
     /**
      * Deriva la condición frente al IVA a partir del régimen y los impuestos activos.
-     * ARCA no la devuelve como texto: se infiere (Monotributo si hay `datosMonotributo`;
-     * si no, IVA 30 = Responsable Inscripto, 32 = Exento).
+     * ARCA no la devuelve como texto: se infiere. Requiere el padrón A5 (trae impuestos);
+     * el A13 no los informa, así que ahí queda null y la condición se elige a mano.
+     *  - Monotributo: nodo `datosMonotributo` o impuesto 20/21 (Régimen Simplificado).
+     *  - Responsable Inscripto: impuesto 30 (IVA).
+     *  - IVA Exento: impuesto 32.
      *
      * @param list<int> $impuestos
      */
     private static function condicionIva(object|array $root, array $impuestos): ?string
     {
-        if (self::pick($root, 'datosMonotributo') !== null) {
+        $monotributo = array_intersect([20, 21], $impuestos) !== [];
+        if (self::pick($root, 'datosMonotributo') !== null || $monotributo) {
             return 'Monotributo';
         }
         if (in_array(30, $impuestos, true)) {

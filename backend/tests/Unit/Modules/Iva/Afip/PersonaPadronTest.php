@@ -198,6 +198,17 @@ class PersonaPadronTest extends UnitTestCase
         $this->assertSame('2021-01-01', $p->fechaInicioActividad);
     }
 
+    public function test_condicion_monotributo_por_impuesto_20(): void
+    {
+        // A5 sin nodo datosMonotributo pero con impuesto 20/21 (Régimen Simplificado).
+        $p = PersonaPadron::fromSoapResponse((object) [
+            'datosGenerales'      => (object) ['tipoPersona' => 'FISICA', 'idPersona' => '20111111112'],
+            'datosRegimenGeneral' => (object) ['impuesto' => [(object) ['idImpuesto' => 20]]],
+        ]);
+
+        $this->assertSame('Monotributo', $p->condicionIva);
+    }
+
     public function test_sin_actividades_ni_impuestos_no_deriva_nada(): void
     {
         $p = PersonaPadron::fromSoapResponse((object) [
