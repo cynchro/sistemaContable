@@ -50,15 +50,26 @@ return [
         'produccion'   => 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl',
     ],
 
-    // Alcance del padrón a usar ('a13' por defecto: constancia de inscripción, es el que
-    // ARCA habilita hoy; 'a5' sigue soportado). Define WSDL + nombre del WS (ws_sr_padron_<alcance>).
+    // Alcance del padrón a usar. Define WSDL + nombre del WS (ws_sr_padron_<alcance>):
+    //   a13 = constancia de inscripción (default; NO informa impuestos/condición IVA).
+    //   a4/a5 = padrón completo (datosRegimenGeneral: impuestos + actividades) → sí trae la
+    //           condición IVA y la actividad secundaria. a10 = impuestos por período.
+    // Usar el que ARCA tenga autorizado en el certificado (p. ej. AFIP_PADRON_ALCANCE=a4).
     'padron_alcance' => $_ENV['AFIP_PADRON_ALCANCE'] ?? 'a13',
 
     // Endpoints del padrón por alcance (consulta de contribuyentes por CUIT).
     'padron' => [
+        'a4' => [
+            'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl',
+            'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4?wsdl',
+        ],
         'a5' => [
             'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
             'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5?wsdl',
+        ],
+        'a10' => [
+            'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA10?wsdl',
+            'produccion'   => 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA10?wsdl',
         ],
         'a13' => [
             'homologacion' => 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA13?wsdl',
