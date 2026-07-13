@@ -39,10 +39,21 @@ class PadronService
         $p = $this->consultar($cuit);
 
         return [
-            'nombre'    => $p->denominacion,
-            'cuit'      => $p->cuit,
-            'domicilio' => $p->domicilio['direccion'] ?? null,
-            'localidad' => $p->domicilio['localidad'] ?? null,
+            'nombre'       => $p->denominacion,
+            'cuit'         => $p->cuit,
+            'domicilio'    => $p->domicilio['direccion'] ?? null,
+            'localidad'    => $p->domicilio['localidad'] ?? null,
+            'provincia'    => $p->domicilio['provincia'] ?? null,
+            'provincia_id' => $p->domicilio['id_provincia'] ?? null,
+            // Condición frente al IVA derivada del régimen (texto; el front la matchea
+            // contra el catálogo `condiciones-iva` para preseleccionar el desplegable).
+            'condicion_iva'         => $p->condicionIva,
+            'inicio_actividad'      => $p->fechaInicioActividad,
+            'actividad_principal'   => $p->actividades[0]['descripcion'] ?? null,
+            'actividad_secundaria'  => $p->actividades[1]['descripcion'] ?? null,
+            'actividad1_id'         => $p->actividades[0]['id'] ?? null,
+            'actividad2_id'         => $p->actividades[1]['id'] ?? null,
+            // Nota: ARCA NO publica el teléfono en el padrón; queda de carga manual.
             // Datos crudos del padrón para que el front complete los desplegables
             // (condición de IVA, provincia) y muestre el resto.
             'padron'    => [
@@ -51,6 +62,7 @@ class PadronService
                 'denominacion' => $p->denominacion,
                 'domicilio'    => $p->domicilio,
                 'impuestos'    => $p->impuestos,
+                'actividades'  => $p->actividades,
             ],
         ];
     }

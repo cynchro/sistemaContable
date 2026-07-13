@@ -26,18 +26,29 @@ export async function consultarPadron(cuit: string): Promise<PersonaPadron> {
   return data.data as PersonaPadron
 }
 
-/** Sugerencia de padrón mapeada a los campos del alta de cliente/proveedor. */
+/** Sugerencia de padrón mapeada a los campos del alta de cliente/proveedor/empresa. */
 export interface SugerenciaPadron {
   nombre: string | null
   cuit: string | null
   domicilio: string | null
   localidad: string | null
+  provincia: string | null
+  provincia_id: number | null
+  /** Condición frente al IVA derivada del régimen (texto, para matchear el catálogo). */
+  condicion_iva: string | null
+  /** Inicio de actividad (YYYY-MM-01) tomado de la actividad principal. */
+  inicio_actividad: string | null
+  actividad_principal: string | null
+  actividad_secundaria: string | null
+  actividad1_id: number | null
+  actividad2_id: number | null
   padron: {
     tipo_persona: string | null
     estado_clave: string | null
     denominacion: string | null
     domicilio: Record<string, string | null> | null
-    impuestos: Array<Record<string, unknown>> | null
+    impuestos: number[] | null
+    actividades: Array<{ id: number; orden: number | null; descripcion: string | null; periodo: string | null }> | null
   }
 }
 

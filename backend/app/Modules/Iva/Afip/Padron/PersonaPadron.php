@@ -14,8 +14,9 @@ namespace App\Modules\Iva\Afip\Padron;
 final class PersonaPadron
 {
     /**
-     * @param array<string, mixed> $domicilio dirección normalizada
-     * @param list<int>            $impuestos idImpuesto activos
+     * @param array<string, mixed>                                                  $domicilio    dirección normalizada
+     * @param list<int>                                                             $impuestos    idImpuesto activos
+     * @param list<array{id:int, orden:?int, descripcion:?string, periodo:?string}> $actividades  orden 1 = principal
      */
     public function __construct(
         public readonly string $cuit,
@@ -24,6 +25,9 @@ final class PersonaPadron
         public readonly string $denominacion,
         public readonly array $domicilio,
         public readonly array $impuestos,
+        public readonly array $actividades = [],
+        public readonly ?string $condicionIva = null,
+        public readonly ?string $fechaInicioActividad = null,
     ) {
     }
 
@@ -50,14 +54,139 @@ final class PersonaPadron
         // Domicilio: A5 lo trae en `domicilioFiscal` (uno); A13 en `domicilio` (lista → el fiscal).
         $dom = self::pick($datos, 'domicilioFiscal') ?? self::pick($datos, 'domicilio');
 
+        // Impuestos, actividades y régimen viven fuera de `datosGenerales` (en
+        // `datosRegimenGeneral`/`datosMonotributo`, o al ras de `personaReturn`).
+        $impuestos   = self::impuestos(self::pickEn($personaReturn, 'impuesto'));
+        $actividades = self::actividades($personaReturn);
+
         return new self(
             cuit: (string) (self::pick($datos, 'idPersona') ?? ''),
             tipoPersona: $tipoPersona,
             estadoClave: self::nullableString(self::pick($datos, 'estadoClave')),
             denominacion: $denominacion,
             domicilio: self::domicilio($dom),
-            impuestos: self::impuestos(self::pick($datos, 'impuesto')),
+            impuestos: $impuestos,
+            actividades: $actividades,
+            condicionIva: self::condicionIva($personaReturn, $impuestos),
+            fechaInicioActividad: self::inicioActividad($actividades),
         );
+    }
+
+    /**
+     * Busca una clave en `personaReturn` mirando primero `datosGenerales`/`persona`,
+     * después `datosRegimenGeneral`/`datosMonotributo` y por último al ras. Devuelve el
+     * primer valor no nulo (permite leer impuestos/actividades que ARCA anida distinto
+     * según régimen general vs. monotributo).
+     */
+    private static function pickEn(object|array $root, string $key): mixed
+    {
+        foreach (['datosGenerales', 'datosRegimenGeneral', 'datosMonotributo', 'persona'] as $sub) {
+            $node = self::pick($root, $sub);
+            if ($node !== null) {
+                $val = self::pick($node, $key);
+                if ($val !== null) {
+                    return $val;
+                }
+            }
+        }
+
+        return self::pick($root, $key);
+    }
+
+    /**
+     * Actividades declaradas, ordenadas por `orden` (1 = principal). Cubre las dos formas
+     * de ARCA: el array `actividad[]` (padrón A5) y los campos planos de la actividad
+     * principal (`idActividadPrincipal`/`descripcionActividadPrincipal`/
+     * `periodoActividadPrincipal`) de la constancia de inscripción (A13).
+     *
+     * @return list<array{id:int, orden:?int, descripcion:?string, periodo:?string}>
+     */
+    private static function actividades(object|array $root): array
+    {
+        $raw = self::pickEn($root, 'actividad');
+        if ($raw === null) {
+            return self::actividadPrincipalPlana($root);
+        }
+
+        $items = (is_array($raw) && array_is_list($raw)) ? $raw : [$raw];
+
+        $out = [];
+        foreach ($items as $item) {
+            $id = self::pick($item, 'idActividad');
+            if ($id === null) {
+                continue;
+            }
+            $out[] = [
+                'id'          => (int) $id,
+                'orden'       => self::nullableInt(self::pick($item, 'orden')),
+                'descripcion' => self::nullableString(self::pick($item, 'descripcionActividad')),
+                'periodo'     => self::nullableString(self::pick($item, 'periodo')),
+            ];
+        }
+
+        usort($out, static function (array $a, array $b): int {
+            return ($a['orden'] ?? PHP_INT_MAX) <=> ($b['orden'] ?? PHP_INT_MAX);
+        });
+
+        return $out;
+    }
+
+    /**
+     * Actividad principal de la constancia A13 (campos planos, sin array `actividad[]`).
+     *
+     * @return list<array{id:int, orden:?int, descripcion:?string, periodo:?string}>
+     */
+    private static function actividadPrincipalPlana(object|array $root): array
+    {
+        $id = self::pickEn($root, 'idActividadPrincipal');
+        if ($id === null) {
+            return [];
+        }
+
+        return [[
+            'id'          => (int) $id,
+            'orden'       => 1,
+            'descripcion' => self::nullableString(self::pickEn($root, 'descripcionActividadPrincipal')),
+            'periodo'     => self::nullableString(self::pickEn($root, 'periodoActividadPrincipal')),
+        ]];
+    }
+
+    /**
+     * Deriva la condición frente al IVA a partir del régimen y los impuestos activos.
+     * ARCA no la devuelve como texto: se infiere (Monotributo si hay `datosMonotributo`;
+     * si no, IVA 30 = Responsable Inscripto, 32 = Exento).
+     *
+     * @param list<int> $impuestos
+     */
+    private static function condicionIva(object|array $root, array $impuestos): ?string
+    {
+        if (self::pick($root, 'datosMonotributo') !== null) {
+            return 'Monotributo';
+        }
+        if (in_array(30, $impuestos, true)) {
+            return 'Responsable Inscripto';
+        }
+        if (in_array(32, $impuestos, true)) {
+            return 'IVA Exento';
+        }
+
+        return null;
+    }
+
+    /**
+     * Fecha de inicio de actividad: `periodo` (AAAAMM) de la actividad principal
+     * normalizado a `YYYY-MM-01`.
+     *
+     * @param list<array{id:int, orden:?int, descripcion:?string, periodo:?string}> $actividades
+     */
+    private static function inicioActividad(array $actividades): ?string
+    {
+        $periodo = $actividades[0]['periodo'] ?? null;
+        if ($periodo === null || !preg_match('/^(\d{4})(\d{2})$/', $periodo, $m)) {
+            return null;
+        }
+
+        return "{$m[1]}-{$m[2]}-01";
     }
 
     /** @return array<string, mixed> */

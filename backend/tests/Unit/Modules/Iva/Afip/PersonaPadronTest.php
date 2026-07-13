@@ -97,6 +97,122 @@ class PersonaPadronTest extends UnitTestCase
         $this->assertSame('CATAMARCA', $p->domicilio['provincia']);
     }
 
+    public function test_lee_actividades_condicion_e_inicio_regimen_general(): void
+    {
+        // Régimen general: impuesto 30 (IVA) = Responsable Inscripto; actividades con
+        // `orden` (1 = principal) y `periodo` (AAAAMM) → inicio de actividad.
+        $personaReturn = (object) [
+            'datosGenerales' => (object) [
+                'tipoPersona' => 'FISICA',
+                'idPersona'   => '20111111112',
+                'apellido'    => 'PEREZ',
+                'nombre'      => 'JUAN',
+            ],
+            'datosRegimenGeneral' => (object) [
+                'impuesto'  => [(object) ['idImpuesto' => 30], (object) ['idImpuesto' => 34]],
+                'actividad' => [
+                    (object) [
+                        'idActividad'          => 620100,
+                        'orden'                => 2,
+                        'descripcionActividad' => 'SERVICIOS DE CONSULTORES',
+                        'periodo'              => '202005',
+                    ],
+                    (object) [
+                        'idActividad'          => 620900,
+                        'orden'                => 1,
+                        'descripcionActividad' => 'SERVICIOS INFORMATICOS',
+                        'periodo'              => '201801',
+                    ],
+                ],
+            ],
+        ];
+
+        $p = PersonaPadron::fromSoapResponse($personaReturn);
+
+        $this->assertSame([30, 34], $p->impuestos);
+        $this->assertSame('Responsable Inscripto', $p->condicionIva);
+        // Ordenadas por `orden`: la principal (orden 1) primero.
+        $this->assertSame(620900, $p->actividades[0]['id']);
+        $this->assertSame('SERVICIOS INFORMATICOS', $p->actividades[0]['descripcion']);
+        $this->assertSame('SERVICIOS DE CONSULTORES', $p->actividades[1]['descripcion']);
+        // Inicio = periodo de la principal (201801) → YYYY-MM-01.
+        $this->assertSame('2018-01-01', $p->fechaInicioActividad);
+    }
+
+    public function test_a13_actividad_principal_por_campos_planos(): void
+    {
+        // Estructura REAL del padrón A13 (constancia de inscripción): la actividad principal
+        // viene en campos planos, no en un array `actividad[]`. Verificado en vivo contra ARCA.
+        $personaReturn = (object) [
+            'persona' => (object) [
+                'tipoPersona'                   => 'FISICA',
+                'idPersona'                     => '23321452639',
+                'estadoClave'                   => 'ACTIVO',
+                'apellido'                      => 'SAUCEDO',
+                'nombre'                        => 'ALEXIS GUSTAVO',
+                'idActividadPrincipal'          => 620100,
+                'descripcionActividadPrincipal' => 'SERVICIOS DE CONSULTORES EN INFORMÁTICA',
+                'periodoActividadPrincipal'     => 201907,
+                'domicilio'                     => (object) [
+                    'tipoDomicilio'        => 'FISCAL',
+                    'direccion'            => 'AV GDOR FELIPE FIGUEROA 0 Piso:1',
+                    'localidad'            => 'SAN FERNANDO DEL VALLE DE CATAMARCA',
+                    'idProvincia'          => 2,
+                    'descripcionProvincia' => 'CATAMARCA',
+                ],
+            ],
+        ];
+
+        $p = PersonaPadron::fromSoapResponse($personaReturn);
+
+        $this->assertSame('SAUCEDO ALEXIS GUSTAVO', $p->denominacion);
+        $this->assertSame('CATAMARCA', $p->domicilio['provincia']);
+        $this->assertCount(1, $p->actividades);
+        $this->assertSame(620100, $p->actividades[0]['id']);
+        $this->assertSame('SERVICIOS DE CONSULTORES EN INFORMÁTICA', $p->actividades[0]['descripcion']);
+        $this->assertSame('2019-07-01', $p->fechaInicioActividad);
+        // A13 no trae impuestos → sin condición IVA derivable.
+        $this->assertNull($p->condicionIva);
+    }
+
+    public function test_condicion_monotributo_por_datos_monotributo(): void
+    {
+        $personaReturn = (object) [
+            'datosGenerales'  => (object) ['tipoPersona' => 'FISICA', 'idPersona' => '20111111112'],
+            'datosMonotributo' => (object) [
+                'categoriaMonotributo' => (object) ['descripcionCategoria' => 'B'],
+                'actividad'            => (object) [
+                    'idActividad'          => 471190,
+                    'orden'                => 1,
+                    'descripcionActividad' => 'VENTA AL POR MENOR',
+                    'periodo'              => '202101',
+                ],
+            ],
+        ];
+
+        $p = PersonaPadron::fromSoapResponse($personaReturn);
+
+        $this->assertSame('Monotributo', $p->condicionIva);
+        // `actividad` como objeto único también se lee.
+        $this->assertSame(471190, $p->actividades[0]['id']);
+        $this->assertSame('2021-01-01', $p->fechaInicioActividad);
+    }
+
+    public function test_sin_actividades_ni_impuestos_no_deriva_nada(): void
+    {
+        $p = PersonaPadron::fromSoapResponse((object) [
+            'datosGenerales' => (object) [
+                'tipoPersona' => 'JURIDICA',
+                'idPersona'   => '30711111118',
+                'razonSocial' => 'ACME SA',
+            ],
+        ]);
+
+        $this->assertSame([], $p->actividades);
+        $this->assertNull($p->condicionIva);
+        $this->assertNull($p->fechaInicioActividad);
+    }
+
     public function test_lee_impuestos_activos_como_lista(): void
     {
         $personaReturn = (object) [
