@@ -13,10 +13,9 @@ class EmpresaRepository
 {
     /** Columnas escribibles desde la API (tenant_id e id se gestionan aparte). */
     private const WRITABLE = [
-        'condicion_iva_id', 'nombre', 'cuit', 'domicilio', 'localidad', 'telefono',
+        'condicion_iva_id', 'provincia_id', 'nombre', 'cuit', 'domicilio', 'localidad', 'telefono',
         'ingresos_brutos', 'establecimiento', 'nro_libro_iva', 'nro_libro_iva_ven',
-        'fecha_inicio_actividades', 'actividad1_id', 'actividad1_desc',
-        'actividad2_id', 'actividad2_desc', 'exporta', 'inactiva',
+        'fecha_inicio_actividades', 'actividad1_id', 'actividad2_id', 'exporta', 'inactiva',
         // CRM del contribuyente (de sistemaCuarto)
         'email', 'contacto', 'tipo_persona', 'inscripcion', 'contabilidad',
     ];

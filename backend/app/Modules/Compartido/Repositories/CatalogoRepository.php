@@ -23,7 +23,11 @@ class CatalogoRepository
         'tipos-retencion'        => 'tipos_retencion',
         'tipos-operacion-compra' => 'tipos_operacion_compra',
         'tipos-operacion-venta'  => 'tipos_operacion_venta',
+        'actividades'            => 'actividades',
     ];
+
+    /** Catálogos que NO se incluyen en el bootstrap `all()` por su volumen (se piden por slug). */
+    private const EXCLUIDOS_DE_ALL = ['actividades'];
 
     public function __construct(private PDO $pdo)
     {
@@ -50,6 +54,9 @@ class CatalogoRepository
     {
         $out = [];
         foreach (array_keys(self::TABLES) as $slug) {
+            if (in_array($slug, self::EXCLUIDOS_DE_ALL, true)) {
+                continue;
+            }
             $out[$slug] = $this->listBySlug($slug);
         }
 

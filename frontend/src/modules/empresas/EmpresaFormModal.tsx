@@ -19,6 +19,7 @@ import {
 import type { Empresa, EmpresaInput } from '../../api/empresas'
 import { sugerenciaPadron } from '../../api/afip'
 import { listCatalogo, type CatalogoItem } from '../../api/catalogos'
+import ActividadSelect from './ActividadSelect'
 
 const schema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
@@ -26,14 +27,13 @@ const schema = z.object({
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   domicilio: z.string().optional(),
   localidad: z.string().optional(),
+  provincia_id: z.string().optional(),
   telefono: z.string().optional(),
   condicion_iva_id: z.string().optional(),
   ingresos_brutos: z.string().optional(),
   fecha_inicio_actividades: z.string().optional(),
   actividad1_id: z.string().optional(),
-  actividad1_desc: z.string().optional(),
   actividad2_id: z.string().optional(),
-  actividad2_desc: z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -43,12 +43,6 @@ interface Props {
   saving: boolean
   onClose: () => void
   onSubmit: (values: EmpresaInput) => void
-}
-
-/** Datos que trae el padrón pero la empresa no persiste como texto: solo se muestran. */
-interface PadronInfo {
-  provincia: string | null
-  condicion_iva: string | null
 }
 
 /** Preselecciona la condición IVA del catálogo a partir del texto derivado del padrón. */
@@ -63,10 +57,26 @@ function matchCondicion(label: string | null, cats: CatalogoItem[] | undefined):
   return found ? String(found.id) : ''
 }
 
+/** Resuelve el id de actividad del catálogo a partir del código AFIP (NAES) del padrón. */
+function actividadIdPorCodigo(codigo: number | null, cats: CatalogoItem[] | undefined): string {
+  if (codigo == null || !cats) return ''
+  const found = cats.find((a) => a.codigo === String(codigo))
+  return found ? String(found.id) : ''
+}
+
 export default function EmpresaFormModal({ visible, empresa, saving, onClose, onSubmit }: Props) {
   const { data: condiciones } = useQuery({
     queryKey: ['catalogo', 'condiciones-iva'],
     queryFn: () => listCatalogo('condiciones-iva'),
+  })
+  const { data: provincias } = useQuery({
+    queryKey: ['catalogo', 'provincias'],
+    queryFn: () => listCatalogo('provincias'),
+  })
+  const { data: actividades } = useQuery({
+    queryKey: ['catalogo', 'actividades'],
+    queryFn: () => listCatalogo('actividades'),
+    staleTime: Infinity,
   })
 
   const {
@@ -75,14 +85,14 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
     reset,
     setValue,
     getValues,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   const [padronError, setPadronError] = useState<string | null>(null)
-  const [padronInfo, setPadronInfo] = useState<PadronInfo | null>(null)
   // La condición IVA (select) sólo puede fijarse cuando ya se renderizaron sus <option>;
   // este flag reaplica el valor guardado una vez que carga el catálogo (evita que quede vacío al editar).
-  const condicionAplicada = useRef(false)
+  const catalogoAplicado = useRef(false)
 
   const padron = useMutation({
     mutationFn: (cuit: string) => sugerenciaPadron(cuit),
@@ -91,14 +101,14 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
       if (s.nombre) setValue('nombre', s.nombre)
       if (s.domicilio) setValue('domicilio', s.domicilio)
       if (s.localidad) setValue('localidad', s.localidad)
+      if (s.provincia_id != null) setValue('provincia_id', String(s.provincia_id))
       if (s.inicio_actividad) setValue('fecha_inicio_actividades', s.inicio_actividad)
-      if (s.actividad1_id != null) setValue('actividad1_id', String(s.actividad1_id))
-      if (s.actividad_principal) setValue('actividad1_desc', s.actividad_principal)
-      if (s.actividad2_id != null) setValue('actividad2_id', String(s.actividad2_id))
-      if (s.actividad_secundaria) setValue('actividad2_desc', s.actividad_secundaria)
+      const act1 = actividadIdPorCodigo(s.actividad1_id, actividades)
+      if (act1) setValue('actividad1_id', act1)
+      const act2 = actividadIdPorCodigo(s.actividad2_id, actividades)
+      if (act2) setValue('actividad2_id', act2)
       const cond = matchCondicion(s.condicion_iva, condiciones)
       if (cond) setValue('condicion_iva_id', cond)
-      setPadronInfo({ provincia: s.provincia, condicion_iva: s.condicion_iva })
     },
     onError: (e) => {
       const err = e as { response?: { data?: { message?: string } } }
@@ -115,8 +125,7 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
   useEffect(() => {
     if (visible) {
       setPadronError(null)
-      setPadronInfo(null)
-      condicionAplicada.current = false
+      catalogoAplicado.current = false
       padron.reset()
       reset({
         nombre: empresa?.nombre ?? '',
@@ -124,37 +133,36 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
         email: empresa?.email ?? '',
         domicilio: empresa?.domicilio ?? '',
         localidad: empresa?.localidad ?? '',
+        provincia_id: empresa?.provincia_id != null ? String(empresa.provincia_id) : '',
         telefono: empresa?.telefono ?? '',
         condicion_iva_id: empresa?.condicion_iva_id != null ? String(empresa.condicion_iva_id) : '',
         ingresos_brutos: empresa?.ingresos_brutos ?? '',
         fecha_inicio_actividades: empresa?.fecha_inicio_actividades ?? '',
         actividad1_id: empresa?.actividad1_id != null ? String(empresa.actividad1_id) : '',
-        actividad1_desc: empresa?.actividad1_desc ?? '',
         actividad2_id: empresa?.actividad2_id != null ? String(empresa.actividad2_id) : '',
-        actividad2_desc: empresa?.actividad2_desc ?? '',
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, empresa, reset])
 
-  // Reaplica la condición IVA guardada cuando el catálogo termina de cargar (una sola vez por apertura).
+  // Reaplica los valores de selects (condición/provincia) cuando cargan sus catálogos, una vez por apertura.
   useEffect(() => {
-    if (visible && condiciones && !condicionAplicada.current) {
+    if (visible && condiciones && provincias && !catalogoAplicado.current) {
       if (empresa?.condicion_iva_id != null) setValue('condicion_iva_id', String(empresa.condicion_iva_id))
-      condicionAplicada.current = true
+      if (empresa?.provincia_id != null) setValue('provincia_id', String(empresa.provincia_id))
+      catalogoAplicado.current = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, condiciones, empresa])
+  }, [visible, condiciones, provincias, empresa])
 
   const submit = (v: FormValues) =>
     onSubmit({
       ...v,
       condicion_iva_id: v.condicion_iva_id ? Number(v.condicion_iva_id) : null,
+      provincia_id: v.provincia_id ? Number(v.provincia_id) : null,
       fecha_inicio_actividades: v.fecha_inicio_actividades || null,
       actividad1_id: v.actividad1_id ? Number(v.actividad1_id) : null,
-      actividad1_desc: v.actividad1_desc || null,
       actividad2_id: v.actividad2_id ? Number(v.actividad2_id) : null,
-      actividad2_desc: v.actividad2_desc || null,
     })
 
   return (
@@ -186,7 +194,7 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
                 title="Traer los datos de ARCA (padrón) y completar el formulario"
                 style={{ whiteSpace: 'nowrap' }}
               >
-                {padron.isPending ? <CSpinner size="sm" /> : 'Buscar'}
+                {padron.isPending ? <CSpinner size="sm" /> : 'Obtener datos de AFIP'}
               </CButton>
             </div>
             {padronError && <div className="text-danger small mt-1">{padronError}</div>}
@@ -197,26 +205,37 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
             )}
           </div>
 
-          {padronInfo && (
-            <div className="mb-3 p-2 rounded bg-body-tertiary small">
-              <div className="fw-semibold mb-1">Datos de ARCA</div>
-              <div className="row">
-                <div className="col-md-6">
-                  <span className="text-body-secondary">Provincia: </span>
-                  {padronInfo.provincia ?? '—'}
-                </div>
-                <div className="col-md-6">
-                  <span className="text-body-secondary">Condición IVA: </span>
-                  {padronInfo.condicion_iva ?? '—'}
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="mb-3">
             <CFormLabel htmlFor="nombre">Nombre / Razón social *</CFormLabel>
             <CFormInput id="nombre" invalid={!!errors.nombre} {...register('nombre')} />
             {errors.nombre && <div className="text-danger small mt-1">{errors.nombre.message}</div>}
+          </div>
+
+          <div className="mb-3">
+            <CFormLabel htmlFor="domicilio">Dirección</CFormLabel>
+            <CFormInput id="domicilio" {...register('domicilio')} />
+          </div>
+
+          <div className="row">
+            <div className="col-md-4 mb-3">
+              <CFormLabel htmlFor="localidad">Localidad</CFormLabel>
+              <CFormInput id="localidad" {...register('localidad')} />
+            </div>
+            <div className="col-md-4 mb-3">
+              <CFormLabel htmlFor="provincia_id">Provincia</CFormLabel>
+              <CFormSelect id="provincia_id" {...register('provincia_id')}>
+                <option value="">—</option>
+                {provincias?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                  </option>
+                ))}
+              </CFormSelect>
+            </div>
+            <div className="col-md-4 mb-3">
+              <CFormLabel htmlFor="telefono">Teléfono</CFormLabel>
+              <CFormInput id="telefono" {...register('telefono')} />
+            </div>
           </div>
 
           <div className="row">
@@ -239,50 +258,35 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
           </div>
 
           <div className="mb-3">
-            <CFormLabel htmlFor="domicilio">Domicilio</CFormLabel>
-            <CFormInput id="domicilio" {...register('domicilio')} />
+            <CFormLabel htmlFor="actividad1">Actividad principal</CFormLabel>
+            <input type="hidden" {...register('actividad1_id')} />
+            <ActividadSelect
+              id="actividad1"
+              actividades={actividades}
+              value={watch('actividad1_id') ?? ''}
+              onChange={(v) => setValue('actividad1_id', v, { shouldDirty: true })}
+            />
+          </div>
+
+          <div className="mb-3">
+            <CFormLabel htmlFor="actividad2">Actividad secundaria</CFormLabel>
+            <input type="hidden" {...register('actividad2_id')} />
+            <ActividadSelect
+              id="actividad2"
+              actividades={actividades}
+              value={watch('actividad2_id') ?? ''}
+              onChange={(v) => setValue('actividad2_id', v, { shouldDirty: true })}
+            />
           </div>
 
           <div className="row">
-            <div className="col-md-6 mb-3">
-              <CFormLabel htmlFor="localidad">Localidad</CFormLabel>
-              <CFormInput id="localidad" {...register('localidad')} />
-            </div>
-            <div className="col-md-6 mb-3">
-              <CFormLabel htmlFor="telefono">Teléfono</CFormLabel>
-              <CFormInput id="telefono" {...register('telefono')} />
-            </div>
-          </div>
-
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <CFormLabel htmlFor="ingresos_brutos">Ingresos Brutos</CFormLabel>
-              <CFormInput id="ingresos_brutos" {...register('ingresos_brutos')} />
-            </div>
             <div className="col-md-6 mb-3">
               <CFormLabel htmlFor="fecha_inicio_actividades">Inicio de actividad</CFormLabel>
               <CFormInput id="fecha_inicio_actividades" type="date" {...register('fecha_inicio_actividades')} />
             </div>
-          </div>
-
-          <div className="row">
-            <div className="col-md-3 mb-3">
-              <CFormLabel htmlFor="actividad1_id">Actividad principal (cód.)</CFormLabel>
-              <CFormInput id="actividad1_id" inputMode="numeric" placeholder="NAES" {...register('actividad1_id')} />
-            </div>
-            <div className="col-md-9 mb-3">
-              <CFormLabel htmlFor="actividad1_desc">Descripción actividad principal</CFormLabel>
-              <CFormInput id="actividad1_desc" {...register('actividad1_desc')} />
-            </div>
-          </div>
-          <div className="row">
-            <div className="col-md-3 mb-3">
-              <CFormLabel htmlFor="actividad2_id">Actividad secundaria (cód.)</CFormLabel>
-              <CFormInput id="actividad2_id" inputMode="numeric" placeholder="NAES" {...register('actividad2_id')} />
-            </div>
-            <div className="col-md-9 mb-3">
-              <CFormLabel htmlFor="actividad2_desc">Descripción actividad secundaria</CFormLabel>
-              <CFormInput id="actividad2_desc" {...register('actividad2_desc')} />
+            <div className="col-md-6 mb-3">
+              <CFormLabel htmlFor="ingresos_brutos">Ingresos Brutos</CFormLabel>
+              <CFormInput id="ingresos_brutos" {...register('ingresos_brutos')} />
             </div>
           </div>
         </CModalBody>

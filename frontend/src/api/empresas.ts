@@ -9,12 +9,11 @@ export interface Empresa {
   localidad: string | null
   telefono: string | null
   condicion_iva_id: number | null
+  provincia_id: number | null
   ingresos_brutos: string | null
   fecha_inicio_actividades: string | null
   actividad1_id: number | null
-  actividad1_desc: string | null
   actividad2_id: number | null
-  actividad2_desc: string | null
 }
 
 /** Campos editables del alta/edición de empresa (contribuyente). */
@@ -26,12 +25,11 @@ export interface EmpresaInput {
   localidad?: string | null
   telefono?: string | null
   condicion_iva_id?: number | null
+  provincia_id?: number | null
   ingresos_brutos?: string | null
   fecha_inicio_actividades?: string | null
   actividad1_id?: number | null
-  actividad1_desc?: string | null
   actividad2_id?: number | null
-  actividad2_desc?: string | null
 }
 
 export async function listEmpresas(): Promise<Empresa[]> {
