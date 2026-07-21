@@ -8,6 +8,7 @@ export interface Venta {
   letra: string | null
   punto_venta: number | null
   numero: number | null
+  tipo_comprobante_id: number | null
   neto_gravado: string
   iva: string
   total: string

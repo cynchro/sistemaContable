@@ -10,8 +10,9 @@
 | # | Automatización | Estado | Alcance |
 |---|-----------------|--------|---------|
 | 1 | Auditoría de ventas vs. ARCA (WSFEv1) | ✅ Implementado | Ventas propias emitidas |
+| 2 | Verificar puntual: venta cargada vs. ARCA (spot-check) | ✅ Implementado | Ver §6 |
 | — | Traer compras recibidas de ARCA en lote | ❌ Descartado (sin insumo) | Ver §2 |
-| — | V2: verificación masiva de ventas ya cargadas | Diferido | Ver §5 |
+| — | V3: verificación masiva/automática (no on-demand) | Diferido | Ver §5 |
 
 ---
 
@@ -122,14 +123,14 @@ empresa, no depende de período).
   de cada número (`FECompConsultar`) es una llamada por comprobante, así que solo se hace **on
   demand** cuando el usuario elige investigar un hueco puntual — evita hamerear a ARCA sin que
   el usuario lo pida.
-- **Por qué no se verifica automáticamente cada venta ya cargada**: sería 1 llamada SOAP por
-  fila y, si el CAE se emitió por nuestro propio flujo, no aporta demasiado (ya sabemos que
-  coincide). Queda como mejora diferida para un botón "Verificar" puntual por fila sospechosa.
+- **Por qué no se verifica automáticamente (en lote) cada venta ya cargada**: sería 1 llamada
+  SOAP por fila y, si el CAE se emitió por nuestro propio flujo, no aporta demasiado la mayoría
+  de las veces (ya sabemos que coincide). Se implementó como botón **"Verificar" on-demand por
+  fila** (ver §6), no automático — el usuario lo dispara cuando sospecha de un comprobante
+  puntual (por ejemplo uno importado por CSV).
 
-## 5. Fuera de alcance / diferido (V2)
+## 5. Fuera de alcance / diferido
 
-- **Verificación automática/masiva de ventas ya cargadas contra ARCA** (spot-check por fila,
-  útil para detectar ediciones manuales post-CAE o CAEs mal tipeados al importar CSV).
 - **Detectar tipos de comprobante nunca cargados localmente**: si un punto de venta emitió en
   ARCA un tipo que acá nunca se usó ni una vez, la auditoría actual no lo puede comparar (no
   hay con qué combo cruzarlo). Requeriría otra fuente (p. ej. `FEParamGetTiposCbte` combinado
@@ -139,8 +140,43 @@ empresa, no depende de período).
   API sobre "Mis Comprobantes", se podría enchufar ahí con un service nuevo detrás de la misma
   interfaz de importación que ya existe (CSV), sin tocar el resto del sistema.
 - **Historial persistido de auditorías** (ver §4).
+- **Verificación en lote/automática** de todas las ventas de un período contra ARCA (correr el
+  "Verificar" de §6 para cada fila sin que el usuario lo pida una por una) — descartado a
+  propósito por ahora para no hamerear a ARCA sin pedido explícito; si el volumen de comprobantes
+  lo justifica, es la extensión natural del botón por fila.
 
-## 6. Otras ideas de automatización evaluadas (no implementadas)
+## 6. Verificar puntual: venta cargada vs. ARCA (spot-check por fila)
+
+Complementa la Auditoría ARCA (§3): esa pantalla solo detecta **huecos de numeración**
+(comprobantes que ARCA tiene y acá no). Este botón cubre el caso inverso — una venta que **sí**
+está cargada localmente pero cuyo total o CAE puede no coincidir con lo que ARCA tiene
+realmente registrado (típicamente un CAE mal tipeado al importar un CSV de "Mis Comprobantes",
+o un total editado a mano después de haber emitido el CAE).
+
+**No hizo falta tocar el backend**: `AuditoriaAfipService::detalleComprobante()` /
+`GET /empresas/{id}/auditoria-afip/comprobante` (ya construidos para §3) hacen exactamente lo
+necesario. Lo único que faltaba era declarar en el frontend un campo que el backend **ya**
+devolvía (`VentaRepository::findPaginado()` hace `SELECT v.*`, así que `tipo_comprobante_id`
+ya viajaba en el JSON del listado de ventas, solo no estaba tipado en el frontend).
+
+| Archivo | Qué cambió |
+|---|---|
+| `frontend/src/api/ventas.ts` | Agregado `tipo_comprobante_id: number \| null` a la interfaz `Venta` (dato que el backend ya enviaba). |
+| `frontend/src/modules/iva/ventas/VentasList.tsx` | Botón **"Verificar"** por fila (junto a Editar/Mover/Eliminar), visible solo si la fila tiene punto de venta + número + letra + tipo (lo mínimo para resolver el `CbteTipo` de AFIP). Llama a `getComprobanteAfip()` (mismo cliente que ya existía) y muestra el resultado en un `CAlert` (mismo patrón que el mensaje de "Emitir CAE"): compara total (tolerancia $0,01) y CAE contra lo que devuelve ARCA. |
+
+**Verificado en vivo** contra ARCA homologación (empresa "GRUPO MAZZUCO SA", id 34, período
+2026-05 Mayo): se probaron los tres estados posibles —
+- *Coincide*: comprobante con total y CAE iguales a ARCA (validado en la sesión de §3).
+- *Difiere*: `A 1-1: difiere de ARCA — total local $ 123.500,00 vs. ARCA $ 1.210,00.` (dato de
+  demo con total distinto al que ARCA tiene realmente registrado para ese punto de
+  venta+tipo+letra+número).
+- *No encontrado*: `A 3-777: ARCA no tiene este comprobante registrado.`
+
+Sin errores de consola en ninguno de los tres casos. `tsc -b`, `oxlint` y `vite build` limpios
+(no ameritó tests de backend nuevos: el endpoint reusado ya está cubierto por
+`AuditoriaAfipTest.php`).
+
+## 7. Otras ideas de automatización evaluadas (no implementadas)
 
 Discutidas con el usuario al arrancar este frente, quedan pendientes de priorizar:
 

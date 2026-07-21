@@ -32,6 +32,7 @@ import {
   type VentaInput,
 } from '../../../api/ventas'
 import { emitirCae } from '../../../api/afip'
+import { getComprobanteAfip } from '../../../api/auditoriaAfip'
 import VentaFormModal from './VentaFormModal'
 import MoverComprobanteModal from '../MoverComprobanteModal'
 import AfipAmbienteBanner from '../../../components/AfipAmbienteBanner'
@@ -141,6 +142,40 @@ export default function VentasList() {
       setCaeMsg({ ok: true, text: `CAE ${r.cae} obtenido (vence ${r.cae_vto ?? '—'}).` })
     },
     onError: (e) => setCaeMsg({ ok: false, text: apiError(e) }),
+  })
+
+  // Spot-check on-demand: compara una venta ya cargada contra lo que ARCA tiene registrado
+  // (mismo endpoint que la Auditoría ARCA). Detecta CAEs mal tipeados al importar CSV o
+  // ediciones manuales posteriores a la emisión. Nunca se dispara sola, solo por botón.
+  const [verificarMsg, setVerificarMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const verificarM = useMutation({
+    mutationFn: (v: Venta) =>
+      getComprobanteAfip(eId, {
+        tipoComprobanteId: v.tipo_comprobante_id as number,
+        puntoVenta: String(v.punto_venta),
+        letra: v.letra as string,
+        numero: String(v.numero),
+      }).then((detalle) => ({ v, detalle })),
+    onSuccess: ({ v, detalle }) => {
+      const ref = `${v.letra} ${v.punto_venta}-${v.numero}`
+      if (!detalle.encontrado) {
+        setVerificarMsg({ ok: false, text: `${ref}: ARCA no tiene este comprobante registrado.` })
+        return
+      }
+      const totalLocal = Number(v.total)
+      const totalArca = detalle.total ?? 0
+      const totalDifiere = Math.abs(totalLocal - totalArca) > 0.01
+      const caeDifiere = !!v.cae && !!detalle.cae && v.cae !== detalle.cae
+      if (!totalDifiere && !caeDifiere) {
+        setVerificarMsg({ ok: true, text: `${ref}: coincide con ARCA (total ${formatImporte(v.total)}).` })
+        return
+      }
+      const partes: string[] = []
+      if (totalDifiere) partes.push(`total local ${formatImporte(v.total)} vs. ARCA ${formatImporte(String(totalArca))}`)
+      if (caeDifiere) partes.push(`CAE local ${v.cae} vs. ARCA ${detalle.cae}`)
+      setVerificarMsg({ ok: false, text: `${ref}: difiere de ARCA — ${partes.join('; ')}.` })
+    },
+    onError: (e) => setVerificarMsg({ ok: false, text: apiError(e) }),
   })
 
   const closeModal = () => {
@@ -273,6 +308,11 @@ export default function VentasList() {
             {caeMsg.text}
           </CAlert>
         )}
+        {verificarMsg && (
+          <CAlert color={verificarMsg.ok ? 'success' : 'danger'} dismissible onClose={() => setVerificarMsg(null)}>
+            {verificarMsg.text}
+          </CAlert>
+        )}
         <CForm className="row g-2 align-items-end mb-3" onSubmit={aplicarFiltros}>
           <div className="col-auto">
             <CFormLabel className="small mb-1">Desde</CFormLabel>
@@ -384,6 +424,22 @@ export default function VentasList() {
                           title="Solicitar CAE a ARCA (WSFEv1)"
                         >
                           Emitir CAE
+                        </CButton>
+                      )}
+                      {v.punto_venta != null && v.numero != null && v.letra && v.tipo_comprobante_id != null && (
+                        <CButton
+                          color="secondary"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                          disabled={verificarM.isPending}
+                          onClick={() => {
+                            setVerificarMsg(null)
+                            verificarM.mutate(v)
+                          }}
+                          title="Comparar este comprobante contra lo que ARCA tiene registrado"
+                        >
+                          Verificar
                         </CButton>
                       )}
                       <CButton
