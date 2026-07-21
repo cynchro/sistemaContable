@@ -17,6 +17,7 @@ use App\Modules\Iva\Controllers\PadronController;
 use App\Modules\Iva\Controllers\AfipController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
+use App\Modules\Iva\Controllers\AuditoriaAfipController;
 use App\Modules\Iva\Controllers\ExportFormatoController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
@@ -220,6 +221,20 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         "{$bajoPeriodo}/ventas/{id}/cae",
         [FacturaElectronicaController::class, 'autorizar'],
         [$pw('iva.facturacion')],
+    );
+
+    // Auditoría de ventas vs. ARCA (WSFEv1): compara la numeración local contra lo que
+    // AFIP tiene autorizado por punto de venta + tipo, y permite consultar el detalle de
+    // un comprobante puntual. Solo lectura, se calcula en vivo (sin tabla propia).
+    $router->get(
+        "{$base}/auditoria-afip",
+        [AuditoriaAfipController::class, 'resumen'],
+        [$perm('iva.auditoria-afip')],
+    );
+    $router->get(
+        "{$base}/auditoria-afip/comprobante",
+        [AuditoriaAfipController::class, 'comprobante'],
+        [$perm('iva.auditoria-afip')],
     );
 
     // Puntos de venta (por empresa) — registro para la numeración de factura electrónica

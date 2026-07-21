@@ -41,6 +41,7 @@ $keys = [
     'iva.facturacion',
     'iva.puntos-venta',
     'iva.auditoria',
+    'iva.auditoria-afip',
 ];
 
 $select = $pdo->prepare('SELECT id FROM permisos WHERE `key` = ?');

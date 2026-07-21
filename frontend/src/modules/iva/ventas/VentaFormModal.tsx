@@ -30,6 +30,7 @@ import { listRubros } from '../../../api/rubros'
 import { listCuentas } from '../../../api/cuentas'
 import { getVenta, type VentaInput } from '../../../api/ventas'
 import SujetoTypeahead from '../SujetoTypeahead'
+import type { VentaPreset } from '../auditoria/afipPreset'
 
 /** Alícuotas habilitadas por AFIP (id WSFE → %). El motor usa el %. */
 const ALICUOTAS = ['0', '10.5', '21', '27', '2.5', '5']
@@ -136,6 +137,8 @@ interface Props {
   errorMsg?: string | null
   /** Fecha a pre-cargar en una venta nueva (última cargada del período). */
   ultimaFecha?: string
+  /** Preset a pre-armar (solo en alta): datos de un comprobante traído de ARCA. */
+  preset?: VentaPreset | null
   onClose: () => void
   onSubmit: (values: VentaInput) => void
 }
@@ -151,6 +154,7 @@ export default function VentaFormModal({
   saving,
   errorMsg,
   ultimaFecha,
+  preset,
   onClose,
   onSubmit,
 }: Props) {
@@ -234,7 +238,30 @@ export default function VentaFormModal({
   useEffect(() => {
     if (!visible) return
     if (ventaId == null) {
-      reset({ ...VACIO, fecha: ultimaFecha ?? '' })
+      if (preset) {
+        const tipoId = tiposComprobante?.find((t) => t.codigo === preset.tipoCodigo)?.id
+        reset({
+          ...VACIO,
+          fecha: preset.fecha ?? ultimaFecha ?? '',
+          tipo_comprobante_id: tipoId != null ? String(tipoId) : '',
+          letra: preset.letra ?? '',
+          punto_venta: preset.punto_venta ?? '',
+          numero: preset.numero ?? '',
+          cai: preset.cai ?? '',
+          fecha_cai: preset.fecha_cai ?? '',
+          discriminaciones:
+            preset.discriminaciones.length > 0
+              ? preset.discriminaciones.map((d) => ({
+                  neto_gravado: d.neto_gravado,
+                  iva_alicuota: d.iva_alicuota,
+                  iva_importe: '',
+                  cuenta_id: '',
+                }))
+              : VACIO.discriminaciones,
+        })
+      } else {
+        reset({ ...VACIO, fecha: ultimaFecha ?? '' })
+      }
     } else if (detalle) {
       reset({
         fecha: detalle.fecha ?? '',
@@ -298,7 +325,7 @@ export default function VentaFormModal({
         })),
       })
     }
-  }, [visible, ventaId, detalle, reset, ultimaFecha])
+  }, [visible, ventaId, detalle, reset, ultimaFecha, preset, tiposComprobante])
 
   const lineas = watch('discriminaciones')
   const esFacturaC = (watch('letra') ?? '').trim().toUpperCase() === 'C'
@@ -396,7 +423,7 @@ export default function VentaFormModal({
         })),
     })
 
-  const titulo = ventaId == null ? 'Nueva venta' : 'Editar venta'
+  const titulo = ventaId == null ? (preset ? 'Nueva venta — datos de ARCA' : 'Nueva venta') : 'Editar venta'
   const mostrarForm = ventaId == null || !!detalle
 
   return (
@@ -407,6 +434,11 @@ export default function VentaFormModal({
       <CForm onSubmit={handleSubmit(submit)} noValidate>
         <CModalBody>
           {errorMsg && <CAlert color="danger">{errorMsg}</CAlert>}
+          {preset && ventaId == null && (
+            <CAlert color="info" className="py-2 small">
+              Datos traídos de ARCA. Revisá el cliente, el rubro y la cuenta antes de guardar.
+            </CAlert>
+          )}
           {cargando && (
             <div className="text-center py-4">
               <CSpinner />

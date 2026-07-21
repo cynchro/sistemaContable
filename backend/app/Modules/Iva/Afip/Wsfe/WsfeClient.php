@@ -20,4 +20,7 @@ interface WsfeClient
      * @param array<string, mixed> $feCaeReq estructura FeCAEReq (FeCabReq + FeDetReq)
      */
     public function solicitarCae(array $feCaeReq): ComprobanteCae;
+
+    /** Consulta un comprobante puntual ya registrado en AFIP (FECompConsultar). */
+    public function consultarComprobante(int $ptoVta, int $cbteTipo, int $cbteNro): ComprobanteConsultado;
 }

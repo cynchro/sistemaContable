@@ -272,6 +272,99 @@ class VentaRepository
     }
 
     /**
+     * Combinaciones (punto de venta, tipo de comprobante, letra) que la empresa ya usó
+     * al menos una vez, cruzando todos sus períodos. Base para la auditoría contra ARCA:
+     * no se puede comparar un tipo que nunca se cargó localmente (ver limitación en el
+     * plan de la feature).
+     *
+     * @return list<array{punto_venta:string, tipo_comprobante_id:int, tipo_codigo:string, letra:string}>
+     */
+    public function tiposUsados(int $empresaId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT DISTINCT v.punto_venta, v.tipo_comprobante_id, tc.codigo AS tipo_codigo, v.letra
+             FROM ventas v
+             JOIN periodos p ON p.id = v.periodo_id
+             JOIN tipos_comprobante tc ON tc.id = v.tipo_comprobante_id
+             WHERE p.empresa_id = ? AND v.letra IS NOT NULL AND v.letra <> \'\'
+             ORDER BY v.punto_venta, tc.codigo, v.letra'
+        );
+        $stmt->execute([$empresaId]);
+
+        /** @var list<array{punto_venta:string, tipo_comprobante_id:int, tipo_codigo:string, letra:string}> */
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /** Código legacy (`tipos_comprobante.codigo`, p. ej. 'FA'/'NC') de un tipo por id. */
+    public function tipoComprobanteCodigo(int $tipoComprobanteId): ?string
+    {
+        $stmt = $this->pdo->prepare('SELECT codigo FROM tipos_comprobante WHERE id = ?');
+        $stmt->execute([$tipoComprobanteId]);
+        $codigo = $stmt->fetchColumn();
+
+        return $codigo === false ? null : (string) $codigo;
+    }
+
+    /**
+     * Máximo número local cargado para una combinación punto de venta + tipo + letra de
+     * la empresa (compara por valor numérico, ignora ceros a la izquierda).
+     */
+    public function maxNumero(int $empresaId, string $puntoVenta, int $tipoComprobanteId, string $letra): int
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT COALESCE(MAX(CAST(v.numero AS UNSIGNED)), 0) FROM ventas v
+             JOIN periodos p ON p.id = v.periodo_id
+             WHERE p.empresa_id = :empresa
+               AND CAST(v.punto_venta AS UNSIGNED) = :pv
+               AND v.tipo_comprobante_id = :tipo
+               AND UPPER(v.letra) = :letra'
+        );
+        $stmt->execute([
+            'empresa' => $empresaId,
+            'pv'      => (int) $puntoVenta,
+            'tipo'    => $tipoComprobanteId,
+            'letra'   => strtoupper(trim($letra)),
+        ]);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Busca la venta local para un comprobante puntual (mismo criterio de `findDuplicado`),
+     * para que la auditoría sepa si un número que ARCA reconoce ya está cargado o no.
+     *
+     * @return array{id:int}|null
+     */
+    public function findByComprobante(
+        int $empresaId,
+        string $puntoVenta,
+        int $tipoComprobanteId,
+        string $letra,
+        string $numero,
+    ): ?array {
+        $stmt = $this->pdo->prepare(
+            'SELECT v.id FROM ventas v
+             JOIN periodos p ON p.id = v.periodo_id
+             WHERE p.empresa_id = :empresa
+               AND v.tipo_comprobante_id = :tipo
+               AND UPPER(v.letra) = :letra
+               AND CAST(v.punto_venta AS UNSIGNED) = :pv
+               AND CAST(v.numero AS UNSIGNED) = :numero
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'empresa' => $empresaId,
+            'tipo'    => $tipoComprobanteId,
+            'letra'   => strtoupper(trim($letra)),
+            'pv'      => (int) $puntoVenta,
+            'numero'  => (int) $numero,
+        ]);
+        $id = $stmt->fetchColumn();
+
+        return $id === false ? null : ['id' => (int) $id];
+    }
+
+    /**
      * Persiste el resultado de la autorización electrónica (CAE) sobre la cabecera.
      *
      * @param array<string, mixed> $fields subconjunto de numero/cae/cae_vto/afip_resultado/afip_obs

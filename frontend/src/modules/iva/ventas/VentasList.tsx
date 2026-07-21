@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import {
   CCard,
@@ -35,6 +35,7 @@ import { emitirCae } from '../../../api/afip'
 import VentaFormModal from './VentaFormModal'
 import MoverComprobanteModal from '../MoverComprobanteModal'
 import AfipAmbienteBanner from '../../../components/AfipAmbienteBanner'
+import type { VentaPreset } from '../auditoria/afipPreset'
 
 /** Mensaje de error de la API (422 con detalle de validación o 409 de conflicto). */
 function apiError(e: unknown): string {
@@ -65,6 +66,8 @@ export default function VentasList() {
   const eId = Number(empresaId)
   const pId = Number(periodoId)
   const qc = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
@@ -78,6 +81,21 @@ export default function VentasList() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  const [preset, setPreset] = useState<VentaPreset | null>(null)
+
+  // Llegada desde "Auditoría ARCA" (Cargar como venta): abre el alta precargada con lo
+  // que devolvió ARCA. Se limpia el state de navegación para que un refresh no la reabra.
+  useEffect(() => {
+    const state = location.state as { preset?: VentaPreset } | null
+    if (state?.preset) {
+      setEditingId(null)
+      setFormError(null)
+      setPreset(state.preset)
+      setModalOpen(true)
+      navigate(location.pathname, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [moviendo, setMoviendo] = useState<Venta | null>(null)
@@ -129,6 +147,7 @@ export default function VentasList() {
     setModalOpen(false)
     setEditingId(null)
     setFormError(null)
+    setPreset(null)
   }
 
   const saveM = useMutation({
@@ -144,12 +163,14 @@ export default function VentasList() {
   const nuevaVenta = () => {
     setEditingId(null)
     setFormError(null)
+    setPreset(null)
     setModalOpen(true)
   }
 
   const editarVenta = (id: number) => {
     setEditingId(id)
     setFormError(null)
+    setPreset(null)
     setModalOpen(true)
   }
 
@@ -441,6 +462,7 @@ export default function VentasList() {
       saving={saveM.isPending}
       errorMsg={formError}
       ultimaFecha={ultimaFecha}
+      preset={preset}
       onClose={closeModal}
       onSubmit={(v) => saveM.mutate(v)}
     />

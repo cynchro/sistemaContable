@@ -57,6 +57,16 @@ final class AfipWsfeClient implements WsfeClient
         return ComprobanteCae::fromSoapResponse(self::get($r, 'FECAESolicitarResult') ?? $r);
     }
 
+    public function consultarComprobante(int $ptoVta, int $cbteTipo, int $cbteNro): ComprobanteConsultado
+    {
+        $r = $this->transport->call($this->wsdl, 'FECompConsultar', [
+            'Auth'          => $this->auth(),
+            'FeCompConsReq' => ['CbteTipo' => $cbteTipo, 'CbteNro' => $cbteNro, 'PtoVta' => $ptoVta],
+        ]);
+
+        return ComprobanteConsultado::fromSoapResponse(self::get($r, 'FECompConsultarResult') ?? $r);
+    }
+
     /** @return array{Token:string, Sign:string, Cuit:string} */
     private function auth(): array
     {

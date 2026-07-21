@@ -19,6 +19,7 @@ import {
   cilBriefcase,
   cilShieldAlt,
   cilChartPie,
+  cilFindInPage,
 } from '@coreui/icons'
 
 /** Ítem de menú (hoja). Puede depender del contexto activo (empresa/período). */
@@ -122,6 +123,13 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
           name: 'Reportes de Mayor',
           to: `/empresas/${emp}/reportes-mayor`,
           icon: cilBook,
+          disabled: needEmpresa,
+          hint: hintEmpresa,
+        },
+        {
+          name: 'Auditoría ARCA',
+          to: `/empresas/${emp}/auditoria-afip`,
+          icon: cilFindInPage,
           disabled: needEmpresa,
           hint: hintEmpresa,
         },

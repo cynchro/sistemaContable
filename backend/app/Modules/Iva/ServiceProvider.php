@@ -26,6 +26,8 @@ use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Repositories\PuntoVentaRepository;
 use App\Modules\Iva\Services\PuntoVentaService;
 use App\Modules\Iva\Controllers\PuntoVentaController;
+use App\Modules\Iva\Services\AuditoriaAfipService;
+use App\Modules\Iva\Controllers\AuditoriaAfipController;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Compartido\Repositories\PeriodoRepository;
 use App\Modules\Compartido\Repositories\TipoRetencionRepository;
@@ -360,6 +362,18 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             PuntoVentaController::class,
             fn () => new PuntoVentaController($c->get(PuntoVentaService::class)),
+        );
+
+        // Auditoría de ventas vs. ARCA: reusa VentaRepository/EmpresaRepository/WsfeClient
+        // ya registrados arriba, sin estado propio.
+        $c->singleton(AuditoriaAfipService::class, fn () => new AuditoriaAfipService(
+            $c->get(VentaRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(WsfeClient::class),
+        ));
+        $c->singleton(
+            AuditoriaAfipController::class,
+            fn () => new AuditoriaAfipController($c->get(AuditoriaAfipService::class)),
         );
     }
 }

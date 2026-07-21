@@ -31,4 +31,17 @@ final class AlicuotaIvaResolver
 
         return self::TABLA[$key];
     }
+
+    /**
+     * Inverso de `id()`: Id de alícuota AFIP → porcentaje. Usado al leer respuestas de
+     * AFIP (p. ej. FECompConsultar) que traen el Id en vez del porcentaje. Id desconocido
+     * → null (no se inventa un porcentaje).
+     */
+    public static function porcentaje(int $id): ?float
+    {
+        static $inversa = null;
+        $inversa ??= array_flip(self::TABLA);
+
+        return isset($inversa[$id]) ? (float) $inversa[$id] : null;
+    }
 }

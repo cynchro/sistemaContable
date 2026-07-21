@@ -13,6 +13,7 @@ import LibroIvaPage from './modules/iva/libro/LibroIvaPage'
 import ActividadesPage from './modules/iva/actividades/ActividadesPage'
 import CuentasList from './modules/iva/cuentas/CuentasList'
 import ReporteMayorPage from './modules/iva/reportes/ReporteMayorPage'
+import AuditoriaAfipPage from './modules/iva/auditoria/AuditoriaAfipPage'
 import PanelPage from './modules/iva/panel/PanelPage'
 import ManualesPage from './modules/manuales/ManualesPage'
 import ImportarPage from './modules/iva/importar/ImportarPage'
@@ -36,6 +37,7 @@ function App() {
           <Route path="empresas/:empresaId/actividades" element={<ActividadesPage />} />
           <Route path="empresas/:empresaId/cuentas" element={<CuentasList />} />
           <Route path="empresas/:empresaId/reportes-mayor" element={<ReporteMayorPage />} />
+          <Route path="empresas/:empresaId/auditoria-afip" element={<AuditoriaAfipPage />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/ventas" element={<VentasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/compras" element={<ComprasList />} />
           <Route path="empresas/:empresaId/periodos/:periodoId/libro-iva" element={<LibroIvaPage />} />

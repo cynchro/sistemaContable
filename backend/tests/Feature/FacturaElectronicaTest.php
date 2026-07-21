@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Modules\Iva\Afip\Wsfe\WsfeClient;
 use App\Modules\Iva\Afip\Wsfe\ComprobanteCae;
+use App\Modules\Iva\Afip\Wsfe\ComprobanteConsultado;
 
 /**
  * Emisión de factura electrónica (WSFEv1): numeración por punto de venta + CAE.
@@ -69,6 +70,10 @@ class FacturaElectronicaTest extends FeatureTestCase
                     return new ComprobanteCae('A', $this->cae, '20260131');
                 }
                 return new ComprobanteCae('R', null, null, [], [['code' => 10016, 'msg' => 'PtoVta inexistente']]);
+            }
+            public function consultarComprobante(int $ptoVta, int $cbteTipo, int $cbteNro): ComprobanteConsultado
+            {
+                return new ComprobanteConsultado(false);
             }
         });
     }
@@ -149,6 +154,10 @@ class FacturaElectronicaTest extends FeatureTestCase
             {
                 $this->req = $feCaeReq;
                 return new ComprobanteCae('A', '74000000000099', '20260228');
+            }
+            public function consultarComprobante(int $ptoVta, int $cbteTipo, int $cbteNro): ComprobanteConsultado
+            {
+                return new ComprobanteConsultado(false);
             }
         };
         $this->app->instance(WsfeClient::class, $captor);
