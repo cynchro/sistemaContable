@@ -17,11 +17,12 @@ import {
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
 import { sugerenciaPadron } from '../../../api/afip'
+import { listCuentas } from '../../../api/cuentas'
 import type { Sujeto, SujetoInput } from '../../../api/sujetos'
 
 const schema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
-  cuit: z.string().optional(),
+  cuit: z.string().min(1, 'El CUIT es obligatorio (es la clave del padrón único)'),
   condicion_iva_id: z.string().optional(),
   provincia_id: z.string().optional(),
   domicilio: z.string().optional(),
@@ -31,21 +32,26 @@ const schema = z.object({
   cp: z.string().optional(),
   cai: z.string().optional(),
   fecha_cai: z.string().optional(),
-  esglobal: z.boolean().optional(),
   cais: z.array(z.object({ numero: z.string(), vencimiento: z.string() })),
+  cuenta_id: z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
+
+// Campos de fecha opcionales: un '' del form no es una fecha válida para MySQL (columna DATE
+// nullable) — hay que mandar null, no ''. Mismo patrón que ya usan Compra/VentaFormModal.
+const strOrNull = (v?: string) => (v && v.trim() !== '' ? v : null)
 
 interface Props {
   visible: boolean
   sujeto: Sujeto | null
   esProveedor: boolean
+  empresaId: number
   saving: boolean
   onClose: () => void
   onSubmit: (values: SujetoInput) => void
 }
 
-export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, onClose, onSubmit }: Props) {
+export default function SujetoFormModal({ visible, sujeto, esProveedor, empresaId, saving, onClose, onSubmit }: Props) {
   const { data: condiciones } = useQuery({
     queryKey: ['catalogo', 'condiciones-iva'],
     queryFn: () => listCatalogo('condiciones-iva'),
@@ -53,6 +59,14 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
   const { data: provincias } = useQuery({
     queryKey: ['catalogo', 'provincias'],
     queryFn: () => listCatalogo('provincias'),
+  })
+  // Cuenta contable por defecto (documento "Satélite Visual IVA" §5): solo aplica a proveedores
+  // ya existentes (la cuenta vive en iva_sujeto_empresas, que recién se crea al activar el
+  // sujeto en esta empresa — no hay nada que editar todavía en el alta).
+  const { data: cuentas } = useQuery({
+    queryKey: ['cuentas', empresaId],
+    queryFn: () => listCuentas(empresaId),
+    enabled: esProveedor && !!sujeto,
   })
 
   const {
@@ -101,8 +115,8 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
         cp: sujeto?.cp ?? '',
         cai: sujeto?.cai ?? '',
         fecha_cai: sujeto?.fecha_cai ?? '',
-        esglobal: sujeto?.esglobal === 'S',
         cais: sujeto?.cais ?? [],
+        cuenta_id: sujeto?.cuenta_id != null ? String(sujeto.cuenta_id) : '',
       })
     }
   }, [visible, sujeto, reset])
@@ -112,9 +126,11 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
       ...v,
       condicion_iva_id: v.condicion_iva_id ? Number(v.condicion_iva_id) : null,
       provincia_id: v.provincia_id ? Number(v.provincia_id) : null,
-      esglobal: v.esglobal ? 'S' : 'N',
+      fecha_cai: strOrNull(v.fecha_cai),
       // Solo los proveedores tienen lista de CAI; se descartan las filas vacías.
       cais: esProveedor ? v.cais.filter((c) => c.numero.trim() !== '') : [],
+      // Solo tiene efecto al editar (el alta la ignora, ver api/sujetos.ts).
+      cuenta_id: v.cuenta_id ? Number(v.cuenta_id) : null,
     })
 
   const titulo = `${sujeto ? 'Editar' : 'Nuevo'} ${esProveedor ? 'proveedor' : 'cliente'}`
@@ -133,9 +149,9 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
           </div>
           <div className="row">
             <div className="col-md-4 mb-3">
-              <CFormLabel htmlFor="cuit">CUIT</CFormLabel>
+              <CFormLabel htmlFor="cuit">CUIT * (clave del padrón único)</CFormLabel>
               <div className="d-flex gap-2">
-                <CFormInput id="cuit" {...register('cuit')} />
+                <CFormInput id="cuit" invalid={!!errors.cuit} {...register('cuit')} />
                 <CButton
                   type="button"
                   color="info"
@@ -147,6 +163,7 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
                   {padron.isPending ? '…' : 'AFIP'}
                 </CButton>
               </div>
+              {errors.cuit && <div className="text-danger small mt-1">{errors.cuit.message}</div>}
               {padronError && <div className="text-danger small mt-1">{padronError}</div>}
             </div>
             <div className="col-md-4 mb-3">
@@ -208,6 +225,25 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
               </>
             )}
           </div>
+          {esProveedor && sujeto && (
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <CFormLabel htmlFor="cuenta_id">Cuenta contable por defecto (compras)</CFormLabel>
+                <CFormSelect id="cuenta_id" {...register('cuenta_id')}>
+                  <option value="">— Sin regla (se pide al cargar cada compra) —</option>
+                  {cuentas?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.codigo ? `${c.codigo} — ${c.nombre}` : c.nombre}
+                    </option>
+                  ))}
+                </CFormSelect>
+                <div className="text-muted small mt-1">
+                  Se precarga en las compras de este proveedor cuando la línea no trae una cuenta
+                  propia. Es específica de esta empresa (otras empresas pueden tener otra).
+                </div>
+              </div>
+            </div>
+          )}
           {esProveedor && (
             <div className="mb-3">
               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -243,11 +279,9 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
               ))}
             </div>
           )}
-          <div className="form-check">
-            <input className="form-check-input" type="checkbox" id="esglobal" {...register('esglobal')} />
-            <label className="form-check-label" htmlFor="esglobal">
-              Compartir con todas las empresas del estudio (global)
-            </label>
+          <div className="text-muted small">
+            Este sujeto queda en el padrón único del estudio: si ya existe otro con el mismo
+            CUIT en otra empresa, se reutiliza (no se duplica).
           </div>
         </CModalBody>
         <CModalFooter>

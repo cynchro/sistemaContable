@@ -39,6 +39,16 @@ import {
   deleteCoeficiente,
 } from '../../../api/actividades'
 import { listSujetos } from '../../../api/sujetos'
+import { listCuentas } from '../../../api/cuentas'
+import { listCatalogo } from '../../../api/catalogos'
+import {
+  listPuntoVenta as listVentaPuntoVenta,
+  setPuntoVenta as setVentaPuntoVenta,
+  deletePuntoVenta as deleteVentaPuntoVenta,
+  listPorTipo as listVentaPorTipo,
+  setPorTipo as setVentaPorTipo,
+  deletePorTipo as deleteVentaPorTipo,
+} from '../../../api/ventaClasificacion'
 
 function apiError(e: unknown, fallback: string): string {
   const err = e as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
@@ -61,6 +71,13 @@ export default function ActividadesPage() {
   const receptores = useQuery({ queryKey: ['actividades-rec', eId], queryFn: () => listReceptores(eId) })
   const coefs = useQuery({ queryKey: ['actividades-coef', eId], queryFn: () => listCoeficientes(eId) })
   const clientes = useQuery({ queryKey: ['clientes', eId], queryFn: () => listSujetos('clientes', eId) })
+  const cuentas = useQuery({ queryKey: ['cuentas', eId], queryFn: () => listCuentas(eId) })
+  const tiposComprobante = useQuery({
+    queryKey: ['catalogo', 'tipos-comprobante'],
+    queryFn: () => listCatalogo('tipos-comprobante'),
+  })
+  const ventaPv = useQuery({ queryKey: ['venta-clasif-pv', eId], queryFn: () => listVentaPuntoVenta(eId) })
+  const ventaTipo = useQuery({ queryKey: ['venta-clasif-tipo', eId], queryFn: () => listVentaPorTipo(eId) })
 
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -72,6 +89,11 @@ export default function ActividadesPage() {
   const [recAct, setRecAct] = useState('')
   const [coefAct, setCoefAct] = useState('')
   const [coefPct, setCoefPct] = useState('')
+  const [ventaPv2, setVentaPv2] = useState('')
+  const [ventaPvCuenta, setVentaPvCuenta] = useState('')
+  const [tipoPv, setTipoPv] = useState('')
+  const [tipoComprobanteId, setTipoComprobanteId] = useState('')
+  const [tipoCuenta, setTipoCuenta] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const crearAct = useMutation({
@@ -149,6 +171,38 @@ export default function ActividadesPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['actividades-coef', eId] }),
   })
   const sumaCoef = (coefs.data ?? []).reduce((a, c) => a + Number(c.coeficiente), 0)
+
+  // Clasificación de ventas por PV + tipo de comprobante → cuenta (documento "Satélite Visual
+  // IVA" §4, Pantalla D). No depende de ningún sujeto: el PV es del propio contribuyente.
+  const mapearVentaPv = useMutation({
+    mutationFn: () => setVentaPuntoVenta(eId, ventaPv2.trim(), Number(ventaPvCuenta)),
+    onSuccess: () => {
+      setVentaPv2('')
+      setVentaPvCuenta('')
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['venta-clasif-pv', eId] })
+    },
+    onError: (e) => setError(apiError(e, 'No se pudo guardar la regla.')),
+  })
+  const borrarVentaPv = useMutation({
+    mutationFn: (id: number) => deleteVentaPuntoVenta(eId, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['venta-clasif-pv', eId] }),
+  })
+  const mapearVentaTipo = useMutation({
+    mutationFn: () => setVentaPorTipo(eId, tipoPv.trim(), Number(tipoComprobanteId), Number(tipoCuenta)),
+    onSuccess: () => {
+      setTipoPv('')
+      setTipoComprobanteId('')
+      setTipoCuenta('')
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['venta-clasif-tipo', eId] })
+    },
+    onError: (e) => setError(apiError(e, 'No se pudo guardar la excepción.')),
+  })
+  const borrarVentaTipo = useMutation({
+    mutationFn: (id: number) => deleteVentaPorTipo(eId, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['venta-clasif-tipo', eId] }),
+  })
 
   return (
     <CCard>
@@ -506,6 +560,184 @@ export default function ActividadesPage() {
               <CAlert color="warning" className="small py-2">
                 Los porcentajes no suman 100% (suman {(sumaCoef * 100).toFixed(2)}%). Ajustá antes de generar la DJ.
               </CAlert>
+            )}
+          </CCol>
+        </CRow>
+
+        <hr />
+        <h6>Clasificación de ventas por cuenta contable (documento "Satélite Visual IVA")</h6>
+        <div className="text-body-secondary small mb-3">
+          A diferencia de las actividades de arriba, esto resuelve la <strong>cuenta contable</strong> que
+          se precarga en las líneas de una venta (mayorización), no la actividad de IIBB. Precedencia:{' '}
+          <strong>tipo de comprobante específico</strong> → <strong>regla general del punto de venta</strong>{' '}
+          → sin regla (queda para cargar a mano).
+        </div>
+        <CRow>
+          <CCol md={6}>
+            <h6>Regla general por punto de venta</h6>
+            <CForm
+              className="row g-2 align-items-end mb-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (ventaPv2.trim() && ventaPvCuenta) mapearVentaPv.mutate()
+              }}
+            >
+              <div className="col-auto">
+                <CFormLabel className="small mb-1">Punto de venta</CFormLabel>
+                <CFormInput
+                  style={{ width: 110 }}
+                  value={ventaPv2}
+                  onChange={(e) => setVentaPv2(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
+              <div className="col">
+                <CFormLabel className="small mb-1">Cuenta</CFormLabel>
+                <CFormSelect value={ventaPvCuenta} onChange={(e) => setVentaPvCuenta(e.target.value)}>
+                  <option value="">—</option>
+                  {cuentas.data?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.codigo ? `${c.codigo} — ${c.nombre}` : c.nombre}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <div className="col-auto">
+                <CButton
+                  type="submit"
+                  color="primary"
+                  disabled={mapearVentaPv.isPending || !ventaPv2.trim() || !ventaPvCuenta}
+                >
+                  Mapear
+                </CButton>
+              </div>
+            </CForm>
+            {ventaPv.isLoading && <CSpinner />}
+            {ventaPv.data && (
+              <CTable small hover responsive align="middle">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>PV</CTableHeaderCell>
+                    <CTableHeaderCell>Cuenta</CTableHeaderCell>
+                    <CTableHeaderCell />
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {ventaPv.data.map((p) => (
+                    <CTableRow key={p.id}>
+                      <CTableDataCell>{String(p.punto_venta).padStart(4, '0')}</CTableDataCell>
+                      <CTableDataCell>
+                        {p.cuenta_codigo ? `${p.cuenta_codigo} — ${p.cuenta_nombre}` : p.cuenta_nombre}
+                      </CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        <CButton color="danger" variant="ghost" size="sm" onClick={() => borrarVentaPv.mutate(p.id)}>
+                          ✕
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                  {ventaPv.data.length === 0 && (
+                    <CTableRow>
+                      <CTableDataCell colSpan={3} className="text-center text-body-secondary py-3">
+                        Sin reglas cargadas.
+                      </CTableDataCell>
+                    </CTableRow>
+                  )}
+                </CTableBody>
+              </CTable>
+            )}
+          </CCol>
+
+          <CCol md={6}>
+            <h6>Excepción por tipo de comprobante</h6>
+            <div className="text-body-secondary small mb-2">
+              Ej.: una Nota de Crédito del mismo PV se imputa distinto que una Factura.
+            </div>
+            <CForm
+              className="row g-2 align-items-end mb-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (tipoPv.trim() && tipoComprobanteId && tipoCuenta) mapearVentaTipo.mutate()
+              }}
+            >
+              <div className="col-auto">
+                <CFormLabel className="small mb-1">Punto de venta</CFormLabel>
+                <CFormInput
+                  style={{ width: 100 }}
+                  value={tipoPv}
+                  onChange={(e) => setTipoPv(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
+              <div className="col">
+                <CFormLabel className="small mb-1">Tipo de comprobante</CFormLabel>
+                <CFormSelect value={tipoComprobanteId} onChange={(e) => setTipoComprobanteId(e.target.value)}>
+                  <option value="">—</option>
+                  {tiposComprobante.data?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nombre}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <div className="col">
+                <CFormLabel className="small mb-1">Cuenta</CFormLabel>
+                <CFormSelect value={tipoCuenta} onChange={(e) => setTipoCuenta(e.target.value)}>
+                  <option value="">—</option>
+                  {cuentas.data?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.codigo ? `${c.codigo} — ${c.nombre}` : c.nombre}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+              <div className="col-auto">
+                <CButton
+                  type="submit"
+                  color="primary"
+                  disabled={mapearVentaTipo.isPending || !tipoPv.trim() || !tipoComprobanteId || !tipoCuenta}
+                >
+                  Mapear
+                </CButton>
+              </div>
+            </CForm>
+            {ventaTipo.data && (
+              <CTable small hover responsive align="middle">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell>PV</CTableHeaderCell>
+                    <CTableHeaderCell>Tipo</CTableHeaderCell>
+                    <CTableHeaderCell>Cuenta</CTableHeaderCell>
+                    <CTableHeaderCell />
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {ventaTipo.data.map((t) => (
+                    <CTableRow key={t.id}>
+                      <CTableDataCell>{String(t.punto_venta).padStart(4, '0')}</CTableDataCell>
+                      <CTableDataCell>{t.tipo_comprobante_nombre}</CTableDataCell>
+                      <CTableDataCell>
+                        {t.cuenta_codigo ? `${t.cuenta_codigo} — ${t.cuenta_nombre}` : t.cuenta_nombre}
+                      </CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        <CButton
+                          color="danger"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => borrarVentaTipo.mutate(t.id)}
+                        >
+                          ✕
+                        </CButton>
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                  {ventaTipo.data.length === 0 && (
+                    <CTableRow>
+                      <CTableDataCell colSpan={4} className="text-center text-body-secondary py-3">
+                        Sin excepciones cargadas.
+                      </CTableDataCell>
+                    </CTableRow>
+                  )}
+                </CTableBody>
+              </CTable>
             )}
           </CCol>
         </CRow>

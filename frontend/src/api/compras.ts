@@ -14,6 +14,18 @@ export interface Compra {
   total: string
 }
 
+/** Comprobante sin proveedor identificado del Padrón Único (bandeja de pendientes de lectura). */
+export interface CompraPendiente {
+  id: number
+  fecha: string | null
+  proveedor_nombre: string | null
+  cuit: string | null
+  letra: string | null
+  punto_venta: string | null
+  numero: string | null
+  total: string
+}
+
 export interface ComprasFiltros {
   fecha_desde?: string
   fecha_hasta?: string
@@ -128,6 +140,12 @@ export async function listCompras(
 
   const { data } = await api.get(base(empresaId, periodoId), { params })
   return data.data as Pagina<Compra>
+}
+
+/** Comprobantes sin proveedor del padrón en el período (para revisión manual). */
+export async function listComprasPendientes(empresaId: number, periodoId: number): Promise<CompraPendiente[]> {
+  const { data } = await api.get(`${base(empresaId, periodoId)}/pendientes`)
+  return data.data as CompraPendiente[]
 }
 
 export async function getCompra(empresaId: number, periodoId: number, id: number): Promise<CompraDetalle> {

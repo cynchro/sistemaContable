@@ -4,13 +4,16 @@ namespace App\Modules\Iva\Controllers;
 
 use App\Support\Request;
 use App\Support\Response;
-use App\Modules\Iva\Services\IvaClienteService;
-use App\Modules\Iva\Requests\CreateClienteRequest;
-use App\Modules\Iva\Requests\UpdateClienteRequest;
+use App\Modules\Iva\Services\SujetoService;
+use App\Modules\Iva\Requests\CreateSujetoRequest;
+use App\Modules\Iva\Requests\UpdateSujetoRequest;
 
+/** Clientes = sujetos del Padrón Único activados con rol 'cliente' para la empresa. */
 class IvaClienteController
 {
-    public function __construct(private IvaClienteService $service)
+    private const ROL = 'cliente';
+
+    public function __construct(private SujetoService $service)
     {
     }
 
@@ -19,6 +22,7 @@ class IvaClienteController
         return Response::success($this->service->list(
             (int) $request->route('empresaId'),
             (string) $request->tenantId(),
+            self::ROL,
             [
                 'q'     => $request->input('q'),
                 'orden' => $request->input('orden'),
@@ -32,27 +36,30 @@ class IvaClienteController
             (int) $request->route('id'),
             (int) $request->route('empresaId'),
             (string) $request->tenantId(),
+            self::ROL,
         ));
     }
 
-    public function create(Request $request, CreateClienteRequest $validated): Response
+    public function create(Request $request, CreateSujetoRequest $validated): Response
     {
         $cliente = $this->service->create(
             $validated->validated(),
             (int) $request->route('empresaId'),
             (string) $request->tenantId(),
+            self::ROL,
         );
 
         return Response::success($cliente, 201);
     }
 
-    public function update(Request $request, UpdateClienteRequest $validated): Response
+    public function update(Request $request, UpdateSujetoRequest $validated): Response
     {
         $cliente = $this->service->update(
             (int) $request->route('id'),
             $validated->validated(),
             (int) $request->route('empresaId'),
             (string) $request->tenantId(),
+            self::ROL,
         );
 
         return Response::success($cliente);
@@ -64,6 +71,7 @@ class IvaClienteController
             (int) $request->route('id'),
             (int) $request->route('empresaId'),
             (string) $request->tenantId(),
+            self::ROL,
         );
 
         return Response::success(['message' => 'Cliente eliminado.']);

@@ -37,8 +37,12 @@ use App\Modules\Iva\Calc\LibroIvaCalculator;
 use App\Modules\Iva\Calc\LibroIvaDetalleCalculator;
 use App\Modules\Iva\Calc\DeclaracionIvaCalculator;
 use App\Modules\Iva\Calc\IvaSimpleCalculator;
-use App\Modules\Iva\Repositories\IvaClienteRepository;
-use App\Modules\Iva\Repositories\IvaProveedorRepository;
+use App\Modules\Iva\Repositories\SujetoRepository;
+use App\Modules\Iva\Repositories\SujetoEmpresaRepository;
+use App\Modules\Iva\Repositories\ImputacionContableRepository;
+use App\Modules\Iva\Repositories\VentaClasificacionRepository;
+use App\Modules\Iva\Services\VentaClasificacionService;
+use App\Modules\Iva\Controllers\VentaClasificacionController;
 use App\Modules\Iva\Repositories\VentaRepository;
 use App\Modules\Iva\Repositories\CompraRepository;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
@@ -72,8 +76,7 @@ use App\Modules\Iva\Audit\AuditMiddleware;
 use App\Modules\Iva\Repositories\EmpresaActividadRepository;
 use App\Modules\Iva\Services\EmpresaActividadService;
 use App\Modules\Iva\Controllers\EmpresaActividadController;
-use App\Modules\Iva\Services\IvaClienteService;
-use App\Modules\Iva\Services\IvaProveedorService;
+use App\Modules\Iva\Services\SujetoService;
 use App\Modules\Iva\Services\VentaService;
 use App\Modules\Iva\Services\CompraService;
 use App\Modules\Iva\Services\LibroIvaService;
@@ -99,26 +102,37 @@ class ServiceProvider extends BaseServiceProvider
 
         $c->singleton(ReferenceValidator::class, fn () => new ReferenceValidator($c->get(PDO::class)));
 
-        $c->singleton(IvaClienteRepository::class, fn () => new IvaClienteRepository($c->get(PDO::class)));
-        $c->singleton(IvaClienteService::class, fn () => new IvaClienteService(
-            $c->get(IvaClienteRepository::class),
+        // Padrón Único de Sujetos IVA (clientes/proveedores comparten identidad; el rol
+        // 'cliente'/'proveedor' lo fija cada Controller al llamar al mismo Service).
+        $c->singleton(SujetoRepository::class, fn () => new SujetoRepository($c->get(PDO::class)));
+        $c->singleton(SujetoEmpresaRepository::class, fn () => new SujetoEmpresaRepository($c->get(PDO::class)));
+        // Imputación contable del padrón (documento "Satélite Visual IVA" §5): cuenta por
+        // defecto + excepción por punto de venta. Todavía no conectada a compras/ventas — ver
+        // documentacion/analisis-satelite-visual-iva.md §7.7 para los próximos pasos.
+        $c->singleton(
+            ImputacionContableRepository::class,
+            fn () => new ImputacionContableRepository($c->get(PDO::class)),
+        );
+        // Motor de clasificación de ventas por PV+tipo de comprobante (documento "Satélite Visual
+        // IVA" §4) — mismo patrón, sin capa de sujeto (el PV es del propio contribuyente).
+        $c->singleton(
+            VentaClasificacionRepository::class,
+            fn () => new VentaClasificacionRepository($c->get(PDO::class)),
+        );
+        $c->singleton(SujetoService::class, fn () => new SujetoService(
+            $c->get(SujetoRepository::class),
+            $c->get(SujetoEmpresaRepository::class),
             $c->get(EmpresaRepository::class),
             $c->get(ReferenceValidator::class),
+            $c->get(DB::class),
         ));
         $c->singleton(
             IvaClienteController::class,
-            fn () => new IvaClienteController($c->get(IvaClienteService::class)),
+            fn () => new IvaClienteController($c->get(SujetoService::class)),
         );
-
-        $c->singleton(IvaProveedorRepository::class, fn () => new IvaProveedorRepository($c->get(PDO::class)));
-        $c->singleton(IvaProveedorService::class, fn () => new IvaProveedorService(
-            $c->get(IvaProveedorRepository::class),
-            $c->get(EmpresaRepository::class),
-            $c->get(ReferenceValidator::class),
-        ));
         $c->singleton(
             IvaProveedorController::class,
-            fn () => new IvaProveedorController($c->get(IvaProveedorService::class)),
+            fn () => new IvaProveedorController($c->get(SujetoService::class)),
         );
 
         // Motor de cálculos del módulo (calculadoras puras, sin estado).
@@ -136,6 +150,9 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(ReferenceValidator::class),
             $c->get(PercepcionCalculator::class),
             $c->get(TipoRetencionRepository::class),
+            $c->get(SujetoEmpresaRepository::class),
+            $c->get(SujetoRepository::class),
+            $c->get(VentaClasificacionRepository::class),
         ));
         $c->singleton(VentaController::class, fn () => new VentaController($c->get(VentaService::class)));
 
@@ -150,6 +167,9 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(ReferenceValidator::class),
             $c->get(PercepcionCalculator::class),
             $c->get(TipoRetencionRepository::class),
+            $c->get(SujetoEmpresaRepository::class),
+            $c->get(SujetoRepository::class),
+            $c->get(ImputacionContableRepository::class),
         ));
         $c->singleton(CompraController::class, fn () => new CompraController($c->get(CompraService::class)));
 
@@ -272,6 +292,18 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             EmpresaActividadController::class,
             fn () => new EmpresaActividadController($c->get(EmpresaActividadService::class)),
+        );
+
+        // Clasificación de ventas por PV+tipo de comprobante (Pantalla D). El repositorio ya
+        // está registrado más arriba (Parte 5); acá solo falta Service+Controller.
+        $c->singleton(VentaClasificacionService::class, fn () => new VentaClasificacionService(
+            $c->get(VentaClasificacionRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(ReferenceValidator::class),
+        ));
+        $c->singleton(
+            VentaClasificacionController::class,
+            fn () => new VentaClasificacionController($c->get(VentaClasificacionService::class)),
         );
 
         // Auditoría de operaciones (registro de cambios) — middleware + lectura paginada.

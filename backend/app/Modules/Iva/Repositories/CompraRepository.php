@@ -43,6 +43,26 @@ class CompraRepository
     }
 
     /**
+     * Comprobantes sin proveedor identificado del Padrón Único ("sujeto ocasional": sin match
+     * de CUIT o directamente sin CUIT cargado) — bandeja de pendientes de solo lectura (documento
+     * "Satélite Visual IVA" §3, ver documentacion/analisis-satelite-visual-iva.md §7.7 paso 3).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function findPendientes(int $periodoId): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id, fecha, proveedor_nombre, cuit, letra, punto_venta, numero, total
+               FROM compras
+              WHERE periodo_id = ? AND proveedor_id IS NULL
+              ORDER BY fecha, id'
+        );
+        $stmt->execute([$periodoId]);
+
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Listado paginado y filtrado del período. Los nombres de columna del WHERE son
      * literales del código; los valores van por placeholders (sin inyección).
      *

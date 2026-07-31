@@ -11,6 +11,7 @@ use App\Modules\Iva\Controllers\DjIvaSimpleController;
 use App\Modules\Iva\Controllers\SifereController;
 use App\Modules\Iva\Controllers\MayorController;
 use App\Modules\Iva\Controllers\EmpresaActividadController;
+use App\Modules\Iva\Controllers\VentaClasificacionController;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
 use App\Modules\Iva\Controllers\PadronController;
@@ -50,6 +51,9 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     // Ventas (agregado bajo período: cabecera + discriminación + percepciones)
     $router->get("{$bajoPeriodo}/ventas", [VentaController::class, 'index'], [$perm('iva.ventas')]);
     $router->post("{$bajoPeriodo}/ventas", [VentaController::class, 'create'], [$pw('iva.ventas')]);
+    // "pendientes" DEBE registrarse antes de "{id}": el router matchea por orden y {id} ([^/]+)
+    // capturaría el literal "pendientes" si esta ruta se declarara después.
+    $router->get("{$bajoPeriodo}/ventas/pendientes", [VentaController::class, 'pendientes'], [$perm('iva.ventas')]);
     $router->get("{$bajoPeriodo}/ventas/{id}", [VentaController::class, 'show'], [$perm('iva.ventas')]);
     $router->put("{$bajoPeriodo}/ventas/{id}", [VentaController::class, 'update'], [$pw('iva.ventas')]);
     $router->delete("{$bajoPeriodo}/ventas/{id}", [VentaController::class, 'delete'], [$pw('iva.ventas')]);
@@ -59,6 +63,12 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     // Compras (agregado bajo período: cabecera + discriminación + percepciones)
     $router->get("{$bajoPeriodo}/compras", [CompraController::class, 'index'], [$perm('iva.compras')]);
     $router->post("{$bajoPeriodo}/compras", [CompraController::class, 'create'], [$pw('iva.compras')]);
+    // "pendientes" DEBE registrarse antes de "{id}" (mismo motivo que en ventas, ver arriba).
+    $router->get(
+        "{$bajoPeriodo}/compras/pendientes",
+        [CompraController::class, 'pendientes'],
+        [$perm('iva.compras')],
+    );
     $router->get("{$bajoPeriodo}/compras/{id}", [CompraController::class, 'show'], [$perm('iva.compras')]);
     $router->put("{$bajoPeriodo}/compras/{id}", [CompraController::class, 'update'], [$pw('iva.compras')]);
     $router->delete("{$bajoPeriodo}/compras/{id}", [CompraController::class, 'delete'], [$pw('iva.compras')]);
@@ -193,6 +203,39 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         "{$base}/actividades-coeficiente/{id}",
         [EmpresaActividadController::class, 'deleteCoeficiente'],
         [$pw('iva.libro')],
+    );
+
+    // Clasificación de ventas por punto de venta + tipo de comprobante → cuenta contable
+    // (documento "Satélite Visual IVA" §4, Pantalla D). Empresa-scoped, como actividades.
+    $router->get(
+        "{$base}/ventas-punto-venta",
+        [VentaClasificacionController::class, 'indexPuntoVenta'],
+        [$perm('iva.ventas')],
+    );
+    $router->post(
+        "{$base}/ventas-punto-venta",
+        [VentaClasificacionController::class, 'setPuntoVenta'],
+        [$pw('iva.ventas')],
+    );
+    $router->delete(
+        "{$base}/ventas-punto-venta/{id}",
+        [VentaClasificacionController::class, 'deletePuntoVenta'],
+        [$pw('iva.ventas')],
+    );
+    $router->get(
+        "{$base}/ventas-punto-venta-tipo",
+        [VentaClasificacionController::class, 'indexPorTipo'],
+        [$perm('iva.ventas')],
+    );
+    $router->post(
+        "{$base}/ventas-punto-venta-tipo",
+        [VentaClasificacionController::class, 'setPorTipo'],
+        [$pw('iva.ventas')],
+    );
+    $router->delete(
+        "{$base}/ventas-punto-venta-tipo/{id}",
+        [VentaClasificacionController::class, 'deletePorTipo'],
+        [$pw('iva.ventas')],
     );
 
     // Auditoría de operaciones (registro de cambios) — lectura paginada por tenant

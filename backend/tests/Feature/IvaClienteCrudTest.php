@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 /**
- * Clientes del módulo IVA: CRUD anidado bajo empresa, acotado al tenant dueño.
+ * Clientes del módulo IVA: ahora son sujetos del Padrón Único activados con rol
+ * 'cliente' para la empresa (ver PadronUnicoSujetosTest para la reutilización entre
+ * empresas del mismo tenant). El CUIT es obligatorio y debe tener dígito verificador
+ * válido — es la clave del padrón.
  */
 class IvaClienteCrudTest extends FeatureTestCase
 {
@@ -33,6 +36,7 @@ class IvaClienteCrudTest extends FeatureTestCase
 
         $updated = $this->putJson("/empresas/{$empresaId}/clientes/{$id}", [
             'nombre'    => 'Juan C. Pérez',
+            'cuit'      => '20111111112',
             'localidad' => 'Rosario',
         ], $auth);
         $this->assertSame(200, $updated['status']);
@@ -47,7 +51,7 @@ class IvaClienteCrudTest extends FeatureTestCase
         [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
 
         $this->postJson("/empresas/{$empresaId}/clientes", ['nombre' => 'Zeta SA', 'cuit' => '30111111118'], $auth);
-        $this->postJson("/empresas/{$empresaId}/clientes", ['nombre' => 'Alfa SRL', 'cuit' => '30999999990'], $auth);
+        $this->postJson("/empresas/{$empresaId}/clientes", ['nombre' => 'Alfa SRL', 'cuit' => '30710968973'], $auth);
 
         // Búsqueda por nombre.
         $r = $this->getJson("/empresas/{$empresaId}/clientes?q=alfa", $auth);
@@ -63,7 +67,7 @@ class IvaClienteCrudTest extends FeatureTestCase
         $r = $this->getJson("/empresas/{$empresaId}/clientes", $auth);
         $this->assertSame('Alfa SRL', $r['json']['data'][0]['nombre']);
 
-        // Orden por CUIT: el 3011… antes que el 3099…
+        // Orden por CUIT: el 3011… antes que el 3071…
         $r = $this->getJson("/empresas/{$empresaId}/clientes?orden=cuit", $auth);
         $this->assertSame('30111111118', $r['json']['data'][0]['cuit']);
     }
@@ -76,6 +80,31 @@ class IvaClienteCrudTest extends FeatureTestCase
 
         $this->assertSame(422, $resp['status']);
         $this->assertArrayHasKey('nombre', $resp['json']['errors']);
+    }
+
+    public function test_crear_sin_cuit_falla(): void
+    {
+        [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
+
+        $resp = $this->postJson("/empresas/{$empresaId}/clientes", ['nombre' => 'Juan'], $auth);
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('cuit', $resp['json']['errors']);
+    }
+
+    public function test_cuit_con_digito_verificador_invalido_falla(): void
+    {
+        [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
+
+        // Mismo formato, dígito verificador incorrecto (el válido termina en 2, no 9).
+        $resp = $this->postJson(
+            "/empresas/{$empresaId}/clientes",
+            ['nombre' => 'Juan', 'cuit' => '20111111119'],
+            $auth,
+        );
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('cuit', $resp['json']['errors']);
     }
 
     public function test_no_se_acceden_clientes_de_empresa_de_otro_tenant(): void
@@ -93,29 +122,12 @@ class IvaClienteCrudTest extends FeatureTestCase
 
         $resp = $this->postJson("/empresas/{$empresaId}/clientes", [
             'nombre'           => 'Juan',
+            'cuit'             => '20111111112',
             'condicion_iva_id' => 999, // no existe
         ], $auth);
 
         $this->assertSame(422, $resp['status']);
         $this->assertArrayHasKey('condicion_iva_id', $resp['json']['errors']);
-    }
-
-    public function test_cuenta_de_otra_empresa_da_422(): void
-    {
-        [$auth, $empresaA] = $this->empresaDe($this->actingAsUser());
-        // Otra empresa del mismo tenant, con una cuenta propia.
-        $empresaB = (int) $this->postJson('/empresas', ['nombre' => 'Otra SA'], $auth)['json']['data']['id'];
-        $cuentaB = (int) $this->postJson("/empresas/{$empresaB}/cuentas", [
-            'codigo' => '1.1.01', 'nombre' => 'Caja',
-        ], $auth)['json']['data']['id'];
-
-        $resp = $this->postJson("/empresas/{$empresaA}/clientes", [
-            'nombre'    => 'Juan',
-            'cuenta_id' => $cuentaB, // existe, pero es de otra empresa
-        ], $auth);
-
-        $this->assertSame(422, $resp['status']);
-        $this->assertArrayHasKey('cuenta_id', $resp['json']['errors']);
     }
 
     public function test_referencias_validas_crean_ok(): void
@@ -126,16 +138,11 @@ class IvaClienteCrudTest extends FeatureTestCase
         $this->pdo->exec(
             "INSERT INTO condiciones_iva (id, codigo, nombre, codigo_afip) VALUES (1, 'RI', 'Resp. Insc.', '01')"
         );
-        $cuenta = (int) $this->postJson("/empresas/{$empresaId}/cuentas", [
-            'codigo' => '1.1.01', 'nombre' => 'Caja',
-        ], $auth)['json']['data']['id'];
-        $rubro = (int) $this->postJson('/rubros', ['nombre' => 'Servicios'], $auth)['json']['data']['id'];
 
         $resp = $this->postJson("/empresas/{$empresaId}/clientes", [
             'nombre'           => 'Juan',
+            'cuit'             => '20111111112',
             'condicion_iva_id' => 1,
-            'cuenta_id'        => $cuenta,
-            'rubro_id'         => $rubro,
         ], $auth);
 
         $this->assertSame(201, $resp['status']);

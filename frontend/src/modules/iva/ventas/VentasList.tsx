@@ -23,6 +23,7 @@ import {
 } from '@coreui/react'
 import {
   listVentas,
+  listVentasPendientes,
   deleteVenta,
   moverVenta,
   createVenta,
@@ -101,6 +102,7 @@ export default function VentasList() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [moviendo, setMoviendo] = useState<Venta | null>(null)
   const [moverError, setMoverError] = useState<string | null>(null)
+  const [verPendientes, setVerPendientes] = useState(false)
 
   const queryKey = ['ventas', eId, pId, filtros, page]
   const { data, isLoading, isError, isFetching } = useQuery({
@@ -109,7 +111,15 @@ export default function VentasList() {
     placeholderData: keepPreviousData,
   })
 
-  const invalidateVentas = () => qc.invalidateQueries({ queryKey: ['ventas', eId, pId] })
+  const { data: pendientes } = useQuery({
+    queryKey: ['ventas-pendientes', eId, pId],
+    queryFn: () => listVentasPendientes(eId, pId),
+  })
+
+  const invalidateVentas = () => {
+    qc.invalidateQueries({ queryKey: ['ventas', eId, pId] })
+    qc.invalidateQueries({ queryKey: ['ventas-pendientes', eId, pId] })
+  }
 
   const deleteM = useMutation({
     mutationFn: (id: number) => deleteVenta(eId, pId, id),
@@ -189,7 +199,7 @@ export default function VentasList() {
     mutationFn: (v: VentaInput) =>
       editingId == null ? createVenta(eId, pId, v) : updateVenta(eId, pId, editingId, v),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['ventas', eId, pId] })
+      invalidateVentas()
       closeModal()
     },
     onError: (e) => setFormError(apiError(e)),
@@ -360,6 +370,55 @@ export default function VentasList() {
             </CButton>
           </div>
         </CForm>
+
+        {!!pendientes?.length && (
+          <CAlert color="warning" className="d-flex justify-content-between align-items-center">
+            <span>
+              {pendientes.length} comprobante{pendientes.length === 1 ? '' : 's'} sin cliente
+              identificado del padrón en este período.
+            </span>
+            <CButton color="warning" variant="outline" size="sm" onClick={() => setVerPendientes((v) => !v)}>
+              {verPendientes ? 'Ocultar pendientes' : 'Ver pendientes'}
+            </CButton>
+          </CAlert>
+        )}
+
+        {verPendientes && !!pendientes?.length && (
+          <CTable small hover responsive align="middle" className="mb-3">
+            <CTableHead>
+              <CTableRow>
+                <CTableHeaderCell>Fecha</CTableHeaderCell>
+                <CTableHeaderCell>Comprobante</CTableHeaderCell>
+                <CTableHeaderCell>Cliente</CTableHeaderCell>
+                <CTableHeaderCell>CUIT</CTableHeaderCell>
+                <CTableHeaderCell className="text-end">Total</CTableHeaderCell>
+                <CTableHeaderCell className="text-end">Acción</CTableHeaderCell>
+              </CTableRow>
+            </CTableHead>
+            <CTableBody>
+              {pendientes.map((p) => (
+                <CTableRow key={p.id}>
+                  <CTableDataCell>{p.fecha ?? '—'}</CTableDataCell>
+                  <CTableDataCell>
+                    {(p.letra ?? '') +
+                      ' ' +
+                      (p.punto_venta ? String(p.punto_venta).padStart(4, '0') : '----') +
+                      '-' +
+                      (p.numero ? String(p.numero).padStart(8, '0') : '--------')}
+                  </CTableDataCell>
+                  <CTableDataCell>{p.cliente_nombre ?? '—'}</CTableDataCell>
+                  <CTableDataCell>{p.cuit ?? '—'}</CTableDataCell>
+                  <CTableDataCell className="text-end">{formatImporte(p.total)}</CTableDataCell>
+                  <CTableDataCell className="text-end">
+                    <CButton color="warning" variant="outline" size="sm" onClick={() => editarVenta(p.id)}>
+                      Asignar cliente
+                    </CButton>
+                  </CTableDataCell>
+                </CTableRow>
+              ))}
+            </CTableBody>
+          </CTable>
+        )}
 
         {isLoading && <CSpinner />}
         {isError && <CAlert color="danger">No se pudieron cargar las ventas.</CAlert>}

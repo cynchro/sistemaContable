@@ -45,6 +45,16 @@ class VentaController
         ));
     }
 
+    /** Comprobantes sin cliente identificado del padrón (bandeja de pendientes de solo lectura). */
+    public function pendientes(Request $request): Response
+    {
+        return Response::success($this->service->pendientes(
+            (int) $request->route('empresaId'),
+            (int) $request->route('periodoId'),
+            (string) $request->tenantId(),
+        ));
+    }
+
     public function create(Request $request, CreateVentaRequest $validated): Response
     {
         $venta = $this->service->create(

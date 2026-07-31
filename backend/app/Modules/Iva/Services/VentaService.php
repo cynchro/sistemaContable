@@ -2,6 +2,7 @@
 
 namespace App\Modules\Iva\Services;
 
+use App\Support\Cuit;
 use App\Support\DB;
 use App\Support\ReferenceValidator;
 use App\Exceptions\ConflictException;
@@ -12,6 +13,9 @@ use App\Modules\Compartido\Repositories\TipoRetencionRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
 use App\Modules\Iva\Calc\PercepcionCalculator;
 use App\Modules\Iva\Repositories\VentaRepository;
+use App\Modules\Iva\Repositories\SujetoRepository;
+use App\Modules\Iva\Repositories\SujetoEmpresaRepository;
+use App\Modules\Iva\Repositories\VentaClasificacionRepository;
 
 /**
  * Orquesta el alta/edición/baja de comprobantes de venta (agregado cabecera +
@@ -35,6 +39,9 @@ class VentaService
         private ReferenceValidator $refs,
         private PercepcionCalculator $percepcionCalc,
         private TipoRetencionRepository $tiposRetencion,
+        private SujetoEmpresaRepository $sujetoEmpresas,
+        private SujetoRepository $sujetos,
+        private VentaClasificacionRepository $clasificacion,
     ) {
     }
 
@@ -70,6 +77,14 @@ class VentaService
         return $this->ventas->findById($id, $periodoId);
     }
 
+    /** Comprobantes sin cliente identificado del padrón, para revisión manual. @return list<array<string, mixed>> */
+    public function pendientes(int $empresaId, int $periodoId, string $tenantId): array
+    {
+        $this->assertPeriodo($empresaId, $periodoId, $tenantId);
+
+        return $this->ventas->findPendientes($periodoId);
+    }
+
     /**
      * @param  array<string, mixed> $data
      * @return array<string, mixed>
@@ -78,10 +93,12 @@ class VentaService
     {
         $periodo = $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
+        $data = $this->normalizarImportesOpcionales($this->resolverClientePorCuit($data, $tenantId));
         $this->assertReferencias($data, $empresaId, $tenantId);
         $this->assertNoDuplicado($data, $empresaId);
 
-        [$header, $lineas, $percepciones, $asociados] = $this->preparar($data, $tenantId);
+        [$header, $lineas, $percepciones, $asociados] = $this->preparar($data, $tenantId, $empresaId);
+        $this->activarClienteSiCorresponde($header, $empresaId);
 
         return $this->db->withTransaction(
             fn () => $this->ventas->create($header, $lineas, $percepciones, $asociados, $periodoId)
@@ -97,10 +114,12 @@ class VentaService
         $periodo = $this->assertPeriodoEditable($empresaId, $periodoId, $tenantId);
         $this->ventas->findById($id, $periodoId);
         $this->assertFechaEnPeriodo($data['fecha'] ?? null, $periodo);
+        $data = $this->normalizarImportesOpcionales($this->resolverClientePorCuit($data, $tenantId));
         $this->assertReferencias($data, $empresaId, $tenantId);
         $this->assertNoDuplicado($data, $empresaId, $id);
 
-        [$header, $lineas, $percepciones, $asociados] = $this->preparar($data, $tenantId);
+        [$header, $lineas, $percepciones, $asociados] = $this->preparar($data, $tenantId, $empresaId);
+        $this->activarClienteSiCorresponde($header, $empresaId);
 
         return $this->db->withTransaction(
             fn () => $this->ventas->replace($id, $header, $lineas, $percepciones, $asociados, $periodoId)
@@ -145,9 +164,16 @@ class VentaService
      *   2: list<array<string, mixed>>, 3: list<array<string, mixed>>
      * }
      */
-    private function preparar(array $data, string $tenantId): array
+    private function preparar(array $data, string $tenantId, int $empresaId): array
     {
-        $lineasInput  = $this->normalizarDiscriminaciones($data['discriminaciones'] ?? []);
+        $cuentaDefault = !empty($data['punto_venta'])
+            ? $this->clasificacion->resolverCuenta(
+                $empresaId,
+                (string) $data['punto_venta'],
+                isset($data['tipo_comprobante_id']) ? (int) $data['tipo_comprobante_id'] : null,
+            )
+            : null;
+        $lineasInput = $this->normalizarDiscriminaciones($data['discriminaciones'] ?? [], $cuentaDefault);
         $percepciones = $this->resolverPercepciones(
             $this->normalizarPercepciones($data['percepciones'] ?? []),
             $data,
@@ -245,12 +271,14 @@ class VentaService
     }
 
     /**
-     * Valida y normaliza las líneas de discriminación.
+     * Valida y normaliza las líneas de discriminación. `$cuentaDefault` (resuelta por
+     * `VentaClasificacionRepository` a partir del punto de venta+tipo de comprobante) se usa solo
+     * cuando la línea no trae `cuenta_id` propio — un override manual siempre gana.
      *
      * @param  mixed $discriminaciones
      * @return list<array<string, mixed>>
      */
-    private function normalizarDiscriminaciones(mixed $discriminaciones): array
+    private function normalizarDiscriminaciones(mixed $discriminaciones, ?int $cuentaDefault): array
     {
         if (!is_array($discriminaciones)) {
             throw new ValidationException(['discriminaciones' => ['discriminaciones debe ser una lista.']]);
@@ -270,7 +298,7 @@ class VentaService
 
             $out[] = [
                 'neto_gravado'     => $linea['neto_gravado'],
-                'cuenta_id'        => $this->normalizarCuentaId($linea['cuenta_id'] ?? null),
+                'cuenta_id'        => $this->normalizarCuentaId($linea['cuenta_id'] ?? null) ?? $cuentaDefault,
                 'iva_alicuota'     => $linea['iva_alicuota'],
                 // Override opcional del importe de IVA (regla del asterisco): sólo si es numérico.
                 'iva_importe'      => $this->esNumerico($linea['iva_importe'] ?? null) ? $linea['iva_importe'] : null,
@@ -351,7 +379,8 @@ class VentaService
 
     /**
      * Valida que las FKs de la venta existan y pertenezcan al ámbito: rubro del tenant,
-     * cliente de la empresa; el resto son catálogos globales. Devuelve 422 (no 500 por FK).
+     * cliente del Padrón Único del tenant (compartido por todas sus empresas); el resto
+     * son catálogos globales. Devuelve 422 (no 500 por FK).
      *
      * @param array<string, mixed> $data
      */
@@ -372,8 +401,8 @@ class VentaService
                 'table' => 'rubros', 'value' => $data['rubro_id'] ?? null, 'scope' => ['tenant_id' => $tenantId],
             ],
             'cliente_id'              => [
-                'table' => 'iva_clientes', 'value' => $data['cliente_id'] ?? null,
-                'scope' => ['empresa_id' => $empresaId],
+                'table' => 'iva_sujetos', 'value' => $data['cliente_id'] ?? null,
+                'scope' => ['tenant_id' => $tenantId],
             ],
             'cuenta_debe_id'          => [
                 'table' => 'cuentas', 'value' => $data['cuenta_debe_id'] ?? null,
@@ -384,6 +413,65 @@ class VentaService
                 'scope' => ['empresa_id' => $empresaId],
             ],
         ]);
+    }
+
+    /**
+     * Si no viene `cliente_id` pero sí `cuit` (caso del importador, que hoy solo manda
+     * `cliente_nombre`/`cuit` en texto libre — nunca intenta matchear contra el padrón), busca
+     * ese CUIT en `iva_sujetos` del tenant y completa `cliente_id` si matchea. No falla si no
+     * hay match: el comprobante sigue creándose como "sujeto ocasional", igual que hoy.
+     *
+     * @param  array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function resolverClientePorCuit(array $data, string $tenantId): array
+    {
+        if (!empty($data['cliente_id']) || empty($data['cuit'])) {
+            return $data;
+        }
+
+        $sujeto = $this->sujetos->findByCuit($tenantId, Cuit::normalizar((string) $data['cuit']));
+        if ($sujeto !== null) {
+            $data['cliente_id'] = $sujeto['id'];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Importes NOT NULL con DEFAULT en la tabla: un null del payload significa "no informado"
+     * (el modal manda null cuando el campo quedó vacío) — se normaliza a 0 para que el
+     * INSERT/UPDATE no intente escribir NULL en una columna que no lo admite. `concepto`
+     * (smallint NOT NULL) se descarta si viene null (toma su DEFAULT al crear).
+     *
+     * @param  array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function normalizarImportesOpcionales(array $data): array
+    {
+        foreach (['neto_no_grav', 'exento', 'imp_interno'] as $campo) {
+            if (array_key_exists($campo, $data) && $data[$campo] === null) {
+                $data[$campo] = '0';
+            }
+        }
+        if (array_key_exists('concepto', $data) && $data['concepto'] === null) {
+            unset($data['concepto']);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Facturar con un cliente del Padrón Único lo activa para esta empresa (aparece en su
+     * listado "Clientes") sin paso manual extra — "todo sea una sola cosa".
+     *
+     * @param array<string, mixed> $header
+     */
+    private function activarClienteSiCorresponde(array $header, int $empresaId): void
+    {
+        if (!empty($header['cliente_id'])) {
+            $this->sujetoEmpresas->activar($empresaId, (int) $header['cliente_id'], 'cliente');
+        }
     }
 
     /**

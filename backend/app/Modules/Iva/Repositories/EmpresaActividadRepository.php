@@ -125,7 +125,7 @@ class EmpresaActividadRepository
                     ar.actividad_id, ea.codigo AS actividad_codigo, ea.descripcion AS actividad_descripcion
                FROM actividad_receptor ar
                JOIN empresa_actividades ea ON ea.id = ar.actividad_id
-               LEFT JOIN iva_clientes c ON c.id = ar.cliente_id
+               LEFT JOIN iva_sujetos c ON c.id = ar.cliente_id
               WHERE ar.empresa_id = ? ORDER BY c.nombre'
         );
         $stmt->execute([$empresaId]);

@@ -17,6 +17,18 @@ export interface Venta {
   anulado: string | null
 }
 
+/** Comprobante sin cliente identificado del Padrón Único (bandeja de pendientes de lectura). */
+export interface VentaPendiente {
+  id: number
+  fecha: string | null
+  cliente_nombre: string | null
+  cuit: string | null
+  letra: string | null
+  punto_venta: string | null
+  numero: string | null
+  total: string
+}
+
 export interface VentasFiltros {
   fecha_desde?: string
   fecha_hasta?: string
@@ -191,6 +203,12 @@ export async function listVentas(
 
   const { data } = await api.get(`/empresas/${empresaId}/periodos/${periodoId}/ventas`, { params })
   return data.data as Pagina<Venta>
+}
+
+/** Comprobantes sin cliente del padrón en el período (para revisión manual). */
+export async function listVentasPendientes(empresaId: number, periodoId: number): Promise<VentaPendiente[]> {
+  const { data } = await api.get(`/empresas/${empresaId}/periodos/${periodoId}/ventas/pendientes`)
+  return data.data as VentaPendiente[]
 }
 
 export async function getVenta(empresaId: number, periodoId: number, id: number): Promise<VentaDetalle> {

@@ -3,7 +3,8 @@
 namespace Tests\Feature;
 
 /**
- * Proveedores del módulo IVA: CRUD anidado bajo empresa, acotado al tenant dueño.
+ * Proveedores del módulo IVA: sujetos del Padrón Único activados con rol 'proveedor'
+ * para la empresa (ver PadronUnicoSujetosTest para la reutilización entre empresas).
  */
 class IvaProveedorCrudTest extends FeatureTestCase
 {
@@ -22,7 +23,7 @@ class IvaProveedorCrudTest extends FeatureTestCase
 
         $created = $this->postJson("/empresas/{$empresaId}/proveedores", [
             'nombre'    => 'Distribuidora SRL',
-            'cuit'      => '30222222223',
+            'cuit'      => '30111111118',
             'cp'        => '5000',
             'cai'       => '12345678901234',
             'fecha_cai' => '2026-12-31',
@@ -35,6 +36,7 @@ class IvaProveedorCrudTest extends FeatureTestCase
 
         $updated = $this->putJson("/empresas/{$empresaId}/proveedores/{$id}", [
             'nombre' => 'Distribuidora del Centro SRL',
+            'cuit'   => '30111111118',
         ], $auth);
         $this->assertSame(200, $updated['status']);
         $this->assertSame('Distribuidora del Centro SRL', $updated['json']['data']['nombre']);
@@ -47,10 +49,20 @@ class IvaProveedorCrudTest extends FeatureTestCase
     {
         [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
 
-        $resp = $this->postJson("/empresas/{$empresaId}/proveedores", ['cuit' => '30222222223'], $auth);
+        $resp = $this->postJson("/empresas/{$empresaId}/proveedores", ['cuit' => '30111111118'], $auth);
 
         $this->assertSame(422, $resp['status']);
         $this->assertArrayHasKey('nombre', $resp['json']['errors']);
+    }
+
+    public function test_crear_sin_cuit_falla(): void
+    {
+        [$auth, $empresaId] = $this->empresaDe($this->actingAsUser());
+
+        $resp = $this->postJson("/empresas/{$empresaId}/proveedores", ['nombre' => 'Prov'], $auth);
+
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('cuit', $resp['json']['errors']);
     }
 
     public function test_no_se_acceden_proveedores_de_empresa_de_otro_tenant(): void
@@ -60,22 +72,5 @@ class IvaProveedorCrudTest extends FeatureTestCase
 
         $resp = $this->getJson("/empresas/{$aliceEmpresaId}/proveedores", $bobAuth);
         $this->assertSame(404, $resp['status']);
-    }
-
-    public function test_rubro_de_otro_tenant_da_422(): void
-    {
-        // Bob crea un rubro en su tenant.
-        $bobAuth = $this->bearer($this->actingAsUser()['token']);
-        $rubroBob = (int) $this->postJson('/rubros', ['nombre' => 'De Bob'], $bobAuth)['json']['data']['id'];
-
-        // Alice intenta usar el rubro de Bob al crear un proveedor → 422 (otro tenant).
-        [$aliceAuth, $empresaId] = $this->empresaDe($this->actingAsUser());
-        $resp = $this->postJson("/empresas/{$empresaId}/proveedores", [
-            'nombre'   => 'Proveedor X',
-            'rubro_id' => $rubroBob,
-        ], $aliceAuth);
-
-        $this->assertSame(422, $resp['status']);
-        $this->assertArrayHasKey('rubro_id', $resp['json']['errors']);
     }
 }

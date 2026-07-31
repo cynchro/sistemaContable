@@ -71,7 +71,7 @@ class DjIvaSimpleActividadFase2Test extends FeatureTestCase
         ], $ctx['auth']);
         // ...pero todo lo facturado a este cliente va a "minería" (receptor gana).
         $clienteId = (int) $this->postJson("/empresas/{$ctx['empresaId']}/clientes", [
-            'nombre' => 'Minera Galaxy', 'cuit' => '30700000007', 'condicion_iva_id' => 1,
+            'nombre' => 'Minera Galaxy', 'cuit' => '30710968973', 'condicion_iva_id' => 1,
         ], $ctx['auth'])['json']['data']['id'];
         $this->postJson("/empresas/{$ctx['empresaId']}/actividades-receptor", [
             'cliente_id' => $clienteId, 'actividad_id' => $minera,

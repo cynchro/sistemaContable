@@ -27,6 +27,7 @@ import {
 } from '@coreui/react'
 import {
   listCompras,
+  listComprasPendientes,
   deleteCompra,
   moverCompra,
   createCompra,
@@ -87,6 +88,8 @@ export default function ComprasList() {
   const [moviendo, setMoviendo] = useState<Compra | null>(null)
   const [moverError, setMoverError] = useState<string | null>(null)
 
+  const [verPendientes, setVerPendientes] = useState(false)
+
   const queryKey = ['compras', eId, pId, filtros, page]
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey,
@@ -94,7 +97,15 @@ export default function ComprasList() {
     placeholderData: keepPreviousData,
   })
 
-  const invalidateCompras = () => qc.invalidateQueries({ queryKey: ['compras', eId, pId] })
+  const { data: pendientes } = useQuery({
+    queryKey: ['compras-pendientes', eId, pId],
+    queryFn: () => listComprasPendientes(eId, pId),
+  })
+
+  const invalidateCompras = () => {
+    qc.invalidateQueries({ queryKey: ['compras', eId, pId] })
+    qc.invalidateQueries({ queryKey: ['compras-pendientes', eId, pId] })
+  }
 
   const deleteM = useMutation({
     mutationFn: (id: number) => deleteCompra(eId, pId, id),
@@ -130,7 +141,7 @@ export default function ComprasList() {
     mutationFn: (v: CompraInput) =>
       editingId == null ? createCompra(eId, pId, v) : updateCompra(eId, pId, editingId, v),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['compras', eId, pId] })
+      invalidateCompras()
       closeModal()
     },
     onError: (e) => setFormError(apiError(e)),
@@ -295,6 +306,55 @@ export default function ComprasList() {
               </CButton>
             </div>
           </CForm>
+
+          {!!pendientes?.length && (
+            <CAlert color="warning" className="d-flex justify-content-between align-items-center">
+              <span>
+                {pendientes.length} comprobante{pendientes.length === 1 ? '' : 's'} sin proveedor
+                identificado del padrón en este período.
+              </span>
+              <CButton color="warning" variant="outline" size="sm" onClick={() => setVerPendientes((v) => !v)}>
+                {verPendientes ? 'Ocultar pendientes' : 'Ver pendientes'}
+              </CButton>
+            </CAlert>
+          )}
+
+          {verPendientes && !!pendientes?.length && (
+            <CTable small hover responsive align="middle" className="mb-3">
+              <CTableHead>
+                <CTableRow>
+                  <CTableHeaderCell>Fecha</CTableHeaderCell>
+                  <CTableHeaderCell>Comprobante</CTableHeaderCell>
+                  <CTableHeaderCell>Proveedor</CTableHeaderCell>
+                  <CTableHeaderCell>CUIT</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">Total</CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">Acción</CTableHeaderCell>
+                </CTableRow>
+              </CTableHead>
+              <CTableBody>
+                {pendientes.map((p) => (
+                  <CTableRow key={p.id}>
+                    <CTableDataCell>{p.fecha ?? '—'}</CTableDataCell>
+                    <CTableDataCell>
+                      {(p.letra ?? '') +
+                        ' ' +
+                        (p.punto_venta ? String(p.punto_venta).padStart(4, '0') : '----') +
+                        '-' +
+                        (p.numero ? String(p.numero).padStart(8, '0') : '--------')}
+                    </CTableDataCell>
+                    <CTableDataCell>{p.proveedor_nombre ?? '—'}</CTableDataCell>
+                    <CTableDataCell>{p.cuit ?? '—'}</CTableDataCell>
+                    <CTableDataCell className="text-end">{formatImporte(p.total)}</CTableDataCell>
+                    <CTableDataCell className="text-end">
+                      <CButton color="warning" variant="outline" size="sm" onClick={() => editarCompra(p.id)}>
+                        Asignar proveedor
+                      </CButton>
+                    </CTableDataCell>
+                  </CTableRow>
+                ))}
+              </CTableBody>
+            </CTable>
+          )}
 
           {isLoading && <CSpinner />}
           {isError && <CAlert color="danger">No se pudieron cargar las compras.</CAlert>}

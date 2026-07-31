@@ -3,24 +3,30 @@ import api from './client'
 /** Recurso anidado bajo empresa: clientes o proveedores (comparten estructura). */
 export type RecursoSujeto = 'clientes' | 'proveedores'
 
+/**
+ * Un sujeto del Padrón Único (cliente o proveedor, según el recurso de la ruta): una
+ * fila por CUIT compartida por todas las empresas del estudio. `empresa_id` es la
+ * empresa que lo tiene activado en este listado, no un "dueño" — el mismo sujeto puede
+ * estar activado en varias empresas a la vez.
+ */
 export interface Sujeto {
   id: number
   empresa_id: number
   nombre: string
-  cuit: string | null
+  cuit: string
   condicion_iva_id: number | null
   provincia_id: number | null
   domicilio: string | null
   localidad: string | null
   telefono: string | null
   ingresos_brutos: string | null
-  /** 'S' = compartido entre todas las empresas del estudio (tenant). */
-  esglobal?: string | null
   cp?: string | null
   cai?: string | null
   fecha_cai?: string | null
   /** CAI adicionales del proveedor (hasta 5). */
   cais?: CaiItem[] | null
+  /** Cuenta contable por defecto para compras de este proveedor en esta empresa (null = sin regla). */
+  cuenta_id?: number | null
 }
 
 /** Un CAI de proveedor: número + fecha de vencimiento. */
@@ -31,18 +37,19 @@ export interface CaiItem {
 
 export interface SujetoInput {
   nombre: string
-  cuit?: string | null
+  cuit: string
   condicion_iva_id?: number | null
   provincia_id?: number | null
   domicilio?: string | null
   localidad?: string | null
   telefono?: string | null
   ingresos_brutos?: string | null
-  esglobal?: string | null
   cp?: string | null
   cai?: string | null
   fecha_cai?: string | null
   cais?: CaiItem[] | null
+  /** Solo tiene efecto al editar un proveedor existente (el alta no la acepta). */
+  cuenta_id?: number | null
 }
 
 const base = (recurso: RecursoSujeto, empresaId: number) => `/empresas/${empresaId}/${recurso}`
