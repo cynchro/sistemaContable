@@ -171,6 +171,18 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
                     <CTableDataCell>{s.localidad ?? '—'}</CTableDataCell>
                     <CTableDataCell>{s.telefono ?? '—'}</CTableDataCell>
                     <CTableDataCell className="text-end">
+                      {esProveedor && (
+                        <CButton
+                          as={Link}
+                          to={`/empresas/${id}/proveedores/${s.id}/imputacion`}
+                          color="info"
+                          variant="outline"
+                          size="sm"
+                          className="me-2"
+                        >
+                          Imputación
+                        </CButton>
+                      )}
                       <CButton
                         color="secondary"
                         variant="outline"

@@ -453,6 +453,22 @@ tabla+form propios (varias filas por proveedor), no entra en el modal chico de a
 a decidir al implementar: (B1) sección nueva en una vista de detalle del proveedor que hoy no
 existe (solo hay lista+modal), o (B2) página nueva `/empresas/:id/proveedores/:provId/imputacion`.
 Recomendado B2 salvo que se justifique crear la vista de detalle por otras razones.
+✅ **HECHO (31/07/2026)**, decisión del usuario: **B2**. Tampoco había endpoint HTTP (la Parte 1
+solo dejó el repositorio) — `ImputacionContableService`/`ImputacionContableController` nuevos
+(mismo patrón que `VentaClasificacionService`/`Controller` de la Pantalla D: valida
+empresa→tenant + que el proveedor esté activo en esa empresa vía `SujetoEmpresaRepository::
+existeActivo`, y que la cuenta pertenezca al plan de esa empresa) + rutas
+`{$base}/proveedores/{proveedorId}/imputacion` (GET/POST/DELETE, permiso `iva.proveedores`,
+anidada un nivel más que `/proveedores/{id}` — sin colisión de router). Frontend:
+`api/imputacionContable.ts` nuevo + página `ProveedorImputacionPage.tsx` (mismo layout que la
+sección "Regla general por punto de venta" de `ActividadesPage.tsx`: form PV+cuenta y tabla con
+borrar), con el nombre/CUIT del proveedor resuelto por `listSujetos` (no hay GET-by-id de sujeto
+en el frontend). Botón "Imputación" agregado al listado de proveedores (`SujetosList.tsx`, solo
+`esProveedor`). Test `ImputacionContableHttpTest` (crea/lista/borra + cuenta de otra empresa da
+422 + proveedor inexistente/no activo da 404). **611 tests verdes**, PHPStan/PHPCS/tsc/oxlint/
+vite build OK. Verificado E2E en navegador real: regla PV 0005 → 5001 Combustibles y Lubricantes
+se crea, lista y borra correctamente, sin errores de consola. **Cierra las 4 pantallas del
+panorama.**
 
 **C. Bandeja de pendientes** (`GET .../compras/pendientes` y `.../ventas/pendientes`):
 período-scoped, igual que las listas de Ventas/Compras que ya existen. Recomendado no crear
@@ -492,11 +508,10 @@ estructuralmente, requiere decidir B1 vs. B2).
 
 ## 10. Estado final de las 4 pantallas (31/07/2026)
 
-**C, A y D implementadas y verificadas E2E.** Solo queda **B** (reglas por punto de venta del
-proveedor) — no se implementó porque requiere una decisión de UX sin resolver: (B1) crear una
-vista de "detalle de proveedor" que hoy no existe (solo hay lista+modal de alta/edición), o (B2)
-una página aparte `/empresas/:id/proveedores/:provId/imputacion`. Ninguna se asumió por decisión
-propia — queda pendiente de decidir con el usuario antes de codear.
+**Las 4 pantallas (C, A, D y B) implementadas y verificadas E2E.** B (reglas por punto de venta
+del proveedor) se resolvió con la decisión del usuario "B2": página aparte
+`/empresas/:id/proveedores/:provId/imputacion` en vez de construir una vista de detalle de
+proveedor nueva. No queda ninguna pantalla del panorama pendiente.
 
 La **Parte 4** (sembrar los 376.819 registros ya depurados de
 `Relacion_Contribuyente_Proveedor.xlsx`) sigue bloqueada: sin empresas reales, sin `cuentas`

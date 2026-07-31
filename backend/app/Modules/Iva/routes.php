@@ -2,6 +2,7 @@
 
 use App\Modules\Iva\Controllers\IvaClienteController;
 use App\Modules\Iva\Controllers\IvaProveedorController;
+use App\Modules\Iva\Controllers\ImputacionContableController;
 use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
@@ -47,6 +48,26 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     $router->get("{$base}/proveedores/{id}", [IvaProveedorController::class, 'show'], [$perm('iva.proveedores')]);
     $router->put("{$base}/proveedores/{id}", [IvaProveedorController::class, 'update'], [$pw('iva.proveedores')]);
     $router->delete("{$base}/proveedores/{id}", [IvaProveedorController::class, 'delete'], [$pw('iva.proveedores')]);
+
+    // Reglas de imputación contable por punto de venta del proveedor (documento "Satélite Visual
+    // IVA" §5.4, Pantalla B — página aparte, decisión B2, ver documentacion/analisis-satelite-
+    // visual-iva.md §10). Anidada bajo el proveedor, no colisiona con la ruta de arriba: tiene un
+    // segmento más (/imputacion).
+    $router->get(
+        "{$base}/proveedores/{proveedorId}/imputacion",
+        [ImputacionContableController::class, 'index'],
+        [$perm('iva.proveedores')],
+    );
+    $router->post(
+        "{$base}/proveedores/{proveedorId}/imputacion",
+        [ImputacionContableController::class, 'store'],
+        [$pw('iva.proveedores')],
+    );
+    $router->delete(
+        "{$base}/proveedores/{proveedorId}/imputacion/{id}",
+        [ImputacionContableController::class, 'delete'],
+        [$pw('iva.proveedores')],
+    );
 
     // Ventas (agregado bajo período: cabecera + discriminación + percepciones)
     $router->get("{$bajoPeriodo}/ventas", [VentaController::class, 'index'], [$perm('iva.ventas')]);

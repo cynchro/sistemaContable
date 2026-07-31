@@ -43,6 +43,8 @@ use App\Modules\Iva\Repositories\ImputacionContableRepository;
 use App\Modules\Iva\Repositories\VentaClasificacionRepository;
 use App\Modules\Iva\Services\VentaClasificacionService;
 use App\Modules\Iva\Controllers\VentaClasificacionController;
+use App\Modules\Iva\Services\ImputacionContableService;
+use App\Modules\Iva\Controllers\ImputacionContableController;
 use App\Modules\Iva\Repositories\VentaRepository;
 use App\Modules\Iva\Repositories\CompraRepository;
 use App\Modules\Iva\Repositories\LibroIvaRepository;
@@ -107,8 +109,8 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(SujetoRepository::class, fn () => new SujetoRepository($c->get(PDO::class)));
         $c->singleton(SujetoEmpresaRepository::class, fn () => new SujetoEmpresaRepository($c->get(PDO::class)));
         // Imputación contable del padrón (documento "Satélite Visual IVA" §5): cuenta por
-        // defecto + excepción por punto de venta. Todavía no conectada a compras/ventas — ver
-        // documentacion/analisis-satelite-visual-iva.md §7.7 para los próximos pasos.
+        // defecto (Pantalla A) + regla por punto de venta (Pantalla B). Conectada a
+        // CompraService desde la Parte 2 — ver documentacion/analisis-satelite-visual-iva.md §10.
         $c->singleton(
             ImputacionContableRepository::class,
             fn () => new ImputacionContableRepository($c->get(PDO::class)),
@@ -133,6 +135,18 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             IvaProveedorController::class,
             fn () => new IvaProveedorController($c->get(SujetoService::class)),
+        );
+        // Pantalla B (página aparte, decisión B2): capa HTTP para administrar las reglas de
+        // imputación por punto de venta del proveedor.
+        $c->singleton(ImputacionContableService::class, fn () => new ImputacionContableService(
+            $c->get(ImputacionContableRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(SujetoEmpresaRepository::class),
+            $c->get(ReferenceValidator::class),
+        ));
+        $c->singleton(
+            ImputacionContableController::class,
+            fn () => new ImputacionContableController($c->get(ImputacionContableService::class)),
         );
 
         // Motor de cálculos del módulo (calculadoras puras, sin estado).
