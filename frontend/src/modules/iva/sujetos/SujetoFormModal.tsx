@@ -17,7 +17,7 @@ import {
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
 import { sugerenciaPadron } from '../../../api/afip'
-import { listCuentas } from '../../../api/cuentas'
+import { listConceptos } from '../../../api/conceptos'
 import type { Sujeto, SujetoInput } from '../../../api/sujetos'
 
 const schema = z.object({
@@ -33,7 +33,7 @@ const schema = z.object({
   cai: z.string().optional(),
   fecha_cai: z.string().optional(),
   cais: z.array(z.object({ numero: z.string(), vencimiento: z.string() })),
-  cuenta_id: z.string().optional(),
+  concepto_default_id: z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -45,13 +45,12 @@ interface Props {
   visible: boolean
   sujeto: Sujeto | null
   esProveedor: boolean
-  empresaId: number
   saving: boolean
   onClose: () => void
   onSubmit: (values: SujetoInput) => void
 }
 
-export default function SujetoFormModal({ visible, sujeto, esProveedor, empresaId, saving, onClose, onSubmit }: Props) {
+export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, onClose, onSubmit }: Props) {
   const { data: condiciones } = useQuery({
     queryKey: ['catalogo', 'condiciones-iva'],
     queryFn: () => listCatalogo('condiciones-iva'),
@@ -60,13 +59,13 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, empresaI
     queryKey: ['catalogo', 'provincias'],
     queryFn: () => listCatalogo('provincias'),
   })
-  // Cuenta contable por defecto (documento "Satélite Visual IVA" §5): solo aplica a proveedores
-  // ya existentes (la cuenta vive en iva_sujeto_empresas, que recién se crea al activar el
-  // sujeto en esta empresa — no hay nada que editar todavía en el alta).
-  const { data: cuentas } = useQuery({
-    queryKey: ['cuentas', empresaId],
-    queryFn: () => listCuentas(empresaId),
-    enabled: esProveedor && !!sujeto,
+  // Concepto por defecto (documento "Satélite Visual IVA" §5.2): tenant-level, aplica a todas
+  // las empresas donde este proveedor esté activado (las excepciones puntuales por empresa se
+  // configuran en ProveedorImputacionPage, no acá).
+  const { data: conceptos } = useQuery({
+    queryKey: ['conceptos'],
+    queryFn: () => listConceptos(),
+    enabled: esProveedor,
   })
 
   const {
@@ -116,7 +115,7 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, empresaI
         cai: sujeto?.cai ?? '',
         fecha_cai: sujeto?.fecha_cai ?? '',
         cais: sujeto?.cais ?? [],
-        cuenta_id: sujeto?.cuenta_id != null ? String(sujeto.cuenta_id) : '',
+        concepto_default_id: sujeto?.concepto_default_id != null ? String(sujeto.concepto_default_id) : '',
       })
     }
   }, [visible, sujeto, reset])
@@ -129,8 +128,7 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, empresaI
       fecha_cai: strOrNull(v.fecha_cai),
       // Solo los proveedores tienen lista de CAI; se descartan las filas vacías.
       cais: esProveedor ? v.cais.filter((c) => c.numero.trim() !== '') : [],
-      // Solo tiene efecto al editar (el alta la ignora, ver api/sujetos.ts).
-      cuenta_id: v.cuenta_id ? Number(v.cuenta_id) : null,
+      concepto_default_id: v.concepto_default_id ? Number(v.concepto_default_id) : null,
     })
 
   const titulo = `${sujeto ? 'Editar' : 'Nuevo'} ${esProveedor ? 'proveedor' : 'cliente'}`
@@ -225,21 +223,24 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, empresaI
               </>
             )}
           </div>
-          {esProveedor && sujeto && (
+          {esProveedor && (
             <div className="row">
               <div className="col-md-6 mb-3">
-                <CFormLabel htmlFor="cuenta_id">Cuenta contable por defecto (compras)</CFormLabel>
-                <CFormSelect id="cuenta_id" {...register('cuenta_id')}>
+                <CFormLabel htmlFor="concepto_default_id">
+                  Concepto contable por defecto (todas las empresas)
+                </CFormLabel>
+                <CFormSelect id="concepto_default_id" {...register('concepto_default_id')}>
                   <option value="">— Sin regla (se pide al cargar cada compra) —</option>
-                  {cuentas?.map((c) => (
+                  {conceptos?.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.codigo ? `${c.codigo} — ${c.nombre}` : c.nombre}
+                      {c.nombre}
                     </option>
                   ))}
                 </CFormSelect>
                 <div className="text-muted small mt-1">
-                  Se precarga en las compras de este proveedor cuando la línea no trae una cuenta
-                  propia. Es específica de esta empresa (otras empresas pueden tener otra).
+                  Se resuelve a la cuenta contable de cada empresa (vía el mapeo de conceptos en
+                  Actividades). Una empresa puntual puede excepcionarlo desde su pantalla de
+                  Imputación.
                 </div>
               </div>
             </div>

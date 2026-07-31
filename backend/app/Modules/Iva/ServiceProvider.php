@@ -34,6 +34,9 @@ use App\Modules\Compartido\Repositories\TipoRetencionRepository;
 use App\Modules\Iva\Calc\IvaComprobanteCalculator;
 use App\Modules\Iva\Calc\PercepcionCalculator;
 use App\Modules\Iva\Calc\LibroIvaCalculator;
+use App\Modules\Iva\Calc\AlertaEstadisticaCalculator;
+use App\Modules\Iva\Services\AlertaEstadisticaService;
+use App\Modules\Iva\Controllers\AlertaEstadisticaController;
 use App\Modules\Iva\Calc\LibroIvaDetalleCalculator;
 use App\Modules\Iva\Calc\DeclaracionIvaCalculator;
 use App\Modules\Iva\Calc\IvaSimpleCalculator;
@@ -85,6 +88,10 @@ use App\Modules\Iva\Services\LibroIvaService;
 use App\Modules\Iva\Services\ReporteIvaService;
 use App\Modules\Iva\Controllers\IvaClienteController;
 use App\Modules\Iva\Controllers\IvaProveedorController;
+use App\Modules\Iva\Controllers\PadronUnicoController;
+use App\Modules\Iva\Repositories\ConceptoRepository;
+use App\Modules\Iva\Services\ConceptoService;
+use App\Modules\Iva\Controllers\ConceptoController;
 use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
@@ -108,7 +115,13 @@ class ServiceProvider extends BaseServiceProvider
         // 'cliente'/'proveedor' lo fija cada Controller al llamar al mismo Service).
         $c->singleton(SujetoRepository::class, fn () => new SujetoRepository($c->get(PDO::class)));
         $c->singleton(SujetoEmpresaRepository::class, fn () => new SujetoEmpresaRepository($c->get(PDO::class)));
-        // Imputación contable del padrón (documento "Satélite Visual IVA" §5): cuenta por
+        // Catálogo de conceptos (documento "Satélite Visual IVA" §5.2/§5.4, migración 0051):
+        // nivel intermedio tenant-level entre la regla de imputación (global) y la cuenta real
+        // (por-empresa) — ver ImputacionContableRepository para la cadena de resolución completa.
+        $c->singleton(ConceptoRepository::class, fn () => new ConceptoRepository($c->get(PDO::class)));
+        $c->singleton(ConceptoService::class, fn () => new ConceptoService($c->get(ConceptoRepository::class)));
+        $c->singleton(ConceptoController::class, fn () => new ConceptoController($c->get(ConceptoService::class)));
+        // Imputación contable del padrón (documento "Satélite Visual IVA" §5): concepto por
         // defecto (Pantalla A) + regla por punto de venta (Pantalla B). Conectada a
         // CompraService desde la Parte 2 — ver documentacion/analisis-satelite-visual-iva.md §10.
         $c->singleton(
@@ -136,11 +149,17 @@ class ServiceProvider extends BaseServiceProvider
             IvaProveedorController::class,
             fn () => new IvaProveedorController($c->get(SujetoService::class)),
         );
+        // Vista global del Padrón Único (documento "Satélite Visual IVA" §10, Etapa 4).
+        $c->singleton(
+            PadronUnicoController::class,
+            fn () => new PadronUnicoController($c->get(SujetoService::class)),
+        );
         // Pantalla B (página aparte, decisión B2): capa HTTP para administrar las reglas de
         // imputación por punto de venta del proveedor.
         $c->singleton(ImputacionContableService::class, fn () => new ImputacionContableService(
             $c->get(ImputacionContableRepository::class),
             $c->get(EmpresaRepository::class),
+            $c->get(SujetoRepository::class),
             $c->get(SujetoEmpresaRepository::class),
             $c->get(ReferenceValidator::class),
         ));
@@ -205,6 +224,21 @@ class ServiceProvider extends BaseServiceProvider
             $c->get(DdjjSimpleRepository::class),
         ));
         $c->singleton(LibroIvaController::class, fn () => new LibroIvaController($c->get(LibroIvaService::class)));
+
+        // Motor de alertas estadísticas v1 (documento "Satélite Visual IVA" §7): reusa los
+        // totales de período del Libro IVA, no agrega tablas ni columnas propias.
+        $c->singleton(AlertaEstadisticaCalculator::class, fn () => new AlertaEstadisticaCalculator());
+        $c->singleton(AlertaEstadisticaService::class, fn () => new AlertaEstadisticaService(
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+            $c->get(LibroIvaRepository::class),
+            $c->get(LibroIvaCalculator::class),
+            $c->get(AlertaEstadisticaCalculator::class),
+        ));
+        $c->singleton(
+            AlertaEstadisticaController::class,
+            fn () => new AlertaEstadisticaController($c->get(AlertaEstadisticaService::class)),
+        );
 
         // Reportes (subdiario / libro IVA): listado de comprobantes enriquecido + totales.
         $c->singleton(ReporteIvaRepository::class, fn () => new ReporteIvaRepository($c->get(PDO::class)));

@@ -525,3 +525,62 @@ Este es un análisis comparativo/diagnóstico y un diseño técnico, no una impl
 documento del satélite es explícito en que es una propuesta de *proceso* pendiente de acuerdo
 antes de pasar a diseño técnico — la sección 7 de este documento avanza esa etapa de diseño, pero
 no se escribió código todavía: no se modificó `backend/`, `frontend/` ni `extractor/`.
+
+## 11. Cierre de las 3 brechas restantes (31/07/2026)
+
+Tras completar las 4 pantallas (§10), se re-analizó `satelite/documento-1 (1).pdf` contra el
+código y aparecieron 3 brechas reales, todas cerradas en esta ronda con decisiones explícitas del
+usuario:
+
+- [x] **Vista global del padrón** (doc. §10, Etapa 4: "consulta del padrón global"). Antes,
+  `SujetoRepository`/`SujetoService` solo listaban sujetos por empresa — no existía ninguna
+  pantalla "todos los proveedores/clientes del estudio". `SujetoRepository::listAllByTenant` +
+  `SujetoEmpresaRepository::empresasActivasDe` + `SujetoService::listGlobal` +
+  `PadronUnicoController` (nombre distinto de `PadronController`, que es la consulta al padrón de
+  AFIP, no relacionada) → `GET /padron-unico` (tenant-wide). Frontend: `PadronUnicoPage.tsx`
+  (`/padron-unico`), con cada fila linkeando a `/empresas/{id}/proveedores?q=CUIT` — se agregó
+  soporte de `?q=` en `SujetosList.tsx` para el deep-link. Verificado E2E: CUIT compartido entre
+  dos empresas aparece una sola vez con sus dos activaciones; el link navega y precarga la
+  búsqueda.
+- [x] **Regla de punto de venta realmente global** (doc. §5.4, caso MUCHAY SRL). Antes, la regla
+  de PV (Pantalla B) estaba scopeada por `(empresa_id, sujeto_id, punto_venta)` porque `cuentas`
+  es un catálogo por-empresa — cargar la misma regla para 5 empresas exigía repetirla 5 veces. El
+  usuario eligió la opción de fondo (no la de menor esfuerzo): una capa de **"concepto"**
+  (`iva_conceptos`, tenant-level) + mapeo `empresa_concepto_cuenta` (cada empresa traduce el
+  concepto a su propia cuenta). Migración `0051_iva_conceptos_imputacion.php`: agrega
+  `concepto_default_id` a `iva_sujetos` (default global), `concepto_id` a `iva_sujeto_empresas`
+  (excepción del default por empresa), rediseña `iva_sujeto_punto_venta` sin `empresa_id` (regla
+  global de PV) y agrega `iva_sujeto_punto_venta_empresa` (excepción de PV por empresa) — cadena
+  de resolución de 5 niveles en `ImputacionContableRepository::resolverCuenta`, con el mismo
+  contrato externo que ya usaba `CompraService` (sin tocarlo). `ConceptoRepository/Service/
+  Controller` (CRUD del catálogo, `/iva/conceptos`). `ImputacionContableService/Controller`
+  ampliados a 4 secciones (regla global, excepción de PV por empresa, excepción de concepto por
+  defecto, mapeo concepto→cuenta). Frontend: `SujetoFormModal.tsx` (concepto default, tenant-wide,
+  ya no depende de `empresaId`), `ProveedorImputacionPage.tsx` reestructurada en 3 secciones,
+  pestaña **Conceptos** en Utilidades, sección **"Mapeo de conceptos → cuentas"** en
+  `ActividadesPage.tsx`. Verificado E2E completo: concepto creado en Utilidades → mapeado a una
+  cuenta en Actividades de una empresa → regla global de PV cargada desde Proveedores →
+  Imputación → la cuenta se resuelve correctamente para esa empresa → borrado. Reemplazo limpio
+  del modelo de la migración 0049 (sin migrar datos: no había datos reales de producción en este
+  frente todavía).
+- [x] **Motor de alertas estadísticas v1** (doc. §7). El documento pide definir el umbral y si
+  reusa un "semáforo" de Monotributo antes de programar; se confirmó por grep que ese semáforo no
+  existe en el código. Se construyó una v1 igual, con el supuesto documentado como pregunta abierta
+  (`preguntas.md` §E, mismo patrón que el resto de las decisiones de dominio del proyecto) en vez
+  de esperar. `AlertaEstadisticaCalculator` (puro, `UMBRAL_DESVIO=30%`,
+  `MIN_PERIODOS_HISTORIAL=3`) + `AlertaEstadisticaService` (compara el último período de cada
+  empresa del tenant contra el promedio de los anteriores, para compras y ventas — reusa
+  `LibroIvaRepository`/`LibroIvaCalculator`, sin tablas ni columnas nuevas, calculado al vuelo
+  igual que el resto de los totales del sistema) + `GET /alertas` (tenant-wide, sin permiso
+  granular nuevo). Frontend: `AlertasPage.tsx` (`/alertas`), toggle "solo alertas". Tests:
+  `AlertaEstadisticaCalculatorTest` (unit) + `AlertaEstadisticaTest` (feature, con comprobantes
+  reales — detecta un salto de 1000→3000 en el 4° período contra un historial estable de 1210).
+
+**Explícitamente fuera de esta ronda** (decisión del usuario, coherente con el propio documento):
+la configuración general de liquidación IVA/IIBB/tasa municipal (doc. §8, "Fuera de alcance" de la
+propuesta del satélite).
+
+**630 tests verdes** (+19 sobre v0.3.17), PHPStan 6 OK, PHPCS limpio, `tsc`/`oxlint`/`vite build`
+verdes. Con esto, no queda ninguna brecha accionable del documento — solo la Parte 4 (sembrar los
+376.819 registros reales) sigue bloqueada por falta de datos, y el motor de alertas queda con un
+supuesto de umbral pendiente de confirmar con el contador.

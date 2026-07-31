@@ -25,8 +25,10 @@ export interface Sujeto {
   fecha_cai?: string | null
   /** CAI adicionales del proveedor (hasta 5). */
   cais?: CaiItem[] | null
-  /** Cuenta contable por defecto para compras de este proveedor en esta empresa (null = sin regla). */
-  cuenta_id?: number | null
+  /** Concepto por defecto (documento "Satélite Visual IVA" §5.2), tenant-level: aplica a todas
+   * las empresas donde este proveedor esté activado, salvo excepción puntual (ver
+   * ProveedorImputacionPage). null = sin regla. */
+  concepto_default_id?: number | null
 }
 
 /** Un CAI de proveedor: número + fecha de vencimiento. */
@@ -48,8 +50,7 @@ export interface SujetoInput {
   cai?: string | null
   fecha_cai?: string | null
   cais?: CaiItem[] | null
-  /** Solo tiene efecto al editar un proveedor existente (el alta no la acepta). */
-  cuenta_id?: number | null
+  concepto_default_id?: number | null
 }
 
 const base = (recurso: RecursoSujeto, empresaId: number) => `/empresas/${empresaId}/${recurso}`

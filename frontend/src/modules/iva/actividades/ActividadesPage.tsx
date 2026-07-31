@@ -41,6 +41,8 @@ import {
 import { listSujetos } from '../../../api/sujetos'
 import { listCuentas } from '../../../api/cuentas'
 import { listCatalogo } from '../../../api/catalogos'
+import { listConceptos } from '../../../api/conceptos'
+import { listMapeoEmpresa, setMapeoEmpresa, deleteMapeoEmpresa } from '../../../api/imputacionContable'
 import {
   listPuntoVenta as listVentaPuntoVenta,
   setPuntoVenta as setVentaPuntoVenta,
@@ -78,6 +80,8 @@ export default function ActividadesPage() {
   })
   const ventaPv = useQuery({ queryKey: ['venta-clasif-pv', eId], queryFn: () => listVentaPuntoVenta(eId) })
   const ventaTipo = useQuery({ queryKey: ['venta-clasif-tipo', eId], queryFn: () => listVentaPorTipo(eId) })
+  const conceptos = useQuery({ queryKey: ['conceptos'], queryFn: () => listConceptos() })
+  const mapeoConceptos = useQuery({ queryKey: ['mapeo-conceptos', eId], queryFn: () => listMapeoEmpresa(eId) })
 
   const [codigo, setCodigo] = useState('')
   const [descripcion, setDescripcion] = useState('')
@@ -94,6 +98,8 @@ export default function ActividadesPage() {
   const [tipoPv, setTipoPv] = useState('')
   const [tipoComprobanteId, setTipoComprobanteId] = useState('')
   const [tipoCuenta, setTipoCuenta] = useState('')
+  const [mapeoConceptoId, setMapeoConceptoId] = useState('')
+  const [mapeoCuentaId, setMapeoCuentaId] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const crearAct = useMutation({
@@ -202,6 +208,24 @@ export default function ActividadesPage() {
   const borrarVentaTipo = useMutation({
     mutationFn: (id: number) => deleteVentaPorTipo(eId, id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['venta-clasif-tipo', eId] }),
+  })
+
+  // Mapeo concepto→cuenta de esta empresa (documento "Satélite Visual IVA" §5.2/§5.4, migración
+  // 0051): traduce el catálogo de conceptos (tenant-level, Utilidades → Conceptos) al plan de
+  // cuentas real de esta empresa. Lo usan las reglas de imputación del proveedor (Pantalla B).
+  const mapearConcepto = useMutation({
+    mutationFn: () => setMapeoEmpresa(eId, Number(mapeoConceptoId), Number(mapeoCuentaId)),
+    onSuccess: () => {
+      setMapeoConceptoId('')
+      setMapeoCuentaId('')
+      setError(null)
+      qc.invalidateQueries({ queryKey: ['mapeo-conceptos', eId] })
+    },
+    onError: (e) => setError(apiError(e, 'No se pudo guardar el mapeo.')),
+  })
+  const borrarConcepto = useMutation({
+    mutationFn: (conceptoId: number) => deleteMapeoEmpresa(eId, conceptoId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['mapeo-conceptos', eId] }),
   })
 
   return (
@@ -741,6 +765,93 @@ export default function ActividadesPage() {
             )}
           </CCol>
         </CRow>
+
+        <hr />
+        <h6>Mapeo de conceptos → cuentas (documento "Satélite Visual IVA" §5.2/§5.4)</h6>
+        <div className="text-body-secondary small mb-3">
+          Traduce el catálogo de conceptos del estudio (Utilidades → Conceptos) al plan de cuentas de{' '}
+          <strong>esta empresa</strong>. Lo usan las reglas de imputación de los proveedores (botón
+          "Imputación" en Proveedores): si un concepto no está mapeado acá, el comprobante queda sin cuenta
+          hasta que se cargue.
+        </div>
+        <CForm
+          className="row g-2 align-items-end mb-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (mapeoConceptoId && mapeoCuentaId) mapearConcepto.mutate()
+          }}
+        >
+          <div className="col-auto" style={{ minWidth: 220 }}>
+            <CFormLabel className="small mb-1">Concepto</CFormLabel>
+            <CFormSelect value={mapeoConceptoId} onChange={(e) => setMapeoConceptoId(e.target.value)}>
+              <option value="">—</option>
+              {conceptos.data?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </CFormSelect>
+          </div>
+          <div className="col-auto" style={{ minWidth: 220 }}>
+            <CFormLabel className="small mb-1">Cuenta</CFormLabel>
+            <CFormSelect value={mapeoCuentaId} onChange={(e) => setMapeoCuentaId(e.target.value)}>
+              <option value="">—</option>
+              {cuentas.data?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.codigo ? `${c.codigo} — ${c.nombre}` : c.nombre}
+                </option>
+              ))}
+            </CFormSelect>
+          </div>
+          <div className="col-auto">
+            <CButton
+              type="submit"
+              color="primary"
+              disabled={mapearConcepto.isPending || !mapeoConceptoId || !mapeoCuentaId}
+            >
+              Mapear
+            </CButton>
+          </div>
+        </CForm>
+        {mapeoConceptos.isLoading && <CSpinner />}
+        {mapeoConceptos.data && (
+          <CTable small hover responsive align="middle">
+            <CTableHead>
+              <CTableRow>
+                <CTableHeaderCell>Concepto</CTableHeaderCell>
+                <CTableHeaderCell>Cuenta</CTableHeaderCell>
+                <CTableHeaderCell />
+              </CTableRow>
+            </CTableHead>
+            <CTableBody>
+              {mapeoConceptos.data.map((m) => (
+                <CTableRow key={m.id}>
+                  <CTableDataCell>{m.concepto_nombre}</CTableDataCell>
+                  <CTableDataCell>
+                    {m.cuenta_codigo ? `${m.cuenta_codigo} — ${m.cuenta_nombre}` : m.cuenta_nombre}
+                  </CTableDataCell>
+                  <CTableDataCell className="text-end">
+                    <CButton
+                      color="danger"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => borrarConcepto.mutate(m.concepto_id)}
+                    >
+                      ✕
+                    </CButton>
+                  </CTableDataCell>
+                </CTableRow>
+              ))}
+              {mapeoConceptos.data.length === 0 && (
+                <CTableRow>
+                  <CTableDataCell colSpan={3} className="text-center text-body-secondary py-3">
+                    Sin conceptos mapeados.
+                  </CTableDataCell>
+                </CTableRow>
+              )}
+            </CTableBody>
+          </CTable>
+        )}
       </CCardBody>
     </CCard>
   )

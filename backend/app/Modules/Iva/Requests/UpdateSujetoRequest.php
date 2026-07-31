@@ -22,10 +22,8 @@ class UpdateSujetoRequest extends FormRequest
             'cai'              => 'nullable|string|max:15',
             'fecha_cai'        => 'nullable|date:Y-m-d',
             'cais'             => 'nullable|array',
-            // Cuenta contable por defecto para este sujeto en esta empresa (documento "Satélite
-            // Visual IVA" §5) — vive en iva_sujeto_empresas, no en el padrón (iva_sujetos), por
-            // eso solo se acepta acá y no en el alta (todavía no hay empresa+sujeto activados).
-            'cuenta_id'        => 'nullable|integer',
+            // Concepto por defecto (documento "Satélite Visual IVA" §5.2), tenant-level.
+            'concepto_default_id' => 'nullable|integer',
         ];
     }
 }

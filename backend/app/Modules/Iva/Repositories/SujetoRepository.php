@@ -14,11 +14,38 @@ class SujetoRepository
 {
     private const WRITABLE = [
         'cuit', 'nombre', 'domicilio', 'localidad', 'cp', 'condicion_iva_id', 'provincia_id',
-        'ingresos_brutos', 'telefono', 'cai', 'fecha_cai', 'cais',
+        'ingresos_brutos', 'telefono', 'cai', 'fecha_cai', 'cais', 'concepto_default_id',
     ];
 
     public function __construct(private PDO $pdo)
     {
+    }
+
+    /**
+     * Todos los sujetos del padrón del tenant, sin filtrar por empresa (vista global —
+     * documento "Satélite Visual IVA" §10, Etapa 4: "consulta del padrón global").
+     *
+     * @param  array{q?: ?string} $filtros
+     * @return list<array<string, mixed>>
+     */
+    public function listAllByTenant(string $tenantId, array $filtros = []): array
+    {
+        $where  = ['tenant_id = ?'];
+        $params = [$tenantId];
+
+        if (!empty($filtros['q'])) {
+            $where[]  = '(nombre LIKE ? OR cuit LIKE ?)';
+            $q        = '%' . $filtros['q'] . '%';
+            $params[] = $q;
+            $params[] = $q;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT * FROM iva_sujetos WHERE ' . implode(' AND ', $where) . ' ORDER BY nombre'
+        );
+        $stmt->execute($params);
+
+        return array_map([$this, 'decode'], (array) $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     /** @return array<string, mixed>|null */

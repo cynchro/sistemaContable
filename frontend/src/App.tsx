@@ -8,6 +8,8 @@ import PeriodosList from './modules/periodos/PeriodosList'
 import EnConstruccion from './components/EnConstruccion'
 import SujetosList from './modules/iva/sujetos/SujetosList'
 import ProveedorImputacionPage from './modules/iva/sujetos/ProveedorImputacionPage'
+import PadronUnicoPage from './modules/iva/padron/PadronUnicoPage'
+import AlertasPage from './modules/iva/alertas/AlertasPage'
 import VentasList from './modules/iva/ventas/VentasList'
 import ComprasList from './modules/iva/compras/ComprasList'
 import LibroIvaPage from './modules/iva/libro/LibroIvaPage'
@@ -32,6 +34,8 @@ function App() {
         <Route path="/" element={<DefaultLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="empresas" element={<EmpresasList />} />
+          <Route path="padron-unico" element={<PadronUnicoPage />} />
+          <Route path="alertas" element={<AlertasPage />} />
           <Route path="empresas/:empresaId/periodos" element={<PeriodosList />} />
           <Route path="empresas/:empresaId/clientes" element={<SujetosList recurso="clientes" />} />
           <Route path="empresas/:empresaId/proveedores" element={<SujetosList recurso="proveedores" />} />

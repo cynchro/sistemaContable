@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CCard,
@@ -41,8 +41,10 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
   const qc = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Sujeto | null>(null)
-  const [q, setQ] = useState('')
-  const [busqueda, setBusqueda] = useState('')
+  // Precarga desde ?q= (deep-link del Padrón único, PadronUnicoPage) — solo al montar.
+  const [searchParams] = useSearchParams()
+  const [q, setQ] = useState(() => searchParams.get('q') ?? '')
+  const [busqueda, setBusqueda] = useState(() => searchParams.get('q') ?? '')
   const [orden, setOrden] = useState('')
   const [page, setPage] = useState(1)
 
@@ -248,7 +250,6 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
         visible={modalOpen}
         sujeto={editing}
         esProveedor={esProveedor}
-        empresaId={id}
         saving={saveM.isPending}
         onClose={closeModal}
         onSubmit={(v) => saveM.mutate(v)}

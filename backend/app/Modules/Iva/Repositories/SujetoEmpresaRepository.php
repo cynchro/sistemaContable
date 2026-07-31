@@ -38,13 +38,48 @@ class SujetoEmpresaRepository
         $orden = ($filtros['orden'] ?? '') === 'cuit' ? 's.cuit, s.nombre' : 's.nombre';
 
         $stmt = $this->pdo->prepare(
-            'SELECT s.*, se.empresa_id AS empresa_id, se.activo AS activo, se.cuenta_id AS cuenta_id'
+            'SELECT s.*, se.empresa_id AS empresa_id, se.activo AS activo'
             . ' FROM iva_sujetos s JOIN iva_sujeto_empresas se ON se.sujeto_id = s.id'
             . ' WHERE ' . implode(' AND ', $where) . ' ORDER BY ' . $orden
         );
         $stmt->execute($params);
 
         return array_map([$this, 'decode'], (array) $stmt->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * Empresas donde cada sujeto está activo (y con qué rol), para la vista global del padrón
+     * (documento "Satélite Visual IVA" §10, Etapa 4).
+     *
+     * @param  list<int> $sujetoIds
+     * @return array<int, list<array{empresa_id:int, empresa_nombre:string, rol:string}>> indexado por sujeto_id
+     */
+    public function empresasActivasDe(array $sujetoIds, string $tenantId): array
+    {
+        if ($sujetoIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($sujetoIds), '?'));
+        $stmt         = $this->pdo->prepare(
+            "SELECT se.sujeto_id, se.empresa_id, e.nombre AS empresa_nombre, se.rol
+               FROM iva_sujeto_empresas se
+               JOIN empresas e ON e.id = se.empresa_id
+              WHERE se.sujeto_id IN ({$placeholders}) AND se.activo = 'S' AND e.tenant_id = ?
+              ORDER BY e.nombre"
+        );
+        $stmt->execute([...$sujetoIds, $tenantId]);
+
+        $porSujeto = [];
+        foreach ((array) $stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $porSujeto[(int) $row['sujeto_id']][] = [
+                'empresa_id'     => (int) $row['empresa_id'],
+                'empresa_nombre' => $row['empresa_nombre'],
+                'rol'            => $row['rol'],
+            ];
+        }
+
+        return $porSujeto;
     }
 
     public function existeActivo(int $empresaId, int $sujetoId, string $rol): bool
@@ -79,26 +114,29 @@ class SujetoEmpresaRepository
         return $stmt->rowCount() > 0;
     }
 
-    /** Cuenta contable por defecto para este sujeto en esta empresa (null = sin regla). */
-    public function setCuenta(int $empresaId, int $sujetoId, string $rol, ?int $cuentaId): void
+    /**
+     * Excepción del concepto por defecto del proveedor para ESTA empresa puntual (documento
+     * "Satélite Visual IVA" §5.2, null = usar el default global de `iva_sujetos`).
+     */
+    public function setConcepto(int $empresaId, int $sujetoId, string $rol, ?int $conceptoId): void
     {
         $stmt = $this->pdo->prepare(
-            'UPDATE iva_sujeto_empresas SET cuenta_id = ?
+            'UPDATE iva_sujeto_empresas SET concepto_id = ?
               WHERE empresa_id = ? AND sujeto_id = ? AND rol = ?'
         );
-        $stmt->execute([$cuentaId, $empresaId, $sujetoId, $rol]);
+        $stmt->execute([$conceptoId, $empresaId, $sujetoId, $rol]);
     }
 
-    /** Cuenta contable por defecto actual (null = sin regla cargada). */
-    public function cuentaDe(int $empresaId, int $sujetoId, string $rol): ?int
+    /** Excepción de concepto vigente para esta empresa (null = no hay, usa el default global). */
+    public function conceptoDe(int $empresaId, int $sujetoId, string $rol): ?int
     {
         $stmt = $this->pdo->prepare(
-            'SELECT cuenta_id FROM iva_sujeto_empresas WHERE empresa_id = ? AND sujeto_id = ? AND rol = ?'
+            'SELECT concepto_id FROM iva_sujeto_empresas WHERE empresa_id = ? AND sujeto_id = ? AND rol = ?'
         );
         $stmt->execute([$empresaId, $sujetoId, $rol]);
-        $cuentaId = $stmt->fetchColumn();
+        $conceptoId = $stmt->fetchColumn();
 
-        return $cuentaId !== false && $cuentaId !== null ? (int) $cuentaId : null;
+        return $conceptoId !== false && $conceptoId !== null ? (int) $conceptoId : null;
     }
 
     /**

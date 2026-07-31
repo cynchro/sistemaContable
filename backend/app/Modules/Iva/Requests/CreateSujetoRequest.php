@@ -26,6 +26,9 @@ class CreateSujetoRequest extends FormRequest
             'cai'              => 'nullable|string|max:15',
             'fecha_cai'        => 'nullable|date:Y-m-d',
             'cais'             => 'nullable|array',
+            // Concepto por defecto (documento "Satélite Visual IVA" §5.2), tenant-level: a
+            // diferencia de la vieja cuenta contable directa, no depende de una empresa activada.
+            'concepto_default_id' => 'nullable|integer',
         ];
     }
 }

@@ -14,7 +14,8 @@
 > 2. **RESPONDIDAS (archivo)** — registro histórico de lo ya contestado. **No escribir acá.**
 >
 > Estado actual: **IVA está 100% respondido** (zona archivo, A1–A15 + A11-bis). Abiertas quedan
-> **Sueldos (B)**, **Honorarios (C)** y **Fiscal (D)**.
+> **Sueldos (B)**, **Honorarios (C)**, **Fiscal (D)** y **Satélite Visual IVA / alertas
+> estadísticas (E)**.
 
 ---
 
@@ -136,6 +137,36 @@ creado → documentación recibida → documentación cargada → en control →
 **Pregunta:** ¿ese circuito refleja cómo trabajan? ¿Falta o sobra algún estado (p. ej.
 "pagado", "observado por AFIP", "vencido")?
 **Hoy asumimos:** los 5 estados de arriba.
+**Respuesta:**
+
+---
+
+## E) Satélite Visual IVA — alertas estadísticas
+
+> PENDIENTE (planteada 2026-07-31). Documento `satelite/documento-1 (1).pdf` §7: el propio
+> documento deja la mecánica sin cerrar ("falta definir el umbral de desvío... se recomienda
+> resolverlo antes de programar"). Se decidió construir una v1 igual, con un supuesto explícito,
+> en lugar de esperar — ver `AlertaEstadisticaCalculator`.
+
+### E1. 🟡 Umbral de desvío para la alerta estadística
+**Contexto:** el motor compara el total de compras/ventas del último período de cada empresa
+contra el promedio de sus períodos anteriores (mínimo 3 para evaluar). Si el desvío supera un
+umbral, se marca como "fuera de lo habitual" (posible bien de uso u otro movimiento inusual).
+**Pregunta:** ¿30% de desvío es un umbral razonable, o el estudio maneja otro criterio (por
+ejemplo, distinto según el contribuyente o el rubro)? ¿Debería considerar solo desvíos hacia
+arriba (suba) o también hacia abajo (caída fuerte)?
+**Hoy asumimos:** 30% de desvío en cualquier sentido (suba o baja), con un mínimo de 3 períodos
+históricos antes de evaluar (menos que eso, no se genera alerta).
+**Respuesta:**
+
+### E2. 🟢 ¿Comparte lógica con el "semáforo" de Monotributo?
+**Contexto:** el documento sugiere reusar la lógica de semáforo (verde/amarillo/naranja/rojo) del
+sistema de causales de exclusión de Monotributo, en lugar de construir un motor de alertas nuevo
+y separado. Se verificó que ese semáforo **no existe todavía en el código** de este ecosistema.
+**Pregunta:** ¿el semáforo de Monotributo es un sistema externo/legacy que hay que integrar, o
+directamente no existe todavía y hay que diseñarlo desde cero? Si existe, ¿dónde vive?
+**Hoy asumimos:** motor independiente (no comparte código con ningún semáforo, porque no se
+encontró ninguno reutilizable).
 **Respuesta:**
 
 ---

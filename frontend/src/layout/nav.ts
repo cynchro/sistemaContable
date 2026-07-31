@@ -98,6 +98,8 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
           disabled: needEmpresa,
           hint: hintEmpresa,
         },
+        { name: 'Padrón único', to: '/padron-unico', icon: cilPeople },
+        { name: 'Alertas', to: '/alertas', icon: cilShieldAlt },
         {
           name: 'Cuentas',
           to: `/empresas/${emp}/cuentas`,

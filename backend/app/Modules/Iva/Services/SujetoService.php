@@ -40,16 +40,33 @@ class SujetoService
         return $this->activaciones->findAllByEmpresa($empresaId, $rol, $filtros);
     }
 
+    /**
+     * Vista global del padrón: todos los sujetos del tenant, sin filtrar por empresa, con la
+     * lista de empresas donde cada uno está activo (documento "Satélite Visual IVA" §10).
+     *
+     * @param  array{q?: ?string} $filtros
+     * @return list<array<string, mixed>>
+     */
+    public function listGlobal(string $tenantId, array $filtros = []): array
+    {
+        $sujetos = $this->sujetos->listAllByTenant($tenantId, $filtros);
+        $ids     = array_map(static fn (array $s): int => (int) $s['id'], $sujetos);
+        $porId   = $this->activaciones->empresasActivasDe($ids, $tenantId);
+
+        return array_map(static function (array $s) use ($porId): array {
+            $s['empresas'] = $porId[(int) $s['id']] ?? [];
+
+            return $s;
+        }, $sujetos);
+    }
+
     /** @return array<string, mixed> */
     public function get(int $id, int $empresaId, string $tenantId, string $rol): array
     {
         $this->assertEmpresa($empresaId, $tenantId);
         $this->assertActivo($id, $empresaId, $rol);
 
-        $sujeto = $this->sujetos->findById($id, $tenantId);
-        $sujeto['cuenta_id'] = $this->activaciones->cuentaDe($empresaId, $id, $rol);
-
-        return $sujeto;
+        return $this->sujetos->findById($id, $tenantId);
     }
 
     /**
@@ -59,7 +76,7 @@ class SujetoService
     public function create(array $data, int $empresaId, string $tenantId, string $rol): array
     {
         $this->assertEmpresa($empresaId, $tenantId);
-        $this->assertReferencias($data);
+        $this->assertReferencias($data, $tenantId);
         $data['cuit'] = $this->assertCuitValido($data['cuit'] ?? '');
 
         return $this->db->withTransaction(function () use ($data, $empresaId, $tenantId, $rol) {
@@ -86,17 +103,11 @@ class SujetoService
     {
         $this->assertEmpresa($empresaId, $tenantId);
         $this->assertActivo($id, $empresaId, $rol);
-        $this->assertReferencias($data);
+        $this->assertReferencias($data, $tenantId);
 
         if (array_key_exists('cuit', $data)) {
             $data['cuit'] = $this->assertCuitValido($data['cuit'] ?? '');
             $this->assertCuitLibre($data['cuit'], $id, $tenantId);
-        }
-
-        if (array_key_exists('cuenta_id', $data)) {
-            $cuentaId = $data['cuenta_id'] !== null ? (int) $data['cuenta_id'] : null;
-            $this->assertCuentaValida($cuentaId, $empresaId);
-            $this->activaciones->setCuenta($empresaId, $id, $rol, $cuentaId);
         }
 
         $this->sujetos->update($id, $data, $tenantId);
@@ -147,29 +158,22 @@ class SujetoService
     }
 
     /**
-     * La cuenta contable por defecto (documento "Satélite Visual IVA" §5) pertenece al plan de
-     * cuentas de esta empresa puntual — a diferencia de condición IVA/provincia, no es un
-     * catálogo global.
-     */
-    private function assertCuentaValida(?int $cuentaId, int $empresaId): void
-    {
-        $this->refs->validate([
-            'cuenta_id' => [
-                'table' => 'cuentas', 'value' => $cuentaId, 'scope' => ['empresa_id' => $empresaId],
-            ],
-        ]);
-    }
-
-    /**
-     * Condición de IVA y provincia son catálogos globales; validación amable → 422.
+     * Condición de IVA y provincia son catálogos globales; `concepto_default_id` (documento
+     * "Satélite Visual IVA" §5.2) es tenant-level, a diferencia de la vieja cuenta contable
+     * directa (empresa-level) — se valida contra `iva_conceptos` con scope de tenant. 422 amable.
      *
      * @param array<string, mixed> $data
      */
-    private function assertReferencias(array $data): void
+    private function assertReferencias(array $data, string $tenantId): void
     {
         $this->refs->validate([
             'condicion_iva_id' => ['table' => 'condiciones_iva', 'value' => $data['condicion_iva_id'] ?? null],
             'provincia_id'     => ['table' => 'provincias', 'value' => $data['provincia_id'] ?? null],
+            'concepto_default_id' => [
+                'table' => 'iva_conceptos',
+                'value' => $data['concepto_default_id'] ?? null,
+                'scope' => ['tenant_id' => $tenantId],
+            ],
         ]);
     }
 }

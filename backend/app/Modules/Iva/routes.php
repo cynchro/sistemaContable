@@ -3,6 +3,8 @@
 use App\Modules\Iva\Controllers\IvaClienteController;
 use App\Modules\Iva\Controllers\IvaProveedorController;
 use App\Modules\Iva\Controllers\ImputacionContableController;
+use App\Modules\Iva\Controllers\ConceptoController;
+use App\Modules\Iva\Controllers\AlertaEstadisticaController;
 use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
@@ -16,6 +18,7 @@ use App\Modules\Iva\Controllers\VentaClasificacionController;
 use App\Modules\Iva\Controllers\AuditoriaController;
 use App\Modules\Iva\Audit\AuditMiddleware;
 use App\Modules\Iva\Controllers\PadronController;
+use App\Modules\Iva\Controllers\PadronUnicoController;
 use App\Modules\Iva\Controllers\AfipController;
 use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
@@ -49,23 +52,66 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     $router->put("{$base}/proveedores/{id}", [IvaProveedorController::class, 'update'], [$pw('iva.proveedores')]);
     $router->delete("{$base}/proveedores/{id}", [IvaProveedorController::class, 'delete'], [$pw('iva.proveedores')]);
 
-    // Reglas de imputación contable por punto de venta del proveedor (documento "Satélite Visual
-    // IVA" §5.4, Pantalla B — página aparte, decisión B2, ver documentacion/analisis-satelite-
-    // visual-iva.md §10). Anidada bajo el proveedor, no colisiona con la ruta de arriba: tiene un
-    // segmento más (/imputacion).
+    // Reglas de imputación contable del proveedor (documento "Satélite Visual IVA" §5.4,
+    // Pantalla B — página aparte, decisión B2, ver documentacion/analisis-satelite-visual-iva.md
+    // §10). Migración 0051: capa de "concepto" global — 3 secciones. Anidadas bajo el proveedor,
+    // no colisionan con la ruta de arriba: tienen un segmento más (/imputacion/...).
     $router->get(
-        "{$base}/proveedores/{proveedorId}/imputacion",
-        [ImputacionContableController::class, 'index'],
+        "{$base}/proveedores/{proveedorId}/imputacion/global",
+        [ImputacionContableController::class, 'indexGlobal'],
         [$perm('iva.proveedores')],
     );
     $router->post(
-        "{$base}/proveedores/{proveedorId}/imputacion",
-        [ImputacionContableController::class, 'store'],
+        "{$base}/proveedores/{proveedorId}/imputacion/global",
+        [ImputacionContableController::class, 'storeGlobal'],
         [$pw('iva.proveedores')],
     );
     $router->delete(
-        "{$base}/proveedores/{proveedorId}/imputacion/{id}",
-        [ImputacionContableController::class, 'delete'],
+        "{$base}/proveedores/{proveedorId}/imputacion/global/{id}",
+        [ImputacionContableController::class, 'deleteGlobal'],
+        [$pw('iva.proveedores')],
+    );
+    $router->get(
+        "{$base}/proveedores/{proveedorId}/imputacion/empresa",
+        [ImputacionContableController::class, 'indexEmpresa'],
+        [$perm('iva.proveedores')],
+    );
+    $router->post(
+        "{$base}/proveedores/{proveedorId}/imputacion/empresa",
+        [ImputacionContableController::class, 'storeEmpresa'],
+        [$pw('iva.proveedores')],
+    );
+    $router->delete(
+        "{$base}/proveedores/{proveedorId}/imputacion/empresa/{id}",
+        [ImputacionContableController::class, 'deleteEmpresa'],
+        [$pw('iva.proveedores')],
+    );
+    $router->get(
+        "{$base}/proveedores/{proveedorId}/imputacion/concepto-default",
+        [ImputacionContableController::class, 'showConceptoDefault'],
+        [$perm('iva.proveedores')],
+    );
+    $router->put(
+        "{$base}/proveedores/{proveedorId}/imputacion/concepto-default",
+        [ImputacionContableController::class, 'updateConceptoDefault'],
+        [$pw('iva.proveedores')],
+    );
+
+    // Mapeo concepto→cuenta de la empresa (traduce el catálogo tenant-level al plan de cuentas
+    // real de esta empresa) — no depende de ningún proveedor puntual.
+    $router->get(
+        "{$base}/conceptos-cuenta",
+        [ImputacionContableController::class, 'indexMapeo'],
+        [$perm('iva.proveedores')],
+    );
+    $router->post(
+        "{$base}/conceptos-cuenta",
+        [ImputacionContableController::class, 'storeMapeo'],
+        [$pw('iva.proveedores')],
+    );
+    $router->delete(
+        "{$base}/conceptos-cuenta/{conceptoId}",
+        [ImputacionContableController::class, 'deleteMapeo'],
         [$pw('iva.proveedores')],
     );
 
@@ -259,6 +305,14 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
         [$pw('iva.ventas')],
     );
 
+    // Catálogo de conceptos del Padrón Único (documento "Satélite Visual IVA" §5.2/§5.4,
+    // migración 0051), tenant-level — ABM simple, mismo patrón que /rubros.
+    $router->get('/iva/conceptos', [ConceptoController::class, 'index'], [$perm('iva.proveedores')]);
+    $router->post('/iva/conceptos', [ConceptoController::class, 'create'], [$pw('iva.proveedores')]);
+    $router->get('/iva/conceptos/{id}', [ConceptoController::class, 'show'], [$perm('iva.proveedores')]);
+    $router->put('/iva/conceptos/{id}', [ConceptoController::class, 'update'], [$pw('iva.proveedores')]);
+    $router->delete('/iva/conceptos/{id}', [ConceptoController::class, 'delete'], [$pw('iva.proveedores')]);
+
     // Auditoría de operaciones (registro de cambios) — lectura paginada por tenant
     $router->get('/iva/auditoria', [AuditoriaController::class, 'index'], [$perm('iva.auditoria')]);
 
@@ -279,6 +333,15 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     // Padrón AFIP: consulta de un contribuyente por CUIT (autocompletar cliente/proveedor)
     $router->get('/padron/{cuit}', [PadronController::class, 'show'], [$perm('iva.padron')]);
     $router->get('/padron/{cuit}/sugerencia', [PadronController::class, 'sugerencia'], [$perm('iva.padron')]);
+
+    // Padrón Único de Sujetos (propio del estudio, no AFIP): vista global de consulta, sin
+    // filtrar por empresa (documento "Satélite Visual IVA" §10, Etapa 4).
+    $router->get('/padron-unico', [PadronUnicoController::class, 'index'], [$perm('iva.clientes')]);
+
+    // Motor de alertas estadísticas v1 (documento "Satélite Visual IVA" §7): tenant-wide, sin
+    // permiso granular nuevo — cualquier usuario autenticado del estudio la puede ver (Auth +
+    // Tenant ya los aplica el group de arriba).
+    $router->get('/alertas', [AlertaEstadisticaController::class, 'index'], []);
 
     // Factura electrónica: solicitar CAE para una venta (numeración por punto de venta + WSFEv1)
     $router->post(
