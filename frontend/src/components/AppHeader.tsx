@@ -9,12 +9,15 @@ import {
   CDropdownMenu,
   CDropdownItem,
   CDropdownHeader,
+  CDropdownDivider,
+  CFormSwitch,
   useColorModes,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilMenu, cilSun, cilMoon, cilContrast, cilUser, cilAccountLogout } from '@coreui/icons'
+import { cilMenu, cilSun, cilMoon, cilContrast, cilUser, cilAccountLogout, cilLifeRing } from '@coreui/icons'
 import { useUi } from '../layout/UiContext'
 import { useAuth } from '../auth/AuthContext'
+import { useTourSettings } from '../tours/TourContext'
 import ActiveSelector from './ActiveSelector'
 
 export default function AppHeader() {
@@ -22,6 +25,7 @@ export default function AppHeader() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { colorMode, setColorMode } = useColorModes('coreui-theme')
+  const { enabled: toursEnabled, setEnabled: setToursEnabled, resetSeen } = useTourSettings()
 
   const onLogout = async () => {
     await logout()
@@ -42,6 +46,37 @@ export default function AppHeader() {
         </CHeaderNav>
 
         <CHeaderNav className="ms-auto align-items-center">
+          <CDropdown variant="nav-item" placement="bottom-end" id="tour-help-toggle">
+            <CDropdownToggle caret={false} title="Recorridos guiados">
+              <CIcon icon={cilLifeRing} size="lg" />
+            </CDropdownToggle>
+            <CDropdownMenu style={{ minWidth: 260 }}>
+              <CDropdownHeader className="bg-body-secondary fw-semibold">Recorridos guiados</CDropdownHeader>
+              <div className="px-3 py-2">
+                <CFormSwitch
+                  id="tours-enabled-switch"
+                  label={toursEnabled ? 'Activados' : 'Desactivados'}
+                  checked={toursEnabled}
+                  onChange={(e) => setToursEnabled(e.target.checked)}
+                />
+                <div className="text-body-secondary small mt-1">
+                  Muestran un recorrido la primera vez que entrás a cada pantalla. El de Inicio es un mapa del
+                  sistema completo; el resto explica los controles de esa pantalla puntual.
+                </div>
+              </div>
+              <CDropdownDivider />
+              <CDropdownItem
+                role="button"
+                onClick={() => {
+                  resetSeen()
+                  window.location.reload()
+                }}
+              >
+                Reiniciar recorridos vistos
+              </CDropdownItem>
+            </CDropdownMenu>
+          </CDropdown>
+
           <CDropdown variant="nav-item" placement="bottom-end">
             <CDropdownToggle caret={false}>
               <CIcon icon={themeIcon} size="lg" />

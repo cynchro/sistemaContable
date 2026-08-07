@@ -38,6 +38,8 @@ import VentaFormModal from './VentaFormModal'
 import MoverComprobanteModal from '../MoverComprobanteModal'
 import AfipAmbienteBanner from '../../../components/AfipAmbienteBanner'
 import type { VentaPreset } from '../auditoria/afipPreset'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourVentas } from '../../../tours/tours'
 
 /** Mensaje de error de la API (422 con detalle de validación o 409 de conflicto). */
 function apiError(e: unknown): string {
@@ -280,6 +282,7 @@ export default function VentasList() {
   const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
   // Última fecha cargada (para pre-cargar en una venta nueva; YYYY-MM-DD compara lexicográfico).
   const ultimaFecha = rows.reduce((max, v) => (v.fecha && v.fecha > max ? v.fecha : max), '')
+  const { start: verRecorrido } = usePageTour('ventas', tourVentas)
 
   return (
     <>
@@ -307,7 +310,10 @@ export default function VentasList() {
               Eliminar seleccionados ({selected.size})
             </CButton>
           )}
-          <CButton color="primary" size="sm" onClick={nuevaVenta}>
+          <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+            Ver recorrido
+          </CButton>
+          <CButton id="tour-nueva-venta" color="primary" size="sm" onClick={nuevaVenta}>
             Nueva venta
           </CButton>
         </div>
@@ -323,7 +329,7 @@ export default function VentasList() {
             {verificarMsg.text}
           </CAlert>
         )}
-        <CForm className="row g-2 align-items-end mb-3" onSubmit={aplicarFiltros}>
+        <CForm id="tour-filtros-ventas" className="row g-2 align-items-end mb-3" onSubmit={aplicarFiltros}>
           <div className="col-auto">
             <CFormLabel className="small mb-1">Desde</CFormLabel>
             <CFormInput type="date" size="sm" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
@@ -372,7 +378,7 @@ export default function VentasList() {
         </CForm>
 
         {!!pendientes?.length && (
-          <CAlert color="warning" className="d-flex justify-content-between align-items-center">
+          <CAlert id="tour-pendientes-ventas" color="warning" className="d-flex justify-content-between align-items-center">
             <span>
               {pendientes.length} comprobante{pendientes.length === 1 ? '' : 's'} sin cliente
               identificado del padrón en este período.
@@ -424,7 +430,7 @@ export default function VentasList() {
         {isError && <CAlert color="danger">No se pudieron cargar las ventas.</CAlert>}
         {data && (
           <>
-            <CTable hover responsive align="middle" className="mb-0 ledger">
+            <CTable id="tour-tabla-ventas" hover responsive align="middle" className="mb-0 ledger">
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell style={{ width: 32 }}>

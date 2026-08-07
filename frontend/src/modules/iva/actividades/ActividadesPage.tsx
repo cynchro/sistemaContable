@@ -43,6 +43,8 @@ import { listCuentas } from '../../../api/cuentas'
 import { listCatalogo } from '../../../api/catalogos'
 import { listConceptos } from '../../../api/conceptos'
 import { listMapeoEmpresa, setMapeoEmpresa, deleteMapeoEmpresa } from '../../../api/imputacionContable'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourActividades } from '../../../tours/tours'
 import {
   listPuntoVenta as listVentaPuntoVenta,
   setPuntoVenta as setVentaPuntoVenta,
@@ -66,6 +68,7 @@ export default function ActividadesPage() {
   const { empresaId } = useParams()
   const eId = Number(empresaId)
   const qc = useQueryClient()
+  const { start: verRecorrido } = usePageTour('actividades', tourActividades)
 
   const actividades = useQuery({ queryKey: ['actividades', eId], queryFn: () => listActividades(eId) })
   const puntos = useQuery({ queryKey: ['actividades-pv', eId], queryFn: () => listPuntosVenta(eId) })
@@ -230,11 +233,16 @@ export default function ActividadesPage() {
 
   return (
     <CCard>
-      <CCardHeader>
-        <Link to="/empresas" className="text-decoration-none small">
-          ← Empresas
-        </Link>
-        <strong className="ms-2">Actividades (apertura de la DJ IVA por actividad)</strong>
+      <CCardHeader className="d-flex justify-content-between align-items-center">
+        <div>
+          <Link to="/empresas" className="text-decoration-none small">
+            ← Empresas
+          </Link>
+          <strong className="ms-2">Actividades (apertura de la DJ IVA por actividad)</strong>
+        </div>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
       </CCardHeader>
       <CCardBody>
         {error && <CAlert color="danger">{error}</CAlert>}
@@ -246,7 +254,7 @@ export default function ActividadesPage() {
 
         <CRow>
           <CCol md={6}>
-            <h6>Actividades (NAES)</h6>
+            <h6 id="tour-act-naes">Actividades (NAES)</h6>
             <CForm
               className="row g-2 align-items-end mb-3"
               onSubmit={(e) => {
@@ -303,7 +311,7 @@ export default function ActividadesPage() {
           </CCol>
 
           <CCol md={6}>
-            <h6>Mapa de puntos de venta → actividad</h6>
+            <h6 id="tour-act-mapa-pv">Mapa de puntos de venta → actividad</h6>
             <CForm
               className="row g-2 align-items-end mb-3"
               onSubmit={(e) => {
@@ -589,7 +597,7 @@ export default function ActividadesPage() {
         </CRow>
 
         <hr />
-        <h6>Clasificación de ventas por cuenta contable (documento "Satélite Visual IVA")</h6>
+        <h6 id="tour-act-clasificacion">Clasificación de ventas por cuenta contable (documento "Satélite Visual IVA")</h6>
         <div className="text-body-secondary small mb-3">
           A diferencia de las actividades de arriba, esto resuelve la <strong>cuenta contable</strong> que
           se precarga en las líneas de una venta (mayorización), no la actividad de IIBB. Precedencia:{' '}
@@ -767,7 +775,7 @@ export default function ActividadesPage() {
         </CRow>
 
         <hr />
-        <h6>Mapeo de conceptos → cuentas (documento "Satélite Visual IVA" §5.2/§5.4)</h6>
+        <h6 id="tour-act-conceptos">Mapeo de conceptos → cuentas (documento "Satélite Visual IVA" §5.2/§5.4)</h6>
         <div className="text-body-secondary small mb-3">
           Traduce el catálogo de conceptos del estudio (Utilidades → Conceptos) al plan de cuentas de{' '}
           <strong>esta empresa</strong>. Lo usan las reglas de imputación de los proveedores (botón

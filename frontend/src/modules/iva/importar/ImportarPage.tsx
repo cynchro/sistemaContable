@@ -22,6 +22,8 @@ import {
 } from '@coreui/react'
 import { parseCsv, normNumber, normDate, type CsvParsed } from './csv'
 import { importVentas, importCompras, type ImportResultado } from '../../../api/importar'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourImportar } from '../../../tours/tours'
 import { listTiposRetencionAbm } from '../../../api/tiposRetencion'
 import { listPeriodos } from '../../../api/periodos'
 import type { VentaInput, DiscriminacionInput, PercepcionInput } from '../../../api/ventas'
@@ -410,6 +412,7 @@ export default function ImportarPage() {
 
   const faltaObligatorio = CAMPOS.filter((c) => c.required && !mapping[c.key])
   const conceptoPercep = destino === 'ventas' ? 'Percepciones' : 'Retenciones / percepciones'
+  const { start: verRecorrido } = usePageTour('importar', tourImportar)
 
   return (
     <CCard>
@@ -420,6 +423,9 @@ export default function ImportarPage() {
           </Link>
           <strong className="ms-2">Importar comprobantes</strong>
         </div>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
         <CButtonGroup size="sm">
           <CButton
             color="primary"
@@ -452,7 +458,7 @@ export default function ImportarPage() {
           período activo (empresa #{eId}, período #{pId}).
         </p>
 
-        <div className="mb-3" style={{ maxWidth: 420 }}>
+        <div id="tour-import-archivo" className="mb-3" style={{ maxWidth: 420 }}>
           <CFormLabel htmlFor="csv">Archivo CSV</CFormLabel>
           <CFormInput id="csv" type="file" accept=".csv,text/csv,text/plain" onChange={onFile} />
           {fileName && <div className="small text-body-secondary mt-1">{fileName}</div>}
@@ -462,7 +468,7 @@ export default function ImportarPage() {
 
         {parsed && (
           <>
-            <div className="d-flex flex-wrap align-items-end gap-2 mb-3 p-2 rounded bg-body-tertiary">
+            <div id="tour-import-perfiles" className="d-flex flex-wrap align-items-end gap-2 mb-3 p-2 rounded bg-body-tertiary">
               <div>
                 <CFormLabel className="small mb-1">Perfil de mapeo</CFormLabel>
                 <CFormSelect
@@ -498,7 +504,7 @@ export default function ImportarPage() {
                 ({parsed.rows.length} filas · separador «{parsed.delimiter === '\t' ? 'TAB' : parsed.delimiter}»)
               </span>
             </div>
-            <div className="row g-2 mb-3">
+            <div id="tour-import-mapeo" className="row g-2 mb-3">
               {CAMPOS.map((c) => (
                 <div className="col-md-3" key={c.key}>
                   <CFormLabel className="small mb-1">
@@ -520,7 +526,7 @@ export default function ImportarPage() {
               ))}
             </div>
 
-            <div className="mb-2 d-flex align-items-center gap-2">
+            <div id="tour-import-extra" className="mb-2 d-flex align-items-center gap-2">
               <strong>{conceptoPercep}</strong>
               <span className="text-body-secondary small">
                 (asociá una columna de importe a un tipo del catálogo; integra el total)
@@ -678,7 +684,7 @@ export default function ImportarPage() {
             <div className="mb-2">
               <strong>Vista previa</strong> <span className="text-body-secondary small">(primeras 8 filas)</span>
             </div>
-            <CTable small bordered responsive align="middle" className="ledger mb-3">
+            <CTable id="tour-import-preview" small bordered responsive align="middle" className="ledger mb-3">
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell style={{ width: 40 }}>#</CTableHeaderCell>

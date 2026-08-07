@@ -35,6 +35,8 @@ import {
   setConceptoExcepcion,
   type ReglaPuntoVenta,
 } from '../../../api/imputacionContable'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourImputacionProveedor } from '../../../tours/tours'
 
 /**
  * Reglas de imputación contable del proveedor (documento "Satélite Visual IVA" §5.4, Pantalla
@@ -54,21 +56,27 @@ export default function ProveedorImputacionPage() {
   })
   const proveedor = proveedores.data?.find((s) => s.id === pId)
   const conceptos = useQuery({ queryKey: ['conceptos'], queryFn: () => listConceptos() })
+  const { start: verRecorrido } = usePageTour('imputacion-proveedor', tourImputacionProveedor)
 
   return (
     <CCard>
-      <CCardHeader>
-        <Link to={`/empresas/${eId}/proveedores`} className="text-decoration-none small">
-          ← Proveedores
-        </Link>
-        <div className="d-flex align-items-center mt-1">
-          <strong>Imputación contable</strong>
-          {proveedor && (
-            <span className="text-body-secondary ms-2">
-              — {proveedor.nombre} (CUIT {proveedor.cuit})
-            </span>
-          )}
+      <CCardHeader className="d-flex justify-content-between align-items-start">
+        <div>
+          <Link to={`/empresas/${eId}/proveedores`} className="text-decoration-none small">
+            ← Proveedores
+          </Link>
+          <div className="d-flex align-items-center mt-1">
+            <strong>Imputación contable</strong>
+            {proveedor && (
+              <span className="text-body-secondary ms-2">
+                — {proveedor.nombre} (CUIT {proveedor.cuit})
+              </span>
+            )}
+          </div>
         </div>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
       </CCardHeader>
       <CCardBody>
         {proveedores.isLoading && <CSpinner />}
@@ -81,6 +89,7 @@ export default function ProveedorImputacionPage() {
         <CRow>
           <CCol md={6}>
             <ReglaPuntoVentaSeccion
+              id="tour-imp-pv-global"
               titulo="Regla global de punto de venta"
               ayuda="Aplica a todas las empresas del estudio donde este proveedor factura (documento §5.4, caso MUCHAY SRL)."
               conceptos={conceptos.data ?? []}
@@ -92,6 +101,7 @@ export default function ProveedorImputacionPage() {
           </CCol>
           <CCol md={6}>
             <ReglaPuntoVentaSeccion
+              id="tour-imp-pv-excepcion"
               titulo="Excepción de punto de venta para esta empresa"
               ayuda="Pisa la regla global solo para esta empresa (ej. el mismo PV se imputa distinto acá)."
               conceptos={conceptos.data ?? []}
@@ -131,7 +141,7 @@ function ReglaConceptoDefault({
   })
 
   return (
-    <div>
+    <div id="tour-imp-concepto">
       <h6>Excepción del concepto por defecto para esta empresa</h6>
       <div className="text-body-secondary small mb-2">
         El proveedor tiene un concepto por defecto global (se edita desde su alta/edición). Acá se puede
@@ -162,6 +172,7 @@ function ReglaConceptoDefault({
 }
 
 function ReglaPuntoVentaSeccion({
+  id,
   titulo,
   ayuda,
   conceptos,
@@ -170,6 +181,7 @@ function ReglaPuntoVentaSeccion({
   set,
   del,
 }: {
+  id?: string
   titulo: string
   ayuda: string
   conceptos: Concepto[]
@@ -195,7 +207,7 @@ function ReglaPuntoVentaSeccion({
   const borrar = useMutation({ mutationFn: (id: number) => del(id), onSuccess: invalidate })
 
   return (
-    <div>
+    <div id={id}>
       <h6>{titulo}</h6>
       <div className="text-body-secondary small mb-2">{ayuda}</div>
       <CForm

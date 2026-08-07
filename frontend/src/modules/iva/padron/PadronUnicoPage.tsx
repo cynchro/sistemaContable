@@ -15,8 +15,11 @@ import {
   CBadge,
   CSpinner,
   CAlert,
+  CButton,
 } from '@coreui/react'
 import { listPadronUnico } from '../../../api/padronUnico'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourPadronUnico } from '../../../tours/tours'
 
 /**
  * Vista global del Padrón Único de Sujetos (documento "Satélite Visual IVA" §10, Etapa 4):
@@ -33,18 +36,25 @@ export default function PadronUnicoPage() {
     queryKey: ['padron-unico', busqueda],
     queryFn: () => listPadronUnico(busqueda || undefined),
   })
+  const { start: verRecorrido } = usePageTour('padron-unico', tourPadronUnico)
 
   return (
     <CCard>
-      <CCardHeader>
-        <strong>Padrón único de sujetos</strong>
-        <div className="text-body-secondary small mt-1">
-          Todos los proveedores y clientes del estudio, en una sola vista — sin filtrar por empresa. Un mismo
-          CUIT aparece una sola vez, con las empresas donde está activado.
+      <CCardHeader className="d-flex justify-content-between align-items-start">
+        <div>
+          <strong>Padrón único de sujetos</strong>
+          <div className="text-body-secondary small mt-1">
+            Todos los proveedores y clientes del estudio, en una sola vista — sin filtrar por empresa. Un mismo
+            CUIT aparece una sola vez, con las empresas donde está activado.
+          </div>
         </div>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
       </CCardHeader>
       <CCardBody>
         <form
+          id="tour-padron-buscar"
           className="mb-3"
           onSubmit={(e) => {
             e.preventDefault()
@@ -62,7 +72,7 @@ export default function PadronUnicoPage() {
         {isLoading && <CSpinner />}
         {isError && <CAlert color="danger">No se pudo cargar el padrón.</CAlert>}
         {data && (
-          <CTable hover responsive align="middle" className="mb-0">
+          <CTable id="tour-padron-tabla" hover responsive align="middle" className="mb-0">
             <CTableHead>
               <CTableRow>
                 <CTableHeaderCell>Nombre</CTableHeaderCell>

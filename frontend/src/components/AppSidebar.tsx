@@ -21,6 +21,13 @@ function firstSegment(to: string): string {
   return to.split('/')[1] ?? ''
 }
 
+/** ids de anclaje para el tour "mapa del sistema" (usePageTour → tourNavegacion). */
+const TOUR_GROUP_ID: Record<string, string> = {
+  IVA: 'tour-sidebar-iva',
+  Estudio: 'tour-sidebar-estudio',
+  Administración: 'tour-sidebar-admin',
+}
+
 export default function AppSidebar() {
   const { sidebarShow, setSidebarShow, sidebarUnfoldable, setSidebarUnfoldable } = useUi()
   const { activeEmpresaId, activePeriodoId } = useActive()
@@ -70,6 +77,7 @@ export default function AppSidebar() {
           return (
             <CNavGroup
               key={i}
+              id={TOUR_GROUP_ID[entry.name]}
               visible={open}
               toggler={
                 <>

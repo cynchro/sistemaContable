@@ -9,6 +9,7 @@ import {
   CSpinner,
   CAlert,
   CBadge,
+  CButton,
 } from '@coreui/react'
 import { listEmpresas } from '../../api/empresas'
 import { getTotales } from '../../api/libroIva'
@@ -17,6 +18,8 @@ import { listCompras } from '../../api/compras'
 import { getPercepciones } from '../../api/reportes'
 import { listSujetos } from '../../api/sujetos'
 import { useActive } from '../../layout/ActiveContext'
+import { usePageTour } from '../../tours/usePageTour'
+import { tourNavegacion } from '../../tours/tours'
 
 const money = (v?: string) => {
   const n = Number(v)
@@ -105,10 +108,16 @@ function ResumenIva({ empresaId, periodoId }: { empresaId: number; periodoId: nu
 export default function Dashboard() {
   const { data: empresas, isLoading } = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
   const { empresa, periodo, activeEmpresaId, activePeriodoId } = useActive()
+  const { start: verRecorrido } = usePageTour('navegacion', tourNavegacion)
 
   return (
     <>
-      <h2 className="mb-4">Inicio</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="mb-0">Inicio</h2>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver mapa del sistema
+        </CButton>
+      </div>
 
       <CRow className="g-3 mb-4">
         <CCol sm={6} xl={3}>

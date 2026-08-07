@@ -52,7 +52,7 @@ export default function ActiveSelector() {
 
   return (
     <>
-      <CDropdown variant="nav-item" placement="bottom-start">
+      <CDropdown variant="nav-item" placement="bottom-start" id="tour-empresa-selector">
         <CDropdownToggle caret={false} className="text-body">
           <CIcon icon={cilBuilding} className="me-2" />
           <span className="d-none d-md-inline text-body-secondary">Empresa:&nbsp;</span>
@@ -75,7 +75,7 @@ export default function ActiveSelector() {
         </CDropdownMenu>
       </CDropdown>
 
-      <CDropdown variant="nav-item" placement="bottom-start">
+      <CDropdown variant="nav-item" placement="bottom-start" id="tour-periodo-selector">
         <CDropdownToggle caret={false} disabled={!empresa} className="text-body">
           <CIcon icon={cilCalendar} className="me-2" />
           <span className="d-none d-md-inline text-body-secondary">Período:&nbsp;</span>

@@ -24,6 +24,8 @@ import {
   type MayorReporteHoja,
   type MayorTotales,
 } from '../../../api/mayor'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourReporteMayor } from '../../../tours/tours'
 
 const money = (v?: string) => {
   const n = Number(v)
@@ -67,16 +69,22 @@ export default function ReporteMayorPage() {
 
   const set = (campo: keyof MayorReporteFiltros, valor: string) =>
     setFiltros((f) => ({ ...f, [campo]: valor }))
+  const { start: verRecorrido } = usePageTour('reporte-mayor', tourReporteMayor)
 
   return (
     <CCard>
       <CCardHeader className="d-flex justify-content-between align-items-center">
         <strong>Reportes de Mayor (por rango de fechas)</strong>
-        {reporte.data && (
-          <CButton color="primary" variant="outline" size="sm" onClick={() => window.print()}>
-            Imprimir / PDF
+        <div className="d-flex gap-2">
+          <CButton color="secondary" variant="outline" size="sm" className="d-print-none" onClick={verRecorrido}>
+            Ver recorrido
           </CButton>
-        )}
+          {reporte.data && (
+            <CButton color="primary" variant="outline" size="sm" onClick={() => window.print()}>
+              Imprimir / PDF
+            </CButton>
+          )}
+        </div>
       </CCardHeader>
       <CCardBody>
         <div className="text-body-secondary small mb-3">
@@ -86,6 +94,7 @@ export default function ReporteMayorPage() {
         </div>
 
         <CForm
+          id="tour-mayor-filtros"
           className="d-print-none"
           onSubmit={(e) => {
             e.preventDefault()
@@ -146,7 +155,7 @@ export default function ReporteMayorPage() {
                 onChange={(e) => set('cuit', e.target.value)}
               />
             </CCol>
-            <CCol md={4}>
+            <CCol md={4} id="tour-mayor-agrupar">
               <CFormLabel>Agrupar (cascada)</CFormLabel>
               <CFormSelect value={filtros.agrupar ?? ''} onChange={(e) => set('agrupar', e.target.value)}>
                 {AGRUPACIONES.map((a) => (
@@ -164,7 +173,7 @@ export default function ReporteMayorPage() {
           </CRow>
         </CForm>
 
-        <div className="mt-4">
+        <div id="tour-mayor-resultado" className="mt-4">
           {reporte.isFetching && <CSpinner />}
           {reporte.isError && <CAlert color="danger">No se pudo generar el reporte.</CAlert>}
           {reporte.data && (

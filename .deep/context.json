@@ -1,0 +1,52 @@
+{
+  "source": "scan",
+  "task": "Sistema contable de estudio (IVA, Sueldos, gestión, AFIP) con extracción automática de comprobantes desde ARCA.  ",
+  "summary": "Sistema contable de estudio (IVA, Sueldos, gestión, AFIP) con extracción automática de comprobantes desde ARCA.  \n**Organización:** monorepo con backend PHP 8.2+ (framework propio Modux, monolito modular, API JSON), frontend React SPA (Vite, TypeScript, CoreUI) y extractor Node+Playwright standalone (scraping del Portal IVA, aún no integrado).  \n**Entorno:** Dockerizado. `docker compose up -d` levanta frontend (dev server HMR en :5173), backend (:8080) y MySQL (:3308). Tras clonar, ejecutar `docker compose exec modux-back",
+  "project_map": {
+    "name": "ecosistema",
+    "root": "/data/proyectos/cynchro/sistemaContable/ecosistema",
+    "kind": "monorepo",
+    "languages": [
+      "node",
+      "php"
+    ],
+    "subprojects": [
+      {
+        "path": "backend",
+        "language": "php",
+        "markers": [
+          "composer.json"
+        ],
+        "framework": null,
+        "entrypoints": [
+          "public/index.php"
+        ]
+      },
+      {
+        "path": "extractor",
+        "language": "node",
+        "markers": [
+          "package.json"
+        ],
+        "framework": null,
+        "entrypoints": []
+      },
+      {
+        "path": "frontend",
+        "language": "node",
+        "markers": [
+          "package.json"
+        ],
+        "framework": "React",
+        "entrypoints": [
+          "src/main.tsx",
+          "src/App.tsx"
+        ]
+      }
+    ],
+    "file_count": 187,
+    "tree": ".claude/\n  settings.local.json\n.githooks/\n  pre-push\n.github/\n  workflows/\n    ci.yml\nbackend/\n  app/\n    Exceptions/\n      AppException.php\n      AuthException.php\n      ConflictException.php\n      ContainerException.php\n      DatabaseException.php\n      ForbiddenException.php\n      Handler.php\n      MethodNotAllowedException.php\n      NotFoundException.php\n      PaymentRequiredException.php\n      QuotaExceededException.php\n      RateLimitException.php\n      ValidationException.php\n    Helpers/\n      EmailHelper.php\n      PaginatorHelper.php\n    Http/\n      Controllers/\n        HealthController.php\n        HomeController.php\n        LogsController.php\n      Middleware/\n        AdminMiddleware.php\n        AuthMiddleware.php\n        CorsMiddleware.php\n        EntitlementMiddleware.php\n        PermissionMiddleware.php\n        QuotaMiddleware.php\n        RequestLoggerMiddleware.php\n        RequestSizeLimitMiddleware.php\n        ScopeMiddleware.php\n        SecurityHeadersMiddleware.php\n        TenantMiddleware.php\n    Modules/\n      Admin/\n        Controllers/\n          AdminController.php\n        Repositories/\n          PermisosRepository.php\n          RolRepository.php\n          UsuariosRepository.php\n        Requests/\n          StorePermisoRequest.php\n          StoreRolRequest.php\n          UpdatePermisoRequest.php\n          UpdateRolRequest.php\n        Services/\n          PermisosService.php\n          RolService.php\n          UsuariosService.php\n        routes.php\n      ApiKeys/\n        Controllers/\n          ApiKeyController.php\n        Repositories/\n          ApiKeyRepository.php\n        Requests/\n          CreateApiKeyRequest.php\n        Services/\n          ApiKeyService.php\n        routes.php\n      Auth/\n        Controllers/\n          AuthController.php\n        Repositories/\n          AuthRepository.php\n        Requests/\n          AuthRequest.php\n        Services/\n          AuthService.php\n        routes.php\n      Billing/\n        Controllers/\n          BillingController.php\n        Requests/\n          CheckoutRequest.php\n        GatewayFactory.php\n        routes.php\n        ServiceProvider.php\n      Compartido/\n        Controllers/\n          CatalogoController.php\n          CuentaController.php\n          EmpresaController.php\n          PeriodoController.php\n          RubroController.php\n          TipoRetencionController.php\n        Repositories/\n          CatalogoRepository.php\n          CuentaRepository.php\n          EmpresaRepository.php\n          PeriodoRepository.php\n          RubroRepository.php\n          TipoRetencionRepository.php\n        Requests/\n          CreateCuentaRequest.php\n          CreateEmpresaRequest.php\n          CreatePeriodoRequest.php\n          CreateRubroRequest.php\n          CreateTipoRetencionRequest.php\n          UpdateCuentaRequest.php\n          UpdateEmpresaRequest.php\n          UpdatePeriodoRequest.php\n          UpdateRubroRequest.php\n          UpdateTipoRetencionRequest.php\n        Services/\n          CuentaService.php\n          EmpresaService.php\n          PeriodoService.php\n          RubroService.php\n          TipoRetencionService.php\n        routes.php\n        ServiceProvider.php\n      Contribuyentes/\n        Controllers/\n          CredencialController.php\n          SocioController.php\n        Repositories/\n          CredencialRepository.php\n          SocioRepository.php\n        Requests/\n          CreateCredencialRequest.php\n          CreateSocioRequest.php\n          UpdateCredencialRequest.php\n          UpdateSocioRequest.php\n        Services/\n          CredencialService.php\n          SocioService.php\n        pendientes.md\n        routes.php\n        ServiceProvider.php\n      Fiscal/\n        Controllers/\n          RequerimientoController.php\n          TributoController.php\n          VencimientoController.php\n        Repositories/\n          RequerimientoRepository.php\n          TributoRepository.php\n          VencimientoRepository.php\n        Requests/\n          CambiarEstadoVencimientoRequest.php\n          CreateRequerimientoRequest.php\n          CreateTributoRequest.php\n          CreateVencimientoRequest.php\n          UpdateRequerimientoRequest.php\n          UpdateTributoRequest.php\n          UpdateVencimientoRequest.php\n        Services/\n          RequerimientoService.php\n          TributoService.php\n          VencimientoService.php\n        routes.php\n        ServiceProvider.php\n      Honorarios/\n        Calc/\n          HonorarioCalculator.php\n        Controllers/\n          FactorComplejidadController.php\n          HonorarioController.php\n          ServicioController.php\n        Repositories/\n          FactorComplejidadRepository.php\n          HonorarioRepository.php\n          ServicioRepository.php\n        Requests/\n          CreateFactorComplejidadRequest.php\n          CreateHonorarioRequest.php\n          CreateServicioRequest.php\n          UpdateFactorComplejidadRequest.php\n          UpdateServicioRequest.php\n        Services/\n          FactorComplejidadService.php\n          HonorarioService.php\n          ServicioService.php\n        routes.php\n        ServiceProvider.php\n      Iva/\n        Afip/\n          Padron/\n            AfipPadronClient.php\n            PadronClient.php\n            PersonaPadron.php\n          Soap/\n            ExtSoapTransport.php\n            SoapTransport.php\n          Wsaa/\n            AccessTicket.php\n            CmsSigner.php\n            DbTicketStore.php\n  … (árbol truncado)"
+  },
+  "model": "deepseek-chat",
+  "scanned_at": "2026-08-04T07:41:17.994056"
+}

@@ -9,7 +9,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: moduxbackend
     ports:
-      - "8080:80"
+      - "8077:80"
     volumes:
       - ./backend:/var/www/html
     environment:
@@ -25,7 +25,11 @@ services:
 
   # SPA (React + CoreUI) en MODO DESARROLLO: Vite dev server con hot-reload (HMR).
   # El código se monta por bind-mount, así los cambios se ven al instante SIN buildear.
-  # Se sirve en http://localhost:5173 y consume la API en localhost:8080 (VITE_API_URL).
+  # Se sirve en http://localhost:5173 (o la IP del host, p.ej. Tailscale) y consume la
+  # API en el mismo host, puerto 8077: si VITE_API_URL no está seteada (var de shell,
+  # ver ${VITE_API_URL:-}), client.ts la deriva de window.location.hostname (así
+  # funciona igual por localhost, 127.0.0.1 o la IP tailscale). Setear VITE_API_URL
+  # explícito (p.ej. para exponer por Tailscale Funnel en otro puerto/protocolo).
   # Para producción usar docker-compose.prod.yml (build estático servido por nginx).
   frontend:
     image: node:20-alpine
@@ -34,7 +38,7 @@ services:
     # Instala dependencias (rápido si ya están) y levanta Vite accesible desde el host.
     command: sh -c "npm install && npm run dev"
     environment:
-      VITE_API_URL: http://localhost:8080
+      VITE_API_URL: ${VITE_API_URL:-}
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules

@@ -39,6 +39,8 @@ import {
 import CompraFormModal from './CompraFormModal'
 import MoverComprobanteModal from '../MoverComprobanteModal'
 import { COMPRA_PRESETS, type CompraPreset } from './compraPresets'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourCompras } from '../../../tours/tours'
 
 const PER_PAGE = 50
 
@@ -220,6 +222,7 @@ export default function ComprasList() {
 
   const total = data?.total ?? 0
   const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
+  const { start: verRecorrido } = usePageTour('compras', tourCompras)
   const ultimaFecha = rows.reduce((max, c) => (c.fecha && c.fecha > max ? c.fecha : max), '')
 
   return (
@@ -245,7 +248,10 @@ export default function ComprasList() {
                 Eliminar seleccionados ({selected.size})
               </CButton>
             )}
-            <CDropdown variant="btn-group">
+            <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+              Ver recorrido
+            </CButton>
+            <CDropdown variant="btn-group" id="tour-nueva-compra">
               <CButton color="primary" size="sm" onClick={() => nuevaCompra()}>
                 Nueva compra
               </CButton>
@@ -265,7 +271,7 @@ export default function ComprasList() {
           </div>
         </CCardHeader>
         <CCardBody>
-          <CForm className="row g-2 align-items-end mb-3" onSubmit={aplicarFiltros}>
+          <CForm id="tour-filtros-compras" className="row g-2 align-items-end mb-3" onSubmit={aplicarFiltros}>
             <div className="col-auto">
               <CFormLabel className="small mb-1">Desde</CFormLabel>
               <CFormInput type="date" size="sm" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
@@ -308,7 +314,7 @@ export default function ComprasList() {
           </CForm>
 
           {!!pendientes?.length && (
-            <CAlert color="warning" className="d-flex justify-content-between align-items-center">
+            <CAlert id="tour-pendientes-compras" color="warning" className="d-flex justify-content-between align-items-center">
               <span>
                 {pendientes.length} comprobante{pendientes.length === 1 ? '' : 's'} sin proveedor
                 identificado del padrón en este período.
@@ -360,7 +366,7 @@ export default function ComprasList() {
           {isError && <CAlert color="danger">No se pudieron cargar las compras.</CAlert>}
           {data && (
             <>
-              <CTable hover responsive align="middle" className="mb-0 ledger">
+              <CTable id="tour-tabla-compras" hover responsive align="middle" className="mb-0 ledger">
                 <CTableHead>
                   <CTableRow>
                     <CTableHeaderCell style={{ width: 32 }}>

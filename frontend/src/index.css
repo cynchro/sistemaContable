@@ -40,6 +40,58 @@ body,
   color: var(--cui-secondary-color);
 }
 
+/* Diagrama de flujo (Manuales › Navegación): circuito principal de IVA + apoyo + áreas
+   independientes. Usa variables de CoreUI (no colores fijos) para adaptarse solo a claro/oscuro. */
+.flow-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.flow-step {
+  border: 1px solid var(--cui-border-color);
+  border-radius: var(--cui-border-radius, 0.375rem);
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-align: center;
+  white-space: nowrap;
+}
+.flow-arrow {
+  color: var(--cui-secondary-color);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.flow-support {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.flow-chip {
+  border: 1px dashed var(--cui-border-color);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.78rem;
+  color: var(--cui-secondary-color);
+  white-space: nowrap;
+}
+.flow-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.flow-area {
+  border: 1px solid var(--cui-border-color);
+  border-radius: var(--cui-border-radius, 0.375rem);
+  padding: 0.5rem 0.9rem;
+  font-size: 0.8rem;
+  min-width: 200px;
+}
+.flow-area strong {
+  display: block;
+  font-size: 0.85rem;
+}
+
 /* Densidad "planilla contable" para las tablas de datos (comprobantes, libros IVA):
    números alineados (tabular), filas más compactas y encabezados en versalitas. */
 .ledger {
@@ -200,4 +252,47 @@ body,
 }
 .pw-toggle {
   border-color: var(--cui-input-border-color);
+}
+
+/* Recorridos guiados (Driver.js): la librería no usa variables CSS para sus colores, así
+   que en modo oscuro se pisan a mano para que el popover no quede claro sobre fondo oscuro. */
+html[data-coreui-theme='dark'] .driver-popover {
+  background-color: #23272e;
+  color: #e8e8e8;
+}
+/* Cada -side-* deja transparentes 3 de los 4 bordes (ver driver.css); solo se pisa el
+   borde que queda visible en cada uno, para no romper la forma de flecha. */
+html[data-coreui-theme='dark'] .driver-popover-arrow-side-left {
+  border-left-color: #23272e;
+}
+html[data-coreui-theme='dark'] .driver-popover-arrow-side-right {
+  border-right-color: #23272e;
+}
+html[data-coreui-theme='dark'] .driver-popover-arrow-side-top {
+  border-top-color: #23272e;
+}
+html[data-coreui-theme='dark'] .driver-popover-arrow-side-bottom {
+  border-bottom-color: #23272e;
+}
+html[data-coreui-theme='dark'] .driver-popover-title {
+  color: #f5f5f5;
+}
+html[data-coreui-theme='dark'] .driver-popover-close-btn {
+  color: #9096a2;
+}
+html[data-coreui-theme='dark'] .driver-popover-close-btn:hover,
+html[data-coreui-theme='dark'] .driver-popover-close-btn:focus {
+  color: #f5f5f5;
+}
+html[data-coreui-theme='dark'] .driver-popover-progress-text {
+  color: #9096a2;
+}
+html[data-coreui-theme='dark'] .driver-popover-footer-btn {
+  background-color: #2f343c;
+  color: #e8e8e8;
+  border-color: #454b55;
+}
+html[data-coreui-theme='dark'] .driver-popover-footer-btn:hover,
+html[data-coreui-theme='dark'] .driver-popover-footer-btn:focus {
+  background-color: #3a3f48;
 }

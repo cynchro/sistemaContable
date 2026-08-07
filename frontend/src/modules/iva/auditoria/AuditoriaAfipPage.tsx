@@ -30,6 +30,8 @@ import {
 } from '../../../api/auditoriaAfip'
 import { listPeriodos } from '../../../api/periodos'
 import { buildVentaPreset } from './afipPreset'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourAuditoriaAfip } from '../../../tours/tours'
 
 function apiError(e: unknown): string {
   const err = e as { response?: { data?: { message?: string } } }
@@ -79,6 +81,7 @@ export default function AuditoriaAfipPage() {
   const [cargandoDetalle, setCargandoDetalle] = useState(false)
   const [detalleError, setDetalleError] = useState<string | null>(null)
   const [avisoPeriodo, setAvisoPeriodo] = useState<string | null>(null)
+  const { start: verRecorrido } = usePageTour('auditoria-afip', tourAuditoriaAfip)
 
   const claveFila = (f: ResumenAuditoriaItem) => `${f.punto_venta}|${f.tipo_comprobante_id}|${f.letra}`
 
@@ -127,9 +130,14 @@ export default function AuditoriaAfipPage() {
     <CCard>
       <CCardHeader className="d-flex justify-content-between align-items-center">
         <strong>Auditoría de ventas vs. ARCA</strong>
-        <CButton color="primary" size="sm" onClick={() => refetch()} disabled={isFetching}>
-          {isFetching ? <CSpinner size="sm" /> : isFetched ? 'Actualizar' : 'Consultar ARCA'}
-        </CButton>
+        <div className="d-flex gap-2">
+          <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+            Ver recorrido
+          </CButton>
+          <CButton id="tour-auditoria-boton" color="primary" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            {isFetching ? <CSpinner size="sm" /> : isFetched ? 'Actualizar' : 'Consultar ARCA'}
+          </CButton>
+        </div>
       </CCardHeader>
       <CCardBody>
         <p className="text-body-secondary small">
@@ -145,7 +153,7 @@ export default function AuditoriaAfipPage() {
         )}
 
         {isFetched && !isError && (filas ?? []).length > 0 && (
-          <CTable hover responsive align="middle" className="ledger">
+          <CTable id="tour-auditoria-tabla" hover responsive align="middle" className="ledger">
             <CTableHead>
               <CTableRow>
                 <CTableHeaderCell>Punto de venta</CTableHeaderCell>

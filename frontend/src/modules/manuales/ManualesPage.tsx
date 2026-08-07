@@ -14,6 +14,7 @@ import {
   CAccordionBody,
 } from '@coreui/react'
 import { MANUALES } from './manualesContenido'
+import FlujoSistemaDiagrama from './FlujoSistemaDiagrama'
 
 /**
  * Manuales de uso del sistema. Menú de áreas a la izquierda (IVA, Sueldos, Automatización…)
@@ -63,6 +64,8 @@ export default function ManualesPage() {
             </CCardHeader>
             <CCardBody>
               <p className="text-body-secondary">{seccion?.intro}</p>
+
+              {seccion?.id === 'navegacion' && <FlujoSistemaDiagrama />}
 
               {seccion && seccion.subsecciones.length > 0 ? (
                 <CAccordion alwaysOpen>
