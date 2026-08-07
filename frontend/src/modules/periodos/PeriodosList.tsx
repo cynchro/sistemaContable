@@ -26,6 +26,8 @@ import {
   type PeriodoInput,
 } from '../../api/periodos'
 import PeriodoFormModal from './PeriodoFormModal'
+import { usePageTour } from '../../tours/usePageTour'
+import { tourPeriodos } from '../../tours/tours'
 
 export default function PeriodosList() {
   const { empresaId } = useParams()
@@ -33,6 +35,7 @@ export default function PeriodosList() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [modalOpen, setModalOpen] = useState(false)
+  const { start: verRecorrido } = usePageTour('periodos', tourPeriodos)
 
   const { data: periodos, isLoading, isError } = useQuery({
     queryKey: ['periodos', id],
@@ -67,15 +70,20 @@ export default function PeriodosList() {
             </Link>
             <strong className="ms-2">Períodos</strong>
           </div>
-          <CButton color="primary" size="sm" onClick={() => setModalOpen(true)}>
-            Nuevo período
-          </CButton>
+          <div className="d-flex gap-2">
+            <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+              Ver recorrido
+            </CButton>
+            <CButton id="tour-nuevo-periodo" color="primary" size="sm" onClick={() => setModalOpen(true)}>
+              Nuevo período
+            </CButton>
+          </div>
         </CCardHeader>
         <CCardBody>
           {isLoading && <CSpinner />}
           {isError && <CAlert color="danger">No se pudieron cargar los períodos.</CAlert>}
           {periodos && (
-            <CTable hover responsive align="middle" className="mb-0">
+            <CTable id="tour-tabla-periodos" hover responsive align="middle" className="mb-0">
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell>Nombre</CTableHeaderCell>

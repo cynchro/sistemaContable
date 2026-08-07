@@ -31,6 +31,8 @@ import {
 } from '../../api/afip'
 import { listEmpresas } from '../../api/empresas'
 import AfipAmbienteBanner from '../../components/AfipAmbienteBanner'
+import { usePageTour } from '../../tours/usePageTour'
+import { tourAfip } from '../../tours/tours'
 
 function apiError(e: unknown, fallback: string): string {
   const err = e as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
@@ -42,7 +44,7 @@ function apiError(e: unknown, fallback: string): string {
   return data?.message ?? fallback
 }
 
-function Padron() {
+function Padron({ id }: { id?: string }) {
   const [cuit, setCuit] = useState('')
   const [persona, setPersona] = useState<PersonaPadron | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -60,7 +62,7 @@ function Padron() {
   })
 
   return (
-    <CCard className="mb-4">
+    <CCard id={id} className="mb-4">
       <CCardHeader>
         <strong>Consulta de padrón (ARCA)</strong>
       </CCardHeader>
@@ -135,7 +137,7 @@ function Padron() {
   )
 }
 
-function PuntosVenta() {
+function PuntosVenta({ id }: { id?: string }) {
   const qc = useQueryClient()
   const { data: empresas } = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
   const [empresaId, setEmpresaId] = useState<number | null>(null)
@@ -173,7 +175,7 @@ function PuntosVenta() {
   }
 
   return (
-    <CCard>
+    <CCard id={id}>
       <CCardHeader className="d-flex flex-wrap justify-content-between align-items-center gap-2">
         <strong>Puntos de venta</strong>
         <CFormSelect
@@ -275,17 +277,23 @@ function PuntosVenta() {
 }
 
 export default function AfipPage() {
+  const { start: verRecorrido } = usePageTour('afip', tourAfip)
   return (
     <>
-      <h2 className="mb-4">AFIP / Factura electrónica</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="mb-0">AFIP / Factura electrónica</h2>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
+      </div>
       <AfipAmbienteBanner />
       <CAlert color="info" className="small">
         La consulta de padrón y la emisión de CAE usan los web services de ARCA y requieren el
         certificado configurado en el backend (homologación o producción). Sin certificado válido,
         ARCA rechaza la conexión y vas a ver un error de autenticación.
       </CAlert>
-      <Padron />
-      <PuntosVenta />
+      <Padron id="tour-afip-padron" />
+      <PuntosVenta id="tour-afip-puntos-venta" />
     </>
   )
 }

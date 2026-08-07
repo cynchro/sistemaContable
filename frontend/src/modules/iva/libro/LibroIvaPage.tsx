@@ -24,6 +24,8 @@ import {
   CSpinner,
   CAlert,
 } from '@coreui/react'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourLibroIva } from '../../../tours/tours'
 import { listCatalogo } from '../../../api/catalogos'
 import { getMayorResumen, getMayorDetalle } from '../../../api/mayor'
 import { listEmpresas } from '../../../api/empresas'
@@ -62,6 +64,7 @@ export default function LibroIvaPage() {
   const pId = Number(periodoId)
   const qc = useQueryClient()
   const [tab, setTab] = useState<Tab>('resumen')
+  const { start: verRecorrido } = usePageTour('libro-iva', tourLibroIva)
 
   const { data: condiciones } = useQuery({
     queryKey: ['catalogo', 'condiciones-iva'],
@@ -77,11 +80,18 @@ export default function LibroIvaPage() {
   return (
     <CCard>
       <CCardHeader>
-        <Link to="/empresas" className="text-decoration-none small">
-          ← Empresas
-        </Link>
-        <strong className="ms-2">Libro IVA y DDJJ</strong>
-        <CNav variant="tabs" className="mt-3 border-bottom-0 no-print">
+        <div className="d-flex justify-content-between align-items-start">
+          <div>
+            <Link to="/empresas" className="text-decoration-none small">
+              ← Empresas
+            </Link>
+            <strong className="ms-2">Libro IVA y DDJJ</strong>
+          </div>
+          <CButton color="secondary" variant="outline" size="sm" className="no-print" onClick={verRecorrido}>
+            Ver recorrido
+          </CButton>
+        </div>
+        <CNav id="tour-libro-tabs" variant="tabs" className="mt-3 border-bottom-0 no-print">
           {([
             ['resumen', 'Resumen'],
             ['ddjj', 'DDJJ (F2002)'],
@@ -91,7 +101,12 @@ export default function LibroIvaPage() {
             ['descargas', 'Descargas'],
           ] as [Tab, string][]).map(([k, label]) => (
             <CNavItem key={k}>
-              <CNavLink active={tab === k} style={{ cursor: 'pointer' }} onClick={() => setTab(k)}>
+              <CNavLink
+                id={k === 'descargas' ? 'tour-libro-tab-descargas' : undefined}
+                active={tab === k}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setTab(k)}
+              >
                 {label}
               </CNavLink>
             </CNavItem>

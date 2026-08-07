@@ -28,6 +28,8 @@ import {
   type RecursoSujeto,
 } from '../../../api/sujetos'
 import SujetoFormModal from './SujetoFormModal'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourSujetos } from '../../../tours/tours'
 
 const PER_PAGE = 20
 
@@ -35,6 +37,7 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
   const esProveedor = recurso === 'proveedores'
   const titulo = esProveedor ? 'Proveedores' : 'Clientes'
   const singular = esProveedor ? 'proveedor' : 'cliente'
+  const { start: verRecorrido } = usePageTour(recurso, tourSujetos(esProveedor))
 
   const { empresaId } = useParams()
   const id = Number(empresaId)
@@ -92,19 +95,26 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
             </Link>
             <strong className="ms-2">{titulo}</strong>
           </div>
-          <CButton
-            color="primary"
-            size="sm"
-            onClick={() => {
-              setEditing(null)
-              setModalOpen(true)
-            }}
-          >
-            Nuevo {singular}
-          </CButton>
+          <div className="d-flex gap-2">
+            <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+              Ver recorrido
+            </CButton>
+            <CButton
+              id="tour-nuevo-sujeto"
+              color="primary"
+              size="sm"
+              onClick={() => {
+                setEditing(null)
+                setModalOpen(true)
+              }}
+            >
+              Nuevo {singular}
+            </CButton>
+          </div>
         </CCardHeader>
         <CCardBody>
           <CForm
+            id="tour-busqueda-sujetos"
             className="row g-2 align-items-end mb-3"
             onSubmit={(e) => {
               e.preventDefault()
@@ -155,7 +165,7 @@ export default function SujetosList({ recurso }: { recurso: RecursoSujeto }) {
             </CAlert>
           )}
           {data && (
-            <CTable hover responsive align="middle" className="mb-0">
+            <CTable id="tour-tabla-sujetos" hover responsive align="middle" className="mb-0">
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell>Nombre</CTableHeaderCell>

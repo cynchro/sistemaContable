@@ -1,11 +1,13 @@
 import { useParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { CCard, CCardHeader, CCardBody, CRow, CCol, CSpinner, CAlert, CBadge } from '@coreui/react'
+import { CCard, CCardHeader, CCardBody, CRow, CCol, CSpinner, CAlert, CBadge, CButton } from '@coreui/react'
 import { getTotales } from '../../../api/libroIva'
 import { listVentas } from '../../../api/ventas'
 import { listCompras } from '../../../api/compras'
 import { getPercepciones } from '../../../api/reportes'
 import { listSujetos } from '../../../api/sujetos'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourPanel } from '../../../tours/tours'
 
 /**
  * Panel de indicadores de IVA (MUESTRA). Gráficos de ejemplo con los datos reales del
@@ -236,11 +238,15 @@ export default function PanelPage() {
   const { empresaId, periodoId } = useParams()
   const eId = Number(empresaId)
   const pId = Number(periodoId)
+  const { start: verRecorrido } = usePageTour('panel', tourPanel)
 
   return (
     <CCard>
-      <CCardHeader>
+      <CCardHeader className="d-flex justify-content-between align-items-center">
         <strong>Panel — IVA</strong>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
       </CCardHeader>
       <CCardBody>
         {Number.isFinite(eId) && Number.isFinite(pId) ? (

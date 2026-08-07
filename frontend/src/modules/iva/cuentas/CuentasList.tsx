@@ -24,6 +24,8 @@ import {
   type CuentaInput,
 } from '../../../api/cuentas'
 import CuentaFormModal from './CuentaFormModal'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourCuentas } from '../../../tours/tours'
 
 /** Plan de cuentas de la empresa activa (Compartido). Réplica del módulo "Cuentas"
  * del Visual IVA: ABM simple código + nombre, por empresa. */
@@ -31,6 +33,7 @@ export default function CuentasList() {
   const { empresaId } = useParams()
   const id = Number(empresaId)
   const qc = useQueryClient()
+  const { start: verRecorrido } = usePageTour('cuentas', tourCuentas)
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Cuenta | null>(null)
 
@@ -67,16 +70,22 @@ export default function CuentasList() {
             </Link>
             <strong className="ms-2">Plan de cuentas</strong>
           </div>
-          <CButton
-            color="primary"
-            size="sm"
-            onClick={() => {
-              setEditing(null)
-              setModalOpen(true)
-            }}
-          >
-            Nueva cuenta
-          </CButton>
+          <div className="d-flex gap-2">
+            <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+              Ver recorrido
+            </CButton>
+            <CButton
+              id="tour-nueva-cuenta"
+              color="primary"
+              size="sm"
+              onClick={() => {
+                setEditing(null)
+                setModalOpen(true)
+              }}
+            >
+              Nueva cuenta
+            </CButton>
+          </div>
         </CCardHeader>
         <CCardBody>
           {isLoading && <CSpinner />}

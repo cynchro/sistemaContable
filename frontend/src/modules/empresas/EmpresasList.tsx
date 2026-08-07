@@ -28,10 +28,13 @@ import {
   type EmpresaInput,
 } from '../../api/empresas'
 import EmpresaFormModal from './EmpresaFormModal'
+import { usePageTour } from '../../tours/usePageTour'
+import { tourEmpresas } from '../../tours/tours'
 
 export default function EmpresasList() {
   const qc = useQueryClient()
   const navigate = useNavigate()
+  const { start: verRecorrido } = usePageTour('empresas', tourEmpresas)
   const { data: empresas, isLoading, isError } = useQuery({
     queryKey: ['empresas'],
     queryFn: listEmpresas,
@@ -70,22 +73,28 @@ export default function EmpresasList() {
       <CCard>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>Empresas / Contribuyentes</strong>
-          <CButton
-            color="primary"
-            size="sm"
-            onClick={() => {
-              setEditing(null)
-              setModalOpen(true)
-            }}
-          >
-            Nueva empresa
-          </CButton>
+          <div className="d-flex gap-2">
+            <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+              Ver recorrido
+            </CButton>
+            <CButton
+              id="tour-nueva-empresa"
+              color="primary"
+              size="sm"
+              onClick={() => {
+                setEditing(null)
+                setModalOpen(true)
+              }}
+            >
+              Nueva empresa
+            </CButton>
+          </div>
         </CCardHeader>
         <CCardBody>
           {isLoading && <CSpinner />}
           {isError && <CAlert color="danger">No se pudieron cargar las empresas.</CAlert>}
           {empresas && (
-            <CTable hover responsive align="middle" className="mb-0">
+            <CTable id="tour-tabla-empresas" hover responsive align="middle" className="mb-0">
               <CTableHead>
                 <CTableRow>
                   <CTableHeaderCell>Nombre</CTableHeaderCell>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { CCard, CCardHeader, CCardBody, CFormSelect, CNav, CNavItem, CNavLink } from '@coreui/react'
+import { CCard, CCardHeader, CCardBody, CFormSelect, CNav, CNavItem, CNavLink, CButton } from '@coreui/react'
 import { listEmpresas } from '../../api/empresas'
 import EmpleadosTab from './EmpleadosTab'
 import ConceptosTab from './ConceptosTab'
 import LiquidacionesTab from './LiquidacionesTab'
+import { usePageTour } from '../../tours/usePageTour'
+import { tourSueldos } from '../../tours/tours'
 
 type Tab = 'empleados' | 'conceptos' | 'liquidaciones'
 
@@ -12,6 +14,7 @@ export default function SueldosPage() {
   const { data: empresas } = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
   const [empresaId, setEmpresaId] = useState<number | null>(null)
   const [tab, setTab] = useState<Tab>('empleados')
+  const { start: verRecorrido } = usePageTour('sueldos', tourSueldos)
 
   useEffect(() => {
     if (empresaId == null && empresas && empresas.length > 0) setEmpresaId(empresas[0].id)
@@ -19,10 +22,16 @@ export default function SueldosPage() {
 
   return (
     <>
-      <h2 className="mb-4">Sueldos</h2>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="mb-0">Sueldos</h2>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
+      </div>
       <CCard>
         <CCardHeader className="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <CFormSelect
+            id="tour-sueldos-empresa"
             size="sm"
             style={{ minWidth: 240 }}
             value={empresaId ?? ''}
@@ -35,7 +44,7 @@ export default function SueldosPage() {
               </option>
             ))}
           </CFormSelect>
-          <CNav variant="tabs" className="border-bottom-0">
+          <CNav id="tour-sueldos-tabs" variant="tabs" className="border-bottom-0">
             {([
               ['empleados', 'Legajos'],
               ['conceptos', 'Conceptos'],

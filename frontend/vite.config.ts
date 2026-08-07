@@ -18,5 +18,8 @@ export default defineConfig({
     // El código se monta por bind-mount en el contenedor; el polling asegura que
     // el watcher detecte los cambios del host (algunos FS no propagan inotify).
     watch: { usePolling: true },
+    // Vite rechaza (403) requests con un Host header desconocido (anti DNS-rebinding).
+    // Habilitamos explícitamente el dominio de Tailscale (LAN directa + Funnel/Serve).
+    allowedHosts: ['.ts.net'],
   },
 })

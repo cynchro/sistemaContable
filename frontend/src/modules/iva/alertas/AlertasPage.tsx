@@ -14,8 +14,11 @@ import {
   CBadge,
   CSpinner,
   CAlert,
+  CButton,
 } from '@coreui/react'
 import { listAlertas } from '../../../api/alertas'
+import { usePageTour } from '../../../tours/usePageTour'
+import { tourAlertas } from '../../../tours/tours'
 
 /**
  * Motor de alertas estadísticas v1 (documento "Satélite Visual IVA" §7): compara el total del
@@ -26,24 +29,30 @@ import { listAlertas } from '../../../api/alertas'
 export default function AlertasPage() {
   const [soloAlertas, setSoloAlertas] = useState(true)
   const { data, isLoading, isError } = useQuery({ queryKey: ['alertas'], queryFn: listAlertas })
+  const { start: verRecorrido } = usePageTour('alertas', tourAlertas)
 
   const filas = (data ?? []).filter((a) => !soloAlertas || a.alerta)
 
   return (
     <CCard>
-      <CCardHeader>
-        <strong>Alertas estadísticas</strong>
-        <div className="text-body-secondary small mt-1">
-          Compara el último período de cada empresa contra el promedio de sus períodos anteriores (mínimo 3),
-          tanto para compras como para ventas. Un desvío por encima del 30% puede señalar la compra de un bien
-          de uso u otro movimiento fuera de lo habitual.{' '}
-          <strong>v1 con umbral por defecto</strong> (pendiente de confirmar con el contador).
+      <CCardHeader className="d-flex justify-content-between align-items-start">
+        <div>
+          <strong>Alertas estadísticas</strong>
+          <div className="text-body-secondary small mt-1">
+            Compara el último período de cada empresa contra el promedio de sus períodos anteriores (mínimo 3),
+            tanto para compras como para ventas. Un desvío por encima del 30% puede señalar la compra de un bien
+            de uso u otro movimiento fuera de lo habitual.{' '}
+            <strong>v1 con umbral por defecto</strong> (pendiente de confirmar con el contador).
+          </div>
         </div>
+        <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
+          Ver recorrido
+        </CButton>
       </CCardHeader>
       <CCardBody>
         <CFormCheck
+          id="tour-alertas-checkbox"
           className="mb-3"
-          id="solo-alertas"
           label="Mostrar solo las que disparan alerta"
           checked={soloAlertas}
           onChange={(e) => setSoloAlertas(e.target.checked)}
@@ -52,7 +61,7 @@ export default function AlertasPage() {
         {isLoading && <CSpinner />}
         {isError && <CAlert color="danger">No se pudieron cargar las alertas.</CAlert>}
         {data && (
-          <CTable hover responsive align="middle" className="ledger mb-0">
+          <CTable id="tour-alertas-tabla" hover responsive align="middle" className="ledger mb-0">
             <CTableHead>
               <CTableRow>
                 <CTableHeaderCell>Empresa</CTableHeaderCell>
