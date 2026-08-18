@@ -30,6 +30,7 @@ import {
 import EmpresaFormModal from './EmpresaFormModal'
 import { usePageTour } from '../../tours/usePageTour'
 import { tourEmpresas } from '../../tours/tours'
+import { useOcuparEmpresa } from '../../hooks/useOcuparEmpresa'
 
 export default function EmpresasList() {
   const qc = useQueryClient()
@@ -39,6 +40,17 @@ export default function EmpresasList() {
     queryKey: ['empresas'],
     queryFn: listEmpresas,
   })
+  const { ocupar, error: lockError, isPending: ocupando, reset: clearLockError } = useOcuparEmpresa()
+
+  /**
+   * Navegación guiada por contribuyente (informe del cliente 10/08/2026, pedido 5b: "elijo la
+   * empresa → se trabaja directamente sobre eso"): activa la empresa en el `ActiveContext` (pide
+   * el lock, igual que el selector del header) y recién ahí navega — así el banner de contexto y
+   * el resto de las pantallas ya la ven como activa, sin tener que volver a elegirla arriba.
+   */
+  const trabajarCon = async (e: Empresa, destino: string) => {
+    if (await ocupar(e)) navigate(destino)
+  }
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Empresa | null>(null)
@@ -93,6 +105,11 @@ export default function EmpresasList() {
         <CCardBody>
           {isLoading && <CSpinner />}
           {isError && <CAlert color="danger">No se pudieron cargar las empresas.</CAlert>}
+          {lockError && (
+            <CAlert color="danger" dismissible onClose={clearLockError}>
+              {lockError}
+            </CAlert>
+          )}
           {empresas && (
             <CTable id="tour-tabla-empresas" hover responsive align="middle" className="mb-0">
               <CTableHead>
@@ -113,20 +130,30 @@ export default function EmpresasList() {
                     <CTableDataCell>{e.localidad ?? '—'}</CTableDataCell>
                     <CTableDataCell className="text-end">
                       <CDropdown variant="btn-group" className="me-2">
-                        <CDropdownToggle color="primary" variant="outline" size="sm">
-                          Abrir
-                        </CDropdownToggle>
+                        <CButton
+                          color="primary"
+                          size="sm"
+                          disabled={ocupando}
+                          title="Activar este contribuyente y ver sus períodos"
+                          onClick={() => void trabajarCon(e, `/empresas/${e.id}/periodos`)}
+                        >
+                          Trabajar
+                        </CButton>
+                        <CDropdownToggle color="primary" size="sm" split title="Otras pantallas" />
                         <CDropdownMenu>
-                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/periodos`)}>
-                            Períodos
-                          </CDropdownItem>
-                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/clientes`)}>
+                          <CDropdownItem role="button" onClick={() => void trabajarCon(e, `/empresas/${e.id}/clientes`)}>
                             Clientes
                           </CDropdownItem>
-                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/proveedores`)}>
+                          <CDropdownItem
+                            role="button"
+                            onClick={() => void trabajarCon(e, `/empresas/${e.id}/proveedores`)}
+                          >
                             Proveedores
                           </CDropdownItem>
-                          <CDropdownItem role="button" onClick={() => navigate(`/empresas/${e.id}/actividades`)}>
+                          <CDropdownItem
+                            role="button"
+                            onClick={() => void trabajarCon(e, `/empresas/${e.id}/actividades`)}
+                          >
                             Actividades (IVA)
                           </CDropdownItem>
                         </CDropdownMenu>

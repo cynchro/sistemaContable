@@ -4,6 +4,7 @@ import AppSidebar from '../components/AppSidebar'
 import AppHeader from '../components/AppHeader'
 import AppFooter from '../components/AppFooter'
 import AppBreadcrumb from '../components/AppBreadcrumb'
+import ActiveContextBanner from '../components/ActiveContextBanner'
 
 /** Layout del back-office estilo CoreUI Admin Template: sidebar colapsable + header
  * (toggle, dark mode, perfil) + breadcrumb + contenido + footer. */
@@ -16,6 +17,7 @@ export default function DefaultLayout() {
         <div className="body flex-grow-1">
           <CContainer fluid className="px-4">
             <AppBreadcrumb />
+            <ActiveContextBanner />
             <Outlet />
           </CContainer>
         </div>

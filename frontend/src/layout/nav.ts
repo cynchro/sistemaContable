@@ -6,7 +6,6 @@ import {
   cilCart,
   cilPeople,
   cilUser,
-  cilList,
   cilBook,
   cilLibrary,
   cilStorage,
@@ -14,7 +13,6 @@ import {
   cilFile,
   cilMoney,
   cilCalendarCheck,
-  cilSettings,
   cilCalculator,
   cilBriefcase,
   cilShieldAlt,
@@ -98,35 +96,15 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
           disabled: needEmpresa,
           hint: hintEmpresa,
         },
-        { name: 'Padrón único', to: '/padron-unico', icon: cilPeople },
+        { name: 'Padrón de proveedores', to: '/padron-proveedores', icon: cilPeople },
+        { name: 'Padrón de clientes', to: '/padron-clientes', icon: cilPeople },
         { name: 'Alertas', to: '/alertas', icon: cilShieldAlt },
-        {
-          name: 'Cuentas',
-          to: `/empresas/${emp}/cuentas`,
-          icon: cilLibrary,
-          disabled: needEmpresa,
-          hint: hintEmpresa,
-        },
-        {
-          name: 'Actividades',
-          to: `/empresas/${emp}/actividades`,
-          icon: cilList,
-          disabled: needEmpresa,
-          hint: hintEmpresa,
-        },
         {
           name: 'Libro IVA / DDJJ',
           to: `/empresas/${emp}/periodos/${per}/libro-iva`,
           icon: cilBook,
           disabled: needPeriodo,
           hint: hintPeriodo,
-        },
-        {
-          name: 'Reportes de Mayor',
-          to: `/empresas/${emp}/reportes-mayor`,
-          icon: cilBook,
-          disabled: needEmpresa,
-          hint: hintEmpresa,
         },
         {
           name: 'Auditoría ARCA',
@@ -155,11 +133,33 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
 
     {
       type: 'group',
+      name: 'Contabilidad',
+      icon: cilLibrary,
+      items: [
+        {
+          name: 'Cuentas',
+          to: `/empresas/${emp}/cuentas`,
+          icon: cilLibrary,
+          disabled: needEmpresa,
+          hint: hintEmpresa,
+        },
+        {
+          name: 'Reportes de Mayor',
+          to: `/empresas/${emp}/reportes-mayor`,
+          icon: cilBook,
+          disabled: needEmpresa,
+          hint: hintEmpresa,
+        },
+      ],
+    },
+
+    {
+      type: 'group',
       name: 'Estudio',
       icon: cilBriefcase,
       items: [
         { name: 'Sueldos', to: '/sueldos', icon: cilMoney },
-        { name: 'Vencimientos y tareas', to: '/gestion', icon: cilCalendarCheck },
+        { name: 'Tareas y honorarios', to: '/gestion', icon: cilCalendarCheck },
       ],
     },
 
@@ -167,10 +167,7 @@ export function buildNavigation(empresaId: number | null, periodoId: number | nu
       type: 'group',
       name: 'Administración',
       icon: cilShieldAlt,
-      items: [
-        { name: 'Administración', to: '/admin', icon: cilSettings },
-        { name: 'Utilidades', to: '/utilidades', icon: cilStorage },
-      ],
+      items: [{ name: 'Utilidades', to: '/utilidades', icon: cilStorage }],
     },
 
     { type: 'item', name: 'Manuales', to: '/manuales', icon: cilBook },

@@ -6,3 +6,14 @@
 /site/
 COMPONENTS.md
 /storage/afip/
+
+# Datos reales de producción (CUIT + razón social de clientes/proveedores reales) —
+# extraídos del legacy Visual IVA para sembrar dev/staging, nunca versionados.
+/seeders/data/empresas_legacy.csv
+/seeders/data/padron_unico_proveedores.csv
+/seeders/data/import_padron_relaciones.csv
+/seeders/data/sujeto_concepto_default.csv
+/seeders/data/compras_legacy.csv
+/seeders/data/compra_discriminaciones_legacy.csv
+/seeders/data/ventas_legacy.csv
+/seeders/data/venta_discriminaciones_legacy.csv

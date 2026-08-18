@@ -77,3 +77,26 @@ export async function listUsuarios(): Promise<Usuario[]> {
   const { data } = await api.get('/admin/users')
   return data.data as Usuario[]
 }
+
+/* -------------------------- Empresas asignadas -------------------------- */
+
+/**
+ * Asignación opcional de empresas a un usuario (WhatsApp con el cliente, 11/08/2026:
+ * "me gustaría que de última él pueda ver sus empresas asignadas"). Un usuario sin
+ * ninguna asignación sigue viendo todas las empresas del tenant.
+ */
+export interface EmpresaAsignada {
+  id: number
+  nombre: string
+  cuit: string | null
+}
+
+export async function empresasDeUsuario(usuarioId: number): Promise<EmpresaAsignada[]> {
+  const { data } = await api.get(`/admin/users/${usuarioId}/empresas`)
+  return data.data as EmpresaAsignada[]
+}
+
+export async function asignarEmpresas(usuarioId: number, empresaIds: number[]): Promise<unknown> {
+  const { data } = await api.put(`/admin/users/${usuarioId}/empresas`, { empresa_ids: empresaIds })
+  return data.data
+}

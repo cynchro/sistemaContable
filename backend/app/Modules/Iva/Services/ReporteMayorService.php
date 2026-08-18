@@ -2,6 +2,7 @@
 
 namespace App\Modules\Iva\Services;
 
+use App\Exceptions\ValidationException;
 use App\Modules\Compartido\Repositories\EmpresaRepository;
 use App\Modules\Iva\Calc\MayorReporteCalculator;
 use App\Modules\Iva\Repositories\ReporteMayorRepository;
@@ -13,6 +14,13 @@ use App\Modules\Iva\Repositories\ReporteMayorRepository;
  */
 class ReporteMayorService
 {
+    /**
+     * Tope de líneas traíbles a memoria en un solo reporte. Muy por encima de un mes real de
+     * una empresa grande (ej. REYMUNDO FRIAS: ~7.000 comprobantes/mes) y muy por debajo de lo
+     * que agota los 128M por defecto de PHP con el histórico completo de una empresa así.
+     */
+    private const MAX_MOVIMIENTOS = 20000;
+
     public function __construct(
         private ReporteMayorRepository $datos,
         private MayorReporteCalculator $calc,
@@ -38,6 +46,24 @@ class ReporteMayorService
                 ? (string) $query['origen']
                 : null,
         ];
+
+        // Sin rango, el repo trae TODO el histórico de la empresa (cientos de miles de líneas
+        // reales) en un fetchAll() sin límite — es lo que agotaba los 128M por defecto de PHP.
+        if ($filtros['desde'] === null || $filtros['hasta'] === null) {
+            throw new ValidationException([
+                'desde' => ['Elegí un rango de fechas (desde y hasta) para generar el reporte.'],
+            ]);
+        }
+
+        $cantidad = $this->datos->contarMovimientos($empresaId, $filtros);
+        if ($cantidad > self::MAX_MOVIMIENTOS) {
+            throw new ValidationException([
+                'desde' => [
+                    "Hay {$cantidad} movimientos en ese rango — acotá las fechas o agregá un"
+                    . ' filtro de cuenta/proveedor/provincia para poder generar el reporte.',
+                ],
+            ]);
+        }
 
         $agrupar = $this->agrupar($query['agrupar'] ?? null);
 

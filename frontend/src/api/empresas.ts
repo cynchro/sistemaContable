@@ -14,6 +14,14 @@ export interface Empresa {
   fecha_inicio_actividades: string | null
   actividad1_id: number | null
   actividad2_id: number | null
+  /** Datos CRM del contribuyente (de sistemaCuarto). */
+  contacto: string | null
+  tipo_persona: string | null
+  inscripcion: string | null
+  contabilidad: string | null
+  /** Trazabilidad: si el alta se autocompletó desde el SIGE. */
+  sige_persona_id: number | null
+  sige_synced_at: string | null
 }
 
 /** Campos editables del alta/edición de empresa (contribuyente). */
@@ -30,6 +38,12 @@ export interface EmpresaInput {
   fecha_inicio_actividades?: string | null
   actividad1_id?: number | null
   actividad2_id?: number | null
+  contacto?: string | null
+  tipo_persona?: string | null
+  inscripcion?: string | null
+  contabilidad?: string | null
+  sige_persona_id?: number | null
+  sige_synced_at?: string | null
 }
 
 export async function listEmpresas(): Promise<Empresa[]> {
@@ -49,4 +63,22 @@ export async function updateEmpresa(id: number, input: EmpresaInput): Promise<Em
 
 export async function deleteEmpresa(id: number): Promise<void> {
   await api.delete(`/empresas/${id}`)
+}
+
+/** "CUIT único" (informe del cliente 10/08/2026, pedido 3): ¿ese CUIT ya es una empresa propia? */
+export interface EmpresaPorCuit {
+  encontrado: boolean
+  id: number | null
+  nombre: string | null
+  cuit: string | null
+  domicilio: string | null
+  localidad: string | null
+  provincia_id: number | null
+  telefono: string | null
+  condicion_iva_id: number | null
+}
+
+export async function buscarEmpresaPorCuit(cuit: string): Promise<EmpresaPorCuit> {
+  const { data } = await api.get(`/empresas/cuit/${cuit}`)
+  return data.data as EmpresaPorCuit
 }

@@ -47,6 +47,14 @@ function esHoja(hijos: MayorReporteGrupo[] | MayorReporteHoja[]): hijos is Mayor
   return hijos.length > 0 && (hijos[0] as MayorReporteHoja).comprobante !== undefined
 }
 
+/** Superficia el mensaje de validación del backend (ej. rango sin fechas o con demasiados
+ * movimientos) en vez de un genérico "no se pudo generar". */
+function errorReporte(e: unknown): string {
+  const err = e as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }
+  const first = err.response?.data?.errors ? Object.values(err.response.data.errors)[0]?.[0] : undefined
+  return first ?? err.response?.data?.message ?? 'No se pudo generar el reporte.'
+}
+
 /** Reporte analítico del Mayor por rango de fechas, con filtros y subtotales en cascada (R2). */
 export default function ReporteMayorPage() {
   const { empresaId } = useParams()
@@ -104,11 +112,21 @@ export default function ReporteMayorPage() {
           <CRow className="g-3 align-items-end">
             <CCol md={2}>
               <CFormLabel>Desde</CFormLabel>
-              <CFormInput type="date" value={filtros.desde ?? ''} onChange={(e) => set('desde', e.target.value)} />
+              <CFormInput
+                type="date"
+                required
+                value={filtros.desde ?? ''}
+                onChange={(e) => set('desde', e.target.value)}
+              />
             </CCol>
             <CCol md={2}>
               <CFormLabel>Hasta</CFormLabel>
-              <CFormInput type="date" value={filtros.hasta ?? ''} onChange={(e) => set('hasta', e.target.value)} />
+              <CFormInput
+                type="date"
+                required
+                value={filtros.hasta ?? ''}
+                onChange={(e) => set('hasta', e.target.value)}
+              />
             </CCol>
             <CCol md={3}>
               <CFormLabel>Cuenta (mayor)</CFormLabel>
@@ -175,7 +193,7 @@ export default function ReporteMayorPage() {
 
         <div id="tour-mayor-resultado" className="mt-4">
           {reporte.isFetching && <CSpinner />}
-          {reporte.isError && <CAlert color="danger">No se pudo generar el reporte.</CAlert>}
+          {reporte.isError && <CAlert color="danger">{errorReporte(reporte.error)}</CAlert>}
           {reporte.data && (
             <>
               <div className="d-flex justify-content-between align-items-center mb-2">

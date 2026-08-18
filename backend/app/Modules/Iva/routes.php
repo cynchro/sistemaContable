@@ -27,9 +27,11 @@ use App\Modules\Iva\Controllers\ExportFormatoController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
+use App\Http\Middleware\EmpresaLockMiddleware;
 
 /** @var \App\Support\Router $router (inyectado por bootstrap/app.php al cargar las rutas) */
-$router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware::class], function ($router) {
+$mw = [AuthMiddleware::class, TenantMiddleware::class, EmpresaLockMiddleware::class, AuditMiddleware::class];
+$router->group($mw, function ($router) {
     // RBAC por recurso: cada ruta exige un permiso (read = GET, write = POST/PUT/DELETE).
     // Un rol con el super-permiso 'Acceso Total' los cubre todos (ver PermissionChecker).
     $perm = static fn (string $p): string => PermissionMiddleware::class . ':' . $p;
@@ -337,6 +339,9 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware:
     // Padrón Único de Sujetos (propio del estudio, no AFIP): vista global de consulta, sin
     // filtrar por empresa (documento "Satélite Visual IVA" §10, Etapa 4).
     $router->get('/padron-unico', [PadronUnicoController::class, 'index'], [$perm('iva.clientes')]);
+    // "CUIT único" (pedido 3 del informe 10/08/2026): consulta exacta por CUIT, usada por el
+    // alta de empresa para no volver a tipear un CUIT que ya está en el padrón de sujetos.
+    $router->get('/padron-unico/cuit/{cuit}', [PadronUnicoController::class, 'porCuit'], [$perm('iva.clientes')]);
 
     // Motor de alertas estadísticas v1 (documento "Satélite Visual IVA" §7): tenant-wide, sin
     // permiso granular nuevo — cualquier usuario autenticado del estudio la puede ver (Auth +

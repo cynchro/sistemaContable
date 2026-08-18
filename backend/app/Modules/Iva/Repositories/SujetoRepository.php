@@ -4,6 +4,7 @@ namespace App\Modules\Iva\Repositories;
 
 use PDO;
 use App\Exceptions\NotFoundException;
+use App\Helpers\PaginatorHelper;
 
 /**
  * Padrón Único de Sujetos IVA: una fila por CUIT, compartida por todas las empresas
@@ -24,11 +25,22 @@ class SujetoRepository
     /**
      * Todos los sujetos del padrón del tenant, sin filtrar por empresa (vista global —
      * documento "Satélite Visual IVA" §10, Etapa 4: "consulta del padrón global").
+     * Paginado (`PaginatorHelper`, mismo patrón que `VentaRepository::findPaginado`): sin esto,
+     * un tenant real (6.481+ sujetos tras la migración histórica) trae el padrón entero a
+     * memoria de PHP en cada request — es lo que agotaba los 128M por defecto.
      *
-     * @param  array{q?: ?string} $filtros
-     * @return list<array<string, mixed>>
+     * `rol` separa el padrón en dos vistas (informe del cliente 10/08/2026, pedido 5a: "un
+     * padrón único de proveedores y un padrón único de clientes — cada uno por su lado", no
+     * mezclados en una sola integración): si se pasa, solo trae sujetos con al menos una
+     * activación activa de ese rol en `iva_sujeto_empresas`.
+     *
+     * @param  array{q?: ?string, rol?: ?string} $filtros
+     * @return array{
+     *     total: int, cantidad_por_pagina: int, pagina: int, cantidad_total: int,
+     *     results: list<array<string, mixed>>
+     * }
      */
-    public function listAllByTenant(string $tenantId, array $filtros = []): array
+    public function listAllByTenant(string $tenantId, array $filtros, int $page, int $perPage): array
     {
         $where  = ['tenant_id = ?'];
         $params = [$tenantId];
@@ -40,12 +52,18 @@ class SujetoRepository
             $params[] = $q;
         }
 
-        $stmt = $this->pdo->prepare(
-            'SELECT * FROM iva_sujetos WHERE ' . implode(' AND ', $where) . ' ORDER BY nombre'
-        );
-        $stmt->execute($params);
+        if (!empty($filtros['rol'])) {
+            $where[]  = 'EXISTS (SELECT 1 FROM iva_sujeto_empresas se'
+                . " WHERE se.sujeto_id = iva_sujetos.id AND se.rol = ? AND se.activo = 'S')";
+            $params[] = $filtros['rol'];
+        }
 
-        return array_map([$this, 'decode'], (array) $stmt->fetchAll(PDO::FETCH_ASSOC));
+        $query = 'SELECT * FROM iva_sujetos WHERE ' . implode(' AND ', $where) . ' ORDER BY nombre';
+
+        $pagina = (new PaginatorHelper($this->pdo, $query, $page, $perPage, true, $params))->getPaginatedResults();
+        $pagina['results'] = array_map([$this, 'decode'], $pagina['results']);
+
+        return $pagina;
     }
 
     /** @return array<string, mixed>|null */

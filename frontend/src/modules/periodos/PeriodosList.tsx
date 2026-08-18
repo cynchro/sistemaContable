@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -25,9 +25,12 @@ import {
   type Periodo,
   type PeriodoInput,
 } from '../../api/periodos'
+import { listEmpresas } from '../../api/empresas'
 import PeriodoFormModal from './PeriodoFormModal'
 import { usePageTour } from '../../tours/usePageTour'
 import { tourPeriodos } from '../../tours/tours'
+import { useActive } from '../../layout/ActiveContext'
+import { useOcuparEmpresa } from '../../hooks/useOcuparEmpresa'
 
 export default function PeriodosList() {
   const { empresaId } = useParams()
@@ -41,6 +44,26 @@ export default function PeriodosList() {
     queryKey: ['periodos', id],
     queryFn: () => listPeriodos(id),
   })
+
+  // Sincroniza la empresa activa con la de la URL (informe del cliente 10/08/2026, pedido 5b):
+  // si se entra acá por un link directo/recarga, sin haber pasado por "Trabajar" en la lista de
+  // empresas, el banner de contexto y el resto de las pantallas tienen que ver igual la empresa
+  // correcta — no solo cuando el flujo arranca desde ahí.
+  const { empresa, setPeriodo } = useActive()
+  const { ocupar } = useOcuparEmpresa()
+  const empresasQ = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
+  useEffect(() => {
+    if (empresa?.id === id) return
+    const found = empresasQ.data?.find((e) => e.id === id)
+    if (found) void ocupar(found)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, empresa?.id, empresasQ.data])
+
+  /** Activa el período elegido en el `ActiveContext` antes de navegar a trabajar sobre él. */
+  const irA = (p: Periodo, destino: string) => {
+    setPeriodo(p)
+    navigate(destino)
+  }
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['periodos', id] })
   const createM = useMutation({
@@ -112,7 +135,7 @@ export default function PeriodosList() {
                           variant="outline"
                           size="sm"
                           className="me-2"
-                          onClick={() => navigate(`/empresas/${id}/periodos/${p.id}/ventas`)}
+                          onClick={() => irA(p, `/empresas/${id}/periodos/${p.id}/ventas`)}
                         >
                           Ventas
                         </CButton>
@@ -121,7 +144,7 @@ export default function PeriodosList() {
                           variant="outline"
                           size="sm"
                           className="me-2"
-                          onClick={() => navigate(`/empresas/${id}/periodos/${p.id}/compras`)}
+                          onClick={() => irA(p, `/empresas/${id}/periodos/${p.id}/compras`)}
                         >
                           Compras
                         </CButton>
@@ -130,7 +153,7 @@ export default function PeriodosList() {
                           variant="outline"
                           size="sm"
                           className="me-2"
-                          onClick={() => navigate(`/empresas/${id}/periodos/${p.id}/libro-iva`)}
+                          onClick={() => irA(p, `/empresas/${id}/periodos/${p.id}/libro-iva`)}
                         >
                           Libro IVA
                         </CButton>

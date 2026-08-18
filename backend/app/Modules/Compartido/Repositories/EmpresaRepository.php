@@ -18,6 +18,8 @@ class EmpresaRepository
         'fecha_inicio_actividades', 'actividad1_id', 'actividad2_id', 'exporta', 'inactiva',
         // CRM del contribuyente (de sistemaCuarto)
         'email', 'contacto', 'tipo_persona', 'inscripcion', 'contabilidad',
+        // Trazabilidad de origen cuando el alta se autocompletó desde el SIGE
+        'sige_persona_id', 'sige_synced_at',
     ];
 
     public function __construct(private PDO $pdo)
@@ -31,6 +33,45 @@ class EmpresaRepository
         $stmt->execute([$tenantId]);
 
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Igual que {@see self::findAll()} pero acotado a una lista de ids — usado para filtrar por
+     * "empresas asignadas" (`UsuarioEmpresaRepository`, WhatsApp con el cliente 11/08/2026).
+     *
+     * @param  list<int> $ids
+     * @return list<array<string, mixed>>
+     */
+    public function findAllPorIds(string $tenantId, array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt         = $this->pdo->prepare(
+            "SELECT * FROM empresas WHERE tenant_id = ? AND id IN ({$placeholders}) ORDER BY nombre"
+        );
+        $stmt->execute([$tenantId, ...$ids]);
+
+        return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Empresa (contribuyente propio del estudio) con ese CUIT, si existe en el tenant.
+     * Usado para el cruce "CUIT único" (informe del cliente 10/08/2026, pedido 3): antes de dar
+     * de alta un sujeto (cliente/proveedor) con un CUIT que ya es una empresa propia, se ofrece
+     * reusar esos datos en vez de tipearlos de nuevo — ver `SujetoFormModal.tsx`.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByCuit(string $tenantId, string $cuit): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM empresas WHERE tenant_id = ? AND cuit = ?');
+        $stmt->execute([$tenantId, $cuit]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
     }
 
     /** @return array<string, mixed> */

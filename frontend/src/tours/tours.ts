@@ -42,8 +42,20 @@ export const tourNavegacion: DriveStep[] = [
       title: 'Menú IVA — el circuito principal',
       description:
         'Orden recomendado: Empresas/Contribuyentes → Períodos → Ventas/Compras → Libro IVA/DDJJ → Descargas. ' +
-        'El resto (Padrón único, Cuentas, Actividades, Alertas, Auditoría ARCA, Importar, Factura electrónica) ' +
-        'son herramientas de apoyo a ese circuito, se usan cuando hacen falta.',
+        'El resto (Padrón de proveedores, Padrón de clientes, Alertas, Auditoría ARCA, Importar, Factura ' +
+        'electrónica) son herramientas de apoyo a ese circuito, se usan cuando hacen falta.',
+      side: 'right',
+      align: 'start',
+    },
+  },
+  {
+    element: '#tour-sidebar-contabilidad',
+    popover: {
+      title: 'Menú Contabilidad',
+      description:
+        'Cuentas (plan de cuentas por empresa) y Reportes de Mayor (mayorización de compras y ventas, por ' +
+        'rango de fechas) — separado de IVA, porque nace de la contabilidad aunque el motor lo alimente al ' +
+        'cargar cada comprobante.',
       side: 'right',
       align: 'start',
     },
@@ -53,8 +65,8 @@ export const tourNavegacion: DriveStep[] = [
     popover: {
       title: 'Menú Estudio',
       description:
-        'Aparte del circuito de IVA: Sueldos (liquidación de sueldos) y Vencimientos y tareas (workflow del ' +
-        'estudio — tareas, vencimientos, honorarios). No dependen de la empresa/período activos.',
+        'Aparte del circuito de IVA: Sueldos (liquidación de sueldos) y Tareas y honorarios (workflow del ' +
+        'estudio). No dependen de la empresa/período activos.',
       side: 'right',
       align: 'start',
     },
@@ -64,8 +76,8 @@ export const tourNavegacion: DriveStep[] = [
     popover: {
       title: 'Menú Administración',
       description:
-        'Configuración del estudio: Administración (roles y permisos de usuarios) y Utilidades (catálogos, ' +
-        'rubros, retenciones, conceptos y auditoría de operaciones).',
+        'Configuración del estudio: Utilidades (catálogos, rubros, retenciones, conceptos y auditoría de ' +
+        'operaciones). Roles y permisos de usuarios se administran desde el SIGE.',
       side: 'right',
       align: 'start',
     },
@@ -410,10 +422,11 @@ export const tourImputacionProveedor: DriveStep[] = [
 export const tourPadronUnico: DriveStep[] = [
   {
     popover: {
-      title: 'Padrón único de sujetos',
+      title: 'Padrón único',
       description:
-        'Todos los proveedores y clientes del estudio en una sola vista, sin filtrar por empresa. Un mismo ' +
-        'CUIT aparece una sola vez, con las empresas donde está activado.',
+        'Todos los sujetos de este rol en el estudio, en una sola vista, sin filtrar por empresa. Un mismo ' +
+        'CUIT aparece una sola vez, con las empresas donde está activado. El padrón de proveedores y el de ' +
+        'clientes están separados — son dos mundos distintos, cada uno con su propia pantalla.',
     },
   },
   {
@@ -430,8 +443,8 @@ export const tourPadronUnico: DriveStep[] = [
     popover: {
       title: '"Activo en"',
       description:
-        'Cada badge te lleva directo al listado de Clientes o Proveedores de esa empresa, con el CUIT ' +
-        'precargado en la búsqueda. La edición se hace siempre desde ahí, no desde esta pantalla.',
+        'Cada badge te lleva directo al listado de esa empresa, con el CUIT precargado en la búsqueda. La ' +
+        'edición se hace siempre desde ahí, no desde esta pantalla.',
       side: 'top',
       align: 'center',
     },
@@ -695,8 +708,8 @@ export const tourGestion: DriveStep[] = [
     popover: {
       title: 'Pestañas',
       description:
-        'Tareas (workflow con estado y comentarios), Vencimientos (obligaciones por empresa) y Honorarios ' +
-        '(documentos de honorarios por servicio/complejidad).',
+        'Tareas (workflow con estado y comentarios) y Honorarios (documentos de honorarios por ' +
+        'servicio/complejidad). Los Vencimientos se manejan en el SIGE.',
       side: 'bottom',
       align: 'start',
     },

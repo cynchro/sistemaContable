@@ -34,7 +34,8 @@ function App() {
         <Route path="/" element={<DefaultLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="empresas" element={<EmpresasList />} />
-          <Route path="padron-unico" element={<PadronUnicoPage />} />
+          <Route path="padron-proveedores" element={<PadronUnicoPage rol="proveedor" />} />
+          <Route path="padron-clientes" element={<PadronUnicoPage rol="cliente" />} />
           <Route path="alertas" element={<AlertasPage />} />
           <Route path="empresas/:empresaId/periodos" element={<PeriodosList />} />
           <Route path="empresas/:empresaId/clientes" element={<SujetosList recurso="clientes" />} />

@@ -44,9 +44,10 @@ export const MANUALES: ManualSeccion[] = [
         titulo: 'Qué necesita cada ítem del menú',
         cuerpo: [
           'Siempre habilitados (no dependen del contexto): Inicio, IVA › Empresas / Contribuyentes, ' +
-            'IVA › Padrón único, IVA › Alertas, IVA › Factura electrónica (AFIP), Estudio (Sueldos, ' +
-            'Vencimientos y tareas), Administración (Administración, Utilidades) y Manuales.',
-          'Requieren una EMPRESA activa: Períodos, Clientes, Proveedores, Cuentas, Actividades, ' +
+            'IVA › Padrón de proveedores, IVA › Padrón de clientes, IVA › Alertas, ' +
+            'IVA › Factura electrónica (AFIP), Estudio (Sueldos, Tareas y honorarios), ' +
+            'Administración (Utilidades) y Manuales.',
+          'Requieren una EMPRESA activa: Períodos, Clientes, Proveedores, Cuentas, ' +
             'Reportes de Mayor y Auditoría ARCA. Se desbloquean al elegir empresa en el encabezado.',
           'Requieren EMPRESA + PERÍODO activos: Ventas, Compras, Libro IVA / DDJJ, Importar comprobantes y Panel. ' +
             'Se desbloquean al elegir empresa y período.',
@@ -61,8 +62,8 @@ export const MANUALES: ManualSeccion[] = [
             'empresa activa en el header" o "Elegí empresa y período activos en el header").',
           'El período no necesita estar Abierto para entrar a las pantallas: con un período Cerrado igual podés ' +
             'ver Ventas/Compras/Libro IVA; lo que se bloquea es cargar o editar (no la navegación).',
-          'Los grupos del menú (IVA / Estudio / Administración) se abren solos cuando estás parado en una de sus ' +
-            'pantallas.',
+          'Los grupos del menú (IVA / Contabilidad / Estudio / Administración) se abren solos cuando estás ' +
+            'parado en una de sus pantallas.',
           'Un enlace directo (por ejemplo el que te comparte un compañero apuntando a una venta puntual) funciona ' +
             'igual aunque el menú esté bloqueado: el contexto activo es solo para navegar por el costado.',
         ],
@@ -137,9 +138,10 @@ export const MANUALES: ManualSeccion[] = [
             'el sistema reutiliza sus datos y solo lo "activa" para la empresa nueva — no hay que volver a ' +
             'cargarlo. El botón AFIP autocompleta los datos por CUIT desde el padrón de ARCA en el alta.',
           'Los proveedores admiten varios CAI (con su vencimiento).',
-          'La pestaña "Padrón único" (más abajo en el menú de IVA) muestra todos los sujetos del estudio en una ' +
-            'sola vista, con las empresas donde cada uno está activo — útil para buscar sin recorrer empresa por ' +
-            'empresa; la edición se sigue haciendo desde la pantalla de Clientes/Proveedores de cada empresa.',
+          '"Padrón de proveedores" y "Padrón de clientes" (más abajo en el menú de IVA, separados — nunca ' +
+            'mezclados) muestran todos los sujetos de ese rol en el estudio en una sola vista, con las empresas ' +
+            'donde cada uno está activo — útil para buscar sin recorrer empresa por empresa; la edición se sigue ' +
+            'haciendo desde la pantalla de Clientes/Proveedores de cada empresa.',
         ],
       },
       {

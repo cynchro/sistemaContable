@@ -69,5 +69,12 @@ networks:
     driver: bridge
 
 volumes:
+  # Apuntan explícitamente a los volúmenes físicos ya existentes, así el nombre no cambia si
+  # este compose se levanta standalone o incluido desde la raíz (docker-compose.yml de
+  # /data/proyectos/cynchro/sistemaContable, que orquesta todo el ecosistema).
   db_data:
+    external: true
+    name: ecosistema_db_data
   frontend_node_modules:
+    external: true
+    name: ecosistema_frontend_node_modules

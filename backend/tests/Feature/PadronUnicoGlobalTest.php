@@ -26,7 +26,7 @@ class PadronUnicoGlobalTest extends FeatureTestCase
 
         $resp = $this->getJson('/padron-unico', $auth);
         $this->assertSame(200, $resp['status']);
-        $sujetos = $resp['json']['data'];
+        $sujetos = $resp['json']['data']['results'];
         $this->assertCount(1, $sujetos);
         $this->assertSame('30111111118', $sujetos[0]['cuit']);
         $this->assertCount(2, $sujetos[0]['empresas']);
@@ -48,8 +48,8 @@ class PadronUnicoGlobalTest extends FeatureTestCase
         ], $auth);
 
         $resp = $this->getJson('/padron-unico?q=Muchay', $auth);
-        $this->assertCount(1, $resp['json']['data']);
-        $this->assertSame('Muchay SRL', $resp['json']['data'][0]['nombre']);
+        $this->assertCount(1, $resp['json']['data']['results']);
+        $this->assertSame('Muchay SRL', $resp['json']['data']['results'][0]['nombre']);
     }
 
     public function test_no_mezcla_sujetos_de_otro_tenant(): void
@@ -67,6 +67,49 @@ class PadronUnicoGlobalTest extends FeatureTestCase
 
         $resp = $this->getJson('/padron-unico', $bobAuth);
         $this->assertSame(200, $resp['status']);
-        $this->assertCount(0, $resp['json']['data']);
+        $this->assertCount(0, $resp['json']['data']['results']);
+    }
+
+    /**
+     * Informe del cliente 10/08/2026, pedido 5a: "mezclar el padrón de proveedores y el de
+     * clientes en una sola integración no es posible... hacelos separados".
+     */
+    public function test_rol_separa_el_padron_en_proveedores_y_clientes(): void
+    {
+        $auth      = $this->bearer($this->actingAsUser()['token']);
+        $empresaA  = (int) $this->postJson('/empresas', ['nombre' => 'Empresa D'], $auth)['json']['data']['id'];
+        $empresaB  = (int) $this->postJson('/empresas', ['nombre' => 'Empresa E'], $auth)['json']['data']['id'];
+
+        // Mismo CUIT: proveedor en A, cliente en B.
+        $this->postJson("/empresas/{$empresaA}/proveedores", [
+            'nombre' => 'Doble Rol SRL', 'cuit' => '30777777773',
+        ], $auth);
+        $this->postJson("/empresas/{$empresaB}/clientes", [
+            'nombre' => 'Doble Rol SRL', 'cuit' => '30777777773',
+        ], $auth);
+        // Solo proveedor, en ninguna empresa como cliente.
+        $this->postJson("/empresas/{$empresaA}/proveedores", [
+            'nombre' => 'Solo Proveedor SRL', 'cuit' => '30888888884',
+        ], $auth);
+
+        $proveedores = $this->getJson('/padron-unico?rol=proveedor', $auth)['json']['data']['results'];
+        $this->assertCount(2, $proveedores);
+        $doble = current(array_filter($proveedores, fn ($s) => $s['cuit'] === '30777777773'));
+        // La vista de proveedores no debe traer la activación de cliente de este mismo sujeto.
+        $this->assertCount(1, $doble['empresas']);
+        $this->assertSame('proveedor', $doble['empresas'][0]['rol']);
+
+        $clientes = $this->getJson('/padron-unico?rol=cliente', $auth)['json']['data']['results'];
+        $this->assertCount(1, $clientes);
+        $this->assertSame('30777777773', $clientes[0]['cuit']);
+        $this->assertSame('cliente', $clientes[0]['empresas'][0]['rol']);
+    }
+
+    public function test_rol_invalido_devuelve_422(): void
+    {
+        $auth = $this->bearer($this->actingAsUser()['token']);
+        $resp = $this->getJson('/padron-unico?rol=lo_que_sea', $auth);
+        $this->assertSame(422, $resp['status']);
+        $this->assertArrayHasKey('rol', $resp['json']['errors']);
     }
 }
