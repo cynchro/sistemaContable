@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   CDropdown,
@@ -14,14 +14,10 @@ import { cilBuilding, cilCalendar } from '@coreui/icons'
 import { listEmpresas } from '../api/empresas'
 import { listPeriodos } from '../api/periodos'
 import { useActive } from '../layout/ActiveContext'
-import { ocuparEmpresa, pingEmpresa } from '../api/empresaLock'
+import { pingEmpresa } from '../api/empresaLock'
+import { useOcuparEmpresa } from '../hooks/useOcuparEmpresa'
 
 const PING_MS = 60_000
-
-function apiError(e: unknown): string {
-  const err = e as { response?: { data?: { message?: string } } }
-  return err.response?.data?.message ?? 'No se pudo ocupar la empresa.'
-}
 
 /**
  * Selector de "empresa activa + período activo" en el header. Rehidrata desde los
@@ -36,18 +32,8 @@ function apiError(e: unknown): string {
  * de la empresa anterior vive en `ActiveContext.setEmpresa`, no acá.
  */
 export default function ActiveSelector() {
-  const {
-    empresa,
-    periodo,
-    setEmpresa,
-    setPeriodo,
-    activeEmpresaId,
-    activePeriodoId,
-    lockEstado,
-    lockOcupadoPor,
-    setLockEstado,
-  } = useActive()
-  const [lockError, setLockError] = useState<string | null>(null)
+  const { empresa, periodo, setPeriodo, activeEmpresaId, activePeriodoId, lockEstado, lockOcupadoPor } = useActive()
+  const { ocupar, error: lockError, reset: clearLockError } = useOcuparEmpresa()
   const rehidratando = useRef<number | null>(null)
 
   const empresasQ = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
@@ -56,17 +42,6 @@ export default function ActiveSelector() {
     queryFn: () => listPeriodos(empresa!.id),
     enabled: !!empresa,
   })
-
-  const ocupar = async (e: NonNullable<typeof empresa>) => {
-    setLockError(null)
-    try {
-      const estado = await ocuparEmpresa(e.id)
-      setEmpresa(e)
-      setLockEstado(estado.modo, estado.ocupado_por)
-    } catch (err) {
-      setLockError(apiError(err))
-    }
-  }
 
   // Rehidratar la empresa activa desde el id persistido cuando llega el listado.
   useEffect(() => {
@@ -110,7 +85,7 @@ export default function ActiveSelector() {
         <CAlert
           color="danger"
           dismissible
-          onClose={() => setLockError(null)}
+          onClose={clearLockError}
           className="position-fixed top-0 start-50 translate-middle-x mt-2"
           style={{ zIndex: 2000 }}
         >
