@@ -19,6 +19,7 @@ import {
 import type { Empresa, EmpresaInput } from '../../api/empresas'
 import { sugerenciaPadron } from '../../api/afip'
 import { sugerenciaSige } from '../../api/sige'
+import { buscarSujetoPorCuit } from '../../api/padronUnico'
 import { useCuitLookup } from '../../hooks/useCuitLookup'
 import { listCatalogo, type CatalogoItem } from '../../api/catalogos'
 import ActividadSelect from './ActividadSelect'
@@ -153,11 +154,29 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
     padron.buscar(cuit)
   }
 
+  // "CUIT único" (informe del cliente 10/08/2026, pedido 3): si ese CUIT ya está en el padrón de
+  // sujetos (cliente/proveedor de alguna empresa del estudio), se ofrece reusar sus datos en vez
+  // de tipearlos de nuevo al dar de alta la empresa (contribuyente).
+  const padronSujetos = useCuitLookup(buscarSujetoPorCuit, {
+    notFoundMessage: 'No se pudo consultar el padrón de sujetos.',
+    onSuccess: (s) => {
+      if (!s.encontrado) return
+      if (s.nombre) setValue('nombre', s.nombre)
+      if (s.domicilio) setValue('domicilio', s.domicilio)
+      if (s.localidad) setValue('localidad', s.localidad)
+      if (s.telefono) setValue('telefono', s.telefono)
+      if (s.provincia_id != null) setValue('provincia_id', String(s.provincia_id))
+      if (s.condicion_iva_id != null) setValue('condicion_iva_id', String(s.condicion_iva_id))
+    },
+  })
+  const buscarEnPadronSujetos = () => padronSujetos.buscar(getValues('cuit') ?? '')
+
   useEffect(() => {
     if (visible) {
       catalogoAplicado.current = false
       padron.reset()
       sige.reset()
+      padronSujetos.reset()
       setSigeMeta({
         sige_persona_id: empresa?.sige_persona_id ?? null,
         sige_synced_at: empresa?.sige_synced_at ?? null,
@@ -249,6 +268,17 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
               >
                 {padron.isPending ? <CSpinner size="sm" /> : 'Obtener datos de AFIP'}
               </CButton>
+              <CButton
+                type="button"
+                color="secondary"
+                variant="outline"
+                disabled={padronSujetos.isPending}
+                onClick={buscarEnPadronSujetos}
+                title="Ver si este CUIT ya está cargado como cliente/proveedor en el padrón, para no tipearlo de nuevo"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {padronSujetos.isPending ? <CSpinner size="sm" /> : 'Buscar en Padrón'}
+              </CButton>
             </div>
             {sige.error && <div className="text-danger small mt-1">{sige.error}</div>}
             {sige.isSuccess && !sige.error && sige.data?.encontrado === false && (
@@ -266,6 +296,16 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
             {padron.isSuccess && !padron.error && (
               <div className="text-success small mt-1">
                 Datos traídos del padrón de ARCA. El teléfono no lo publica ARCA: cargalo a mano.
+              </div>
+            )}
+            {padronSujetos.error && <div className="text-danger small mt-1">{padronSujetos.error}</div>}
+            {padronSujetos.isSuccess && !padronSujetos.error && padronSujetos.data?.encontrado === false && (
+              <div className="text-muted small mt-1">No está cargado como cliente/proveedor en el padrón.</div>
+            )}
+            {padronSujetos.isSuccess && !padronSujetos.error && padronSujetos.data?.encontrado === true && (
+              <div className="text-success small mt-1">
+                Ya está en el padrón como cliente/proveedor ({padronSujetos.data.nombre}) — datos traídos, no
+                hizo falta tipearlos de nuevo.
               </div>
             )}
           </div>

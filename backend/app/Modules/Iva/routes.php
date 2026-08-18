@@ -339,6 +339,9 @@ $router->group($mw, function ($router) {
     // Padrón Único de Sujetos (propio del estudio, no AFIP): vista global de consulta, sin
     // filtrar por empresa (documento "Satélite Visual IVA" §10, Etapa 4).
     $router->get('/padron-unico', [PadronUnicoController::class, 'index'], [$perm('iva.clientes')]);
+    // "CUIT único" (pedido 3 del informe 10/08/2026): consulta exacta por CUIT, usada por el
+    // alta de empresa para no volver a tipear un CUIT que ya está en el padrón de sujetos.
+    $router->get('/padron-unico/cuit/{cuit}', [PadronUnicoController::class, 'porCuit'], [$perm('iva.clientes')]);
 
     // Motor de alertas estadísticas v1 (documento "Satélite Visual IVA" §7): tenant-wide, sin
     // permiso granular nuevo — cualquier usuario autenticado del estudio la puede ver (Auth +

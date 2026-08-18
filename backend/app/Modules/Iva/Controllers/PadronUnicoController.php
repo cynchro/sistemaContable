@@ -3,6 +3,7 @@
 namespace App\Modules\Iva\Controllers;
 
 use App\Exceptions\ValidationException;
+use App\Support\Cuit;
 use App\Support\Request;
 use App\Support\Response;
 use App\Modules\Iva\Services\SujetoService;
@@ -42,5 +43,34 @@ class PadronUnicoController
             (int) $request->input('page', 1),
             (int) $request->input('per_page', 50),
         ));
+    }
+
+    /**
+     * "CUIT único" (informe del cliente 10/08/2026, pedido 3): antes de dar de alta una empresa
+     * (contribuyente propio), el frontend consulta acá si ese CUIT ya está en el padrón de
+     * sujetos (cliente/proveedor de alguna empresa del estudio), para ofrecer reusar esos datos
+     * en vez de tipearlos de nuevo. Mismo shape que `EmpresaController::buscarPorCuit` /
+     * `SigeController::sugerencia` (`encontrado` + datos) para reusar `useCuitLookup`.
+     */
+    public function porCuit(Request $request): Response
+    {
+        $cuit   = Cuit::normalizar((string) $request->route('cuit'));
+        $sujeto = $this->service->findByCuitGlobal((string) $request->tenantId(), $cuit);
+
+        if ($sujeto === null) {
+            return Response::success(['encontrado' => false, 'cuit' => $cuit]);
+        }
+
+        return Response::success([
+            'encontrado'       => true,
+            'id'               => (int) $sujeto['id'],
+            'nombre'           => $sujeto['nombre'],
+            'cuit'             => $sujeto['cuit'],
+            'domicilio'        => $sujeto['domicilio'],
+            'localidad'        => $sujeto['localidad'],
+            'provincia_id'     => $sujeto['provincia_id'],
+            'telefono'         => $sujeto['telefono'],
+            'condicion_iva_id' => $sujeto['condicion_iva_id'],
+        ]);
     }
 }

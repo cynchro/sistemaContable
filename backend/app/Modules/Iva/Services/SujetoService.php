@@ -71,6 +71,18 @@ class SujetoService
         return $pagina;
     }
 
+    /**
+     * "CUIT único" (informe del cliente 10/08/2026, pedido 3): consulta global del padrón por
+     * CUIT exacto, sin scope de empresa — usada por el alta de empresa para ofrecer reusar los
+     * datos de un sujeto ya cargado en vez de tipearlos de nuevo.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByCuitGlobal(string $tenantId, string $cuit): ?array
+    {
+        return $this->sujetos->findByCuit($tenantId, $cuit);
+    }
+
     /** @return array<string, mixed> */
     public function get(int $id, int $empresaId, string $tenantId, string $rol): array
     {

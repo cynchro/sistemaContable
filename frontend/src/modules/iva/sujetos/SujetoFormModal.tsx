@@ -17,8 +17,10 @@ import {
 } from '@coreui/react'
 import { listCatalogo } from '../../../api/catalogos'
 import { sugerenciaPadron } from '../../../api/afip'
+import { buscarEmpresaPorCuit } from '../../../api/empresas'
 import { listConceptos } from '../../../api/conceptos'
 import type { Sujeto, SujetoInput } from '../../../api/sujetos'
+import { useCuitLookup } from '../../../hooks/useCuitLookup'
 
 const schema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio'),
@@ -100,8 +102,25 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
     else setPadronError('Ingresá un CUIT de 11 dígitos para consultar el padrón.')
   }
 
+  // "CUIT único" (informe del cliente 10/08/2026, pedido 3): si ese CUIT ya es una empresa
+  // propia del estudio (contribuyente), se ofrece reusar sus datos en vez de tipearlos de nuevo.
+  const empresa = useCuitLookup(buscarEmpresaPorCuit, {
+    notFoundMessage: 'No se pudo consultar las empresas del estudio.',
+    onSuccess: (e) => {
+      if (!e.encontrado) return
+      if (e.nombre) setValue('nombre', e.nombre)
+      if (e.domicilio) setValue('domicilio', e.domicilio)
+      if (e.localidad) setValue('localidad', e.localidad)
+      if (e.telefono) setValue('telefono', e.telefono)
+      if (e.provincia_id != null) setValue('provincia_id', String(e.provincia_id))
+      if (e.condicion_iva_id != null) setValue('condicion_iva_id', String(e.condicion_iva_id))
+    },
+  })
+  const buscarEnEmpresas = () => empresa.buscar(getValues('cuit') ?? '')
+
   useEffect(() => {
     if (visible) {
+      empresa.reset()
       reset({
         nombre: sujeto?.nombre ?? '',
         cuit: sujeto?.cuit ?? '',
@@ -118,6 +137,7 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
         concepto_default_id: sujeto?.concepto_default_id != null ? String(sujeto.concepto_default_id) : '',
       })
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, sujeto, reset])
 
   const submit = (v: FormValues) =>
@@ -148,8 +168,18 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
           <div className="row">
             <div className="col-md-4 mb-3">
               <CFormLabel htmlFor="cuit">CUIT * (clave del padrón único)</CFormLabel>
-              <div className="d-flex gap-2">
-                <CFormInput id="cuit" invalid={!!errors.cuit} {...register('cuit')} />
+              <div className="d-flex gap-2 flex-wrap">
+                <CFormInput id="cuit" invalid={!!errors.cuit} style={{ flex: '1 1 120px' }} {...register('cuit')} />
+                <CButton
+                  type="button"
+                  color="secondary"
+                  variant="outline"
+                  disabled={empresa.isPending}
+                  onClick={buscarEnEmpresas}
+                  title="Ver si este CUIT ya es una empresa (contribuyente) propia del estudio, para no tipearlo de nuevo"
+                >
+                  {empresa.isPending ? '…' : 'Contribuyentes'}
+                </CButton>
                 <CButton
                   type="button"
                   color="info"
@@ -162,6 +192,16 @@ export default function SujetoFormModal({ visible, sujeto, esProveedor, saving, 
                 </CButton>
               </div>
               {errors.cuit && <div className="text-danger small mt-1">{errors.cuit.message}</div>}
+              {empresa.error && <div className="text-danger small mt-1">{empresa.error}</div>}
+              {empresa.isSuccess && !empresa.error && empresa.data?.encontrado === false && (
+                <div className="text-muted small mt-1">No es una empresa propia del estudio.</div>
+              )}
+              {empresa.isSuccess && !empresa.error && empresa.data?.encontrado === true && (
+                <div className="text-success small mt-1">
+                  Ya es un contribuyente propio del estudio ({empresa.data.nombre}) — datos traídos, no hizo
+                  falta tipearlos de nuevo.
+                </div>
+              )}
               {padronError && <div className="text-danger small mt-1">{padronError}</div>}
             </div>
             <div className="col-md-4 mb-3">

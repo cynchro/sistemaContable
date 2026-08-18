@@ -26,6 +26,9 @@ $router->group([AuthMiddleware::class, TenantMiddleware::class], function ($rout
 
 $router->group([AuthMiddleware::class, TenantMiddleware::class, EmpresaLockMiddleware::class], function ($router) {
     $router->get('/empresas', [EmpresaController::class, 'index']);
+    // Antes de "/empresas/{id}": "cuit" no puede ser un id numérico, pero el router matchea por
+    // orden de registro y "{id}" es [^/]+ — si fuera después, "cuit" caería en show(id="cuit").
+    $router->get('/empresas/cuit/{cuit}', [EmpresaController::class, 'buscarPorCuit']);
     $router->get('/empresas/{id}', [EmpresaController::class, 'show']);
     $router->post('/empresas', [EmpresaController::class, 'create']);
     $router->put('/empresas/{id}', [EmpresaController::class, 'update']);

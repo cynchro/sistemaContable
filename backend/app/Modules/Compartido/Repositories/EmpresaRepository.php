@@ -57,6 +57,23 @@ class EmpresaRepository
         return (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Empresa (contribuyente propio del estudio) con ese CUIT, si existe en el tenant.
+     * Usado para el cruce "CUIT único" (informe del cliente 10/08/2026, pedido 3): antes de dar
+     * de alta un sujeto (cliente/proveedor) con un CUIT que ya es una empresa propia, se ofrece
+     * reusar esos datos en vez de tipearlos de nuevo — ver `SujetoFormModal.tsx`.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByCuit(string $tenantId, string $cuit): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM empresas WHERE tenant_id = ? AND cuit = ?');
+        $stmt->execute([$tenantId, $cuit]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
     /** @return array<string, mixed> */
     public function findById(int $id, string $tenantId): array
     {

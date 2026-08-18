@@ -34,3 +34,21 @@ export async function listPadronUnico(
   const { data } = await api.get('/padron-unico', { params })
   return data.data as Pagina<SujetoGlobal>
 }
+
+/** "CUIT único" (informe del cliente 10/08/2026, pedido 3): ¿ese CUIT ya está en el padrón? */
+export interface SujetoPorCuit {
+  encontrado: boolean
+  id: number | null
+  nombre: string | null
+  cuit: string | null
+  domicilio: string | null
+  localidad: string | null
+  provincia_id: number | null
+  telefono: string | null
+  condicion_iva_id: number | null
+}
+
+export async function buscarSujetoPorCuit(cuit: string): Promise<SujetoPorCuit> {
+  const { data } = await api.get(`/padron-unico/cuit/${cuit}`)
+  return data.data as SujetoPorCuit
+}

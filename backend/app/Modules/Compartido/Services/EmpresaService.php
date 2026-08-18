@@ -45,6 +45,12 @@ class EmpresaService
         return $this->repository->findById($id, $tenantId);
     }
 
+    /** @return array<string, mixed>|null */
+    public function findByCuit(string $tenantId, string $cuit): ?array
+    {
+        return $this->repository->findByCuit($tenantId, $cuit);
+    }
+
     /**
      * @param  array<string, mixed> $data
      * @return array<string, mixed>
