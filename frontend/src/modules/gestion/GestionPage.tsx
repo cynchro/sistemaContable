@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { CCard, CCardHeader, CCardBody, CNav, CNavItem, CNavLink, CButton } from '@coreui/react'
 import TareasTab from './TareasTab'
-import VencimientosTab from './VencimientosTab'
 import HonorariosTab from './HonorariosTab'
 import { usePageTour } from '../../tours/usePageTour'
 import { tourGestion } from '../../tours/tours'
 
-type Tab = 'tareas' | 'vencimientos' | 'honorarios'
+// Vencimientos se sacó de acá (informe del cliente 10/08/2026, pedido 3): ya vive en el SIGE
+// (Vencimientos Fiscales), no se duplica. `VencimientosTab.tsx` y su ruta backend quedan sin
+// tocar — solo se retira de esta navegación.
+type Tab = 'tareas' | 'honorarios'
 
 export default function GestionPage() {
   const [tab, setTab] = useState<Tab>('tareas')
@@ -25,7 +27,6 @@ export default function GestionPage() {
           <CNav id="tour-gestion-tabs" variant="tabs" className="border-bottom-0">
             {([
               ['tareas', 'Tareas'],
-              ['vencimientos', 'Vencimientos'],
               ['honorarios', 'Honorarios'],
             ] as [Tab, string][]).map(([k, label]) => (
               <CNavItem key={k}>
@@ -38,7 +39,6 @@ export default function GestionPage() {
         </CCardHeader>
         <CCardBody>
           {tab === 'tareas' && <TareasTab />}
-          {tab === 'vencimientos' && <VencimientosTab />}
           {tab === 'honorarios' && <HonorariosTab />}
         </CCardBody>
       </CCard>

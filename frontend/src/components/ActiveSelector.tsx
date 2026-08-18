@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   CDropdown,
@@ -7,20 +7,48 @@ import {
   CDropdownItem,
   CDropdownHeader,
   CBadge,
+  CAlert,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilBuilding, cilCalendar } from '@coreui/icons'
 import { listEmpresas } from '../api/empresas'
 import { listPeriodos } from '../api/periodos'
 import { useActive } from '../layout/ActiveContext'
+import { ocuparEmpresa, pingEmpresa } from '../api/empresaLock'
+
+const PING_MS = 60_000
+
+function apiError(e: unknown): string {
+  const err = e as { response?: { data?: { message?: string } } }
+  return err.response?.data?.message ?? 'No se pudo ocupar la empresa.'
+}
 
 /**
  * Selector de "empresa activa + período activo" en el header. Rehidrata desde los
  * IDs persistidos y, al cambiar de empresa, invalida el período (pertenece a la
  * empresa). Muestra el estado Abierto/Cerrado del período como badge.
+ *
+ * Al elegir una empresa (o rehidratarla) pide el lock (WhatsApp con el cliente,
+ * 11/08/2026): si otro usuario no-admin ya la tiene ocupada, el backend devuelve
+ * 409 y la selección se rechaza (bloqueo total); si el usuario es admin entra en
+ * modo observador (puede ver, no modificar). Mientras la empresa sigue activa en
+ * modo propio, un heartbeat cada 60s mantiene el lock vivo — el `liberarEmpresa`
+ * de la empresa anterior vive en `ActiveContext.setEmpresa`, no acá.
  */
 export default function ActiveSelector() {
-  const { empresa, periodo, setEmpresa, setPeriodo, activeEmpresaId, activePeriodoId } = useActive()
+  const {
+    empresa,
+    periodo,
+    setEmpresa,
+    setPeriodo,
+    activeEmpresaId,
+    activePeriodoId,
+    lockEstado,
+    lockOcupadoPor,
+    setLockEstado,
+  } = useActive()
+  const [lockError, setLockError] = useState<string | null>(null)
+  const rehidratando = useRef<number | null>(null)
 
   const empresasQ = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
   const periodosQ = useQuery({
@@ -29,13 +57,28 @@ export default function ActiveSelector() {
     enabled: !!empresa,
   })
 
+  const ocupar = async (e: NonNullable<typeof empresa>) => {
+    setLockError(null)
+    try {
+      const estado = await ocuparEmpresa(e.id)
+      setEmpresa(e)
+      setLockEstado(estado.modo, estado.ocupado_por)
+    } catch (err) {
+      setLockError(apiError(err))
+    }
+  }
+
   // Rehidratar la empresa activa desde el id persistido cuando llega el listado.
   useEffect(() => {
-    if (!empresa && activeEmpresaId && empresasQ.data) {
+    if (!empresa && activeEmpresaId && empresasQ.data && rehidratando.current !== activeEmpresaId) {
       const found = empresasQ.data.find((e) => e.id === activeEmpresaId)
-      if (found) setEmpresa(found)
+      if (found) {
+        rehidratando.current = activeEmpresaId
+        void ocupar(found)
+      }
     }
-  }, [empresa, activeEmpresaId, empresasQ.data, setEmpresa])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empresa, activeEmpresaId, empresasQ.data])
 
   // Rehidratar el período activo desde el id persistido.
   useEffect(() => {
@@ -45,13 +88,46 @@ export default function ActiveSelector() {
     }
   }, [periodo, activePeriodoId, periodosQ.data, setPeriodo])
 
+  // Heartbeat: mientras la empresa activa está en modo propio, renueva el lock.
+  useEffect(() => {
+    if (!empresa || lockEstado !== 'propio') return
+    const id = setInterval(() => {
+      pingEmpresa(empresa.id).catch(() => {
+        // Si el ping falla el lock expira solo por timeout del backend (5 min).
+      })
+    }, PING_MS)
+    return () => clearInterval(id)
+  }, [empresa, lockEstado])
+
   const pickEmpresa = (e: NonNullable<typeof empresa>) => {
-    setEmpresa(e)
     setPeriodo(null) // cambiar de empresa invalida el período activo
+    void ocupar(e)
   }
 
   return (
     <>
+      {lockError && (
+        <CAlert
+          color="danger"
+          dismissible
+          onClose={() => setLockError(null)}
+          className="position-fixed top-0 start-50 translate-middle-x mt-2"
+          style={{ zIndex: 2000 }}
+        >
+          {lockError}
+        </CAlert>
+      )}
+      {lockEstado === 'observador' && (
+        <CAlert
+          color="warning"
+          dismissible
+          className="position-fixed top-0 start-50 translate-middle-x mt-2"
+          style={{ zIndex: 2000 }}
+        >
+          Modo observador: {lockOcupadoPor} está trabajando en esta empresa. Podés ver, pero no
+          modificar.
+        </CAlert>
+      )}
       <CDropdown variant="nav-item" placement="bottom-start" id="tour-empresa-selector">
         <CDropdownToggle caret={false} className="text-body">
           <CIcon icon={cilBuilding} className="me-2" />

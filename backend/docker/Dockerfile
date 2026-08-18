@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd mbstring zip pdo pdo_mysql mysqli bcmath soap \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory-limit.ini
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

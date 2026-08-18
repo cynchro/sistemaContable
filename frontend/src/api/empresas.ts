@@ -14,6 +14,14 @@ export interface Empresa {
   fecha_inicio_actividades: string | null
   actividad1_id: number | null
   actividad2_id: number | null
+  /** Datos CRM del contribuyente (de sistemaCuarto). */
+  contacto: string | null
+  tipo_persona: string | null
+  inscripcion: string | null
+  contabilidad: string | null
+  /** Trazabilidad: si el alta se autocompletó desde el SIGE. */
+  sige_persona_id: number | null
+  sige_synced_at: string | null
 }
 
 /** Campos editables del alta/edición de empresa (contribuyente). */
@@ -30,6 +38,12 @@ export interface EmpresaInput {
   fecha_inicio_actividades?: string | null
   actividad1_id?: number | null
   actividad2_id?: number | null
+  contacto?: string | null
+  tipo_persona?: string | null
+  inscripcion?: string | null
+  contabilidad?: string | null
+  sige_persona_id?: number | null
+  sige_synced_at?: string | null
 }
 
 export async function listEmpresas(): Promise<Empresa[]> {

@@ -43,21 +43,32 @@ class SujetoService
     /**
      * Vista global del padrón: todos los sujetos del tenant, sin filtrar por empresa, con la
      * lista de empresas donde cada uno está activo (documento "Satélite Visual IVA" §10).
+     * Paginado — `empresasActivasDe` solo resuelve las activaciones de los sujetos de ESTA
+     * página (a lo sumo `$perPage` ids), no de todo el tenant.
      *
-     * @param  array{q?: ?string} $filtros
-     * @return list<array<string, mixed>>
+     * `filtros['rol']` separa el padrón único en dos vistas (proveedores / clientes, informe del
+     * cliente 10/08/2026 pedido 5a) — ver `SujetoRepository::listAllByTenant`.
+     *
+     * @param  array{q?: ?string, rol?: ?string} $filtros
+     * @return array{
+     *     total: int, cantidad_por_pagina: int, pagina: int, cantidad_total: int,
+     *     results: list<array<string, mixed>>
+     * }
      */
-    public function listGlobal(string $tenantId, array $filtros = []): array
+    public function listGlobal(string $tenantId, array $filtros, int $page, int $perPage): array
     {
-        $sujetos = $this->sujetos->listAllByTenant($tenantId, $filtros);
-        $ids     = array_map(static fn (array $s): int => (int) $s['id'], $sujetos);
-        $porId   = $this->activaciones->empresasActivasDe($ids, $tenantId);
+        $rol     = $filtros['rol'] ?? null;
+        $pagina  = $this->sujetos->listAllByTenant($tenantId, $filtros, $page, $perPage);
+        $ids     = array_map(static fn (array $s): int => (int) $s['id'], $pagina['results']);
+        $porId   = $this->activaciones->empresasActivasDe($ids, $tenantId, $rol);
 
-        return array_map(static function (array $s) use ($porId): array {
+        $pagina['results'] = array_map(static function (array $s) use ($porId): array {
             $s['empresas'] = $porId[(int) $s['id']] ?? [];
 
             return $s;
-        }, $sujetos);
+        }, $pagina['results']);
+
+        return $pagina;
     }
 
     /** @return array<string, mixed> */

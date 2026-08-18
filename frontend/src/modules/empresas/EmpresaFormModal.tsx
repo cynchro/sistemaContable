@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -18,6 +18,8 @@ import {
 } from '@coreui/react'
 import type { Empresa, EmpresaInput } from '../../api/empresas'
 import { sugerenciaPadron } from '../../api/afip'
+import { sugerenciaSige } from '../../api/sige'
+import { useCuitLookup } from '../../hooks/useCuitLookup'
 import { listCatalogo, type CatalogoItem } from '../../api/catalogos'
 import ActividadSelect from './ActividadSelect'
 
@@ -34,6 +36,10 @@ const schema = z.object({
   fecha_inicio_actividades: z.string().optional(),
   actividad1_id: z.string().optional(),
   actividad2_id: z.string().optional(),
+  contacto: z.string().optional(),
+  tipo_persona: z.string().optional(),
+  inscripcion: z.string().optional(),
+  contabilidad: z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -55,6 +61,11 @@ function matchCondicion(label: string | null, cats: CatalogoItem[] | undefined):
   else if (/responsable inscripto/i.test(label))
     found = cats.find((c) => has(c.nombre, 'responsable inscripto') && !has(c.nombre, 'no inscripto'))
   return found ? String(found.id) : ''
+}
+
+/** Formatea "ahora" como DATETIME de MySQL (Y-m-d H:i:s) — el validador del backend no acepta ISO 8601. */
+function ahoraComoDatetimeMysql(): string {
+  return new Date().toISOString().slice(0, 19).replace('T', ' ')
 }
 
 /** Resuelve el id de actividad del catálogo a partir del código AFIP (NAES) del padrón. */
@@ -89,15 +100,41 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  const [padronError, setPadronError] = useState<string | null>(null)
   // La condición IVA (select) sólo puede fijarse cuando ya se renderizaron sus <option>;
   // este flag reaplica el valor guardado una vez que carga el catálogo (evita que quede vacío al editar).
   const catalogoAplicado = useRef(false)
 
-  const padron = useMutation({
-    mutationFn: (cuit: string) => sugerenciaPadron(cuit),
+  // Datos que no son parte del formulario editable: trazabilidad de que el alta vino del SIGE.
+  const [sigeMeta, setSigeMeta] = useState<{ sige_persona_id: number | null; sige_synced_at: string | null }>({
+    sige_persona_id: null,
+    sige_synced_at: null,
+  })
+
+  const sige = useCuitLookup(sugerenciaSige, {
+    notFoundMessage: 'No se pudo consultar el SIGE.',
     onSuccess: (s) => {
-      setPadronError(null)
+      if (!s.encontrado) {
+        setSigeMeta({ sige_persona_id: null, sige_synced_at: null })
+        return
+      }
+      if (s.nombre) setValue('nombre', s.nombre)
+      if (s.email) setValue('email', s.email)
+      if (s.contacto) setValue('contacto', s.contacto)
+      if (s.telefono) setValue('telefono', s.telefono)
+      if (s.tipo_persona) setValue('tipo_persona', s.tipo_persona)
+      if (s.inscripcion) setValue('inscripcion', s.inscripcion)
+      if (s.contabilidad) setValue('contabilidad', s.contabilidad)
+      setSigeMeta({ sige_persona_id: s.sige_persona_id, sige_synced_at: ahoraComoDatetimeMysql() })
+    },
+  })
+  const buscarEnSige = () => {
+    const cuit = getValues('cuit') ?? ''
+    sige.buscar(cuit)
+  }
+
+  const padron = useCuitLookup(sugerenciaPadron, {
+    notFoundMessage: 'No se pudo consultar el padrón (¿certificado de ARCA?).',
+    onSuccess: (s) => {
       if (s.nombre) setValue('nombre', s.nombre)
       if (s.domicilio) setValue('domicilio', s.domicilio)
       if (s.localidad) setValue('localidad', s.localidad)
@@ -110,23 +147,21 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
       const cond = matchCondicion(s.condicion_iva, condiciones)
       if (cond) setValue('condicion_iva_id', cond)
     },
-    onError: (e) => {
-      const err = e as { response?: { data?: { message?: string } } }
-      setPadronError(err.response?.data?.message ?? 'No se pudo consultar el padrón (¿certificado de ARCA?).')
-    },
   })
-
   const buscarEnPadron = () => {
-    const cuit = (getValues('cuit') ?? '').replace(/\D/g, '')
-    if (cuit.length === 11) padron.mutate(cuit)
-    else setPadronError('Ingresá un CUIT de 11 dígitos para buscar en ARCA.')
+    const cuit = getValues('cuit') ?? ''
+    padron.buscar(cuit)
   }
 
   useEffect(() => {
     if (visible) {
-      setPadronError(null)
       catalogoAplicado.current = false
       padron.reset()
+      sige.reset()
+      setSigeMeta({
+        sige_persona_id: empresa?.sige_persona_id ?? null,
+        sige_synced_at: empresa?.sige_synced_at ?? null,
+      })
       reset({
         nombre: empresa?.nombre ?? '',
         cuit: empresa?.cuit ?? '',
@@ -140,6 +175,10 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
         fecha_inicio_actividades: empresa?.fecha_inicio_actividades ?? '',
         actividad1_id: empresa?.actividad1_id != null ? String(empresa.actividad1_id) : '',
         actividad2_id: empresa?.actividad2_id != null ? String(empresa.actividad2_id) : '',
+        contacto: empresa?.contacto ?? '',
+        tipo_persona: empresa?.tipo_persona ?? '',
+        inscripcion: empresa?.inscripcion ?? '',
+        contabilidad: empresa?.contabilidad ?? '',
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -163,6 +202,8 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
       fecha_inicio_actividades: v.fecha_inicio_actividades || null,
       actividad1_id: v.actividad1_id ? Number(v.actividad1_id) : null,
       actividad2_id: v.actividad2_id ? Number(v.actividad2_id) : null,
+      sige_persona_id: sigeMeta.sige_persona_id,
+      sige_synced_at: sigeMeta.sige_synced_at,
     })
 
   return (
@@ -174,31 +215,55 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
         <CModalBody>
           <div className="mb-3">
             <CFormLabel htmlFor="cuit">CUIT</CFormLabel>
-            <div className="d-flex gap-2">
+            <div className="d-flex gap-2 flex-wrap">
               <CFormInput
                 id="cuit"
                 placeholder="Ej. 30-12345678-9"
+                style={{ flex: '1 1 200px' }}
                 {...register('cuit')}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    buscarEnPadron()
+                    buscarEnSige()
                   }
                 }}
               />
               <CButton
                 type="button"
+                color="primary"
+                disabled={sige.isPending}
+                onClick={buscarEnSige}
+                title="Traer los datos del SIGE (sistemaCuarto) y completar el formulario"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {sige.isPending ? <CSpinner size="sm" /> : 'Buscar en SIGE'}
+              </CButton>
+              <CButton
+                type="button"
                 color="info"
+                variant="outline"
                 disabled={padron.isPending}
                 onClick={buscarEnPadron}
-                title="Traer los datos de ARCA (padrón) y completar el formulario"
+                title="Traer los datos de ARCA (padrón): domicilio, provincia, condición de IVA y actividad"
                 style={{ whiteSpace: 'nowrap' }}
               >
                 {padron.isPending ? <CSpinner size="sm" /> : 'Obtener datos de AFIP'}
               </CButton>
             </div>
-            {padronError && <div className="text-danger small mt-1">{padronError}</div>}
-            {padron.isSuccess && !padronError && (
+            {sige.error && <div className="text-danger small mt-1">{sige.error}</div>}
+            {sige.isSuccess && !sige.error && sige.data?.encontrado === false && (
+              <div className="text-muted small mt-1">
+                No está cargado en el SIGE todavía — podés seguir completando el alta a mano.
+              </div>
+            )}
+            {sige.isSuccess && !sige.error && sige.data?.encontrado === true && (
+              <div className="text-success small mt-1">
+                Datos traídos del SIGE. Para domicilio, provincia, condición de IVA y actividad, usá
+                &quot;Obtener datos de AFIP&quot;.
+              </div>
+            )}
+            {padron.error && <div className="text-danger small mt-1">{padron.error}</div>}
+            {padron.isSuccess && !padron.error && (
               <div className="text-success small mt-1">
                 Datos traídos del padrón de ARCA. El teléfono no lo publica ARCA: cargalo a mano.
               </div>
@@ -254,6 +319,32 @@ export default function EmpresaFormModal({ visible, empresa, saving, onClose, on
               <CFormLabel htmlFor="email">Email</CFormLabel>
               <CFormInput id="email" type="email" invalid={!!errors.email} {...register('email')} />
               {errors.email && <div className="text-danger small mt-1">{errors.email.message}</div>}
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-md-6 mb-3">
+              <CFormLabel htmlFor="contacto">Contacto</CFormLabel>
+              <CFormInput id="contacto" placeholder="Nombre de la persona de contacto" {...register('contacto')} />
+            </div>
+            <div className="col-md-6 mb-3">
+              <CFormLabel htmlFor="tipo_persona">Tipo de persona</CFormLabel>
+              <CFormSelect id="tipo_persona" {...register('tipo_persona')}>
+                <option value="">—</option>
+                <option value="fisica">Física</option>
+                <option value="juridica">Jurídica</option>
+              </CFormSelect>
+            </div>
+          </div>
+
+          <div className="row">
+            <div className="col-md-6 mb-3">
+              <CFormLabel htmlFor="inscripcion">Inscripción</CFormLabel>
+              <CFormInput id="inscripcion" {...register('inscripcion')} />
+            </div>
+            <div className="col-md-6 mb-3">
+              <CFormLabel htmlFor="contabilidad">Contabilidad</CFormLabel>
+              <CFormInput id="contabilidad" {...register('contabilidad')} />
             </div>
           </div>
 

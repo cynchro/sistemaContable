@@ -4,19 +4,30 @@ namespace App\Modules\Compartido\Controllers;
 
 use App\Support\Request;
 use App\Support\Response;
+use App\Support\Roles;
+use App\Support\Auth\PermissionChecker;
 use App\Modules\Compartido\Services\EmpresaService;
 use App\Modules\Compartido\Requests\CreateEmpresaRequest;
 use App\Modules\Compartido\Requests\UpdateEmpresaRequest;
 
 class EmpresaController
 {
-    public function __construct(private EmpresaService $service)
-    {
+    public function __construct(
+        private EmpresaService $service,
+        private PermissionChecker $checker,
+    ) {
     }
 
     public function index(Request $request): Response
     {
-        return Response::success($this->service->list((string) $request->tenantId()));
+        $user    = $request->user();
+        $esAdmin = $this->checker->allows((int) ($user['rol'] ?? 0), Roles::SUPER_PERMISSION);
+
+        return Response::success($this->service->list(
+            (string) $request->tenantId(),
+            $user !== null ? (int) ($user['sub'] ?? 0) : null,
+            $esAdmin,
+        ));
     }
 
     public function show(Request $request): Response

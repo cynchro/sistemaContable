@@ -17,35 +17,46 @@ import {
   CAlert,
   CButton,
 } from '@coreui/react'
-import { listPadronUnico } from '../../../api/padronUnico'
+import { listPadronUnico, type RolPadron } from '../../../api/padronUnico'
 import { usePageTour } from '../../../tours/usePageTour'
 import { tourPadronUnico } from '../../../tours/tours'
 
 /**
  * Vista global del Padrón Único de Sujetos (documento "Satélite Visual IVA" §10, Etapa 4):
- * consulta de todos los proveedores/clientes del estudio sin tener que entrar empresa por
- * empresa. La edición sigue viviendo en la pantalla de cada empresa (ahí es donde tiene sentido:
- * activar/desactivar, reglas de imputación) — acá cada fila linkea directo con el CUIT
- * precargado en la búsqueda de esa empresa.
+ * consulta de todos los proveedores (o todos los clientes, según `rol`) del estudio sin tener
+ * que entrar empresa por empresa. La edición sigue viviendo en la pantalla de cada empresa (ahí
+ * es donde tiene sentido: activar/desactivar, reglas de imputación) — acá cada fila linkea
+ * directo con el CUIT precargado en la búsqueda de esa empresa.
+ *
+ * Dos padrones separados, nunca mezclados (informe del cliente 10/08/2026, pedido 5a) — esta
+ * misma página se monta dos veces, una por rol (`/padron-proveedores`, `/padron-clientes`).
  */
-export default function PadronUnicoPage() {
+const PER_PAGE = 50
+
+export default function PadronUnicoPage({ rol }: { rol: RolPadron }) {
   const [q, setQ] = useState('')
   const [busqueda, setBusqueda] = useState('')
+  const [page, setPage] = useState(1)
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['padron-unico', busqueda],
-    queryFn: () => listPadronUnico(busqueda || undefined),
+    queryKey: ['padron-unico', rol, busqueda, page],
+    queryFn: () => listPadronUnico(rol, busqueda || undefined, page, PER_PAGE),
   })
-  const { start: verRecorrido } = usePageTour('padron-unico', tourPadronUnico)
+  const total = data?.total ?? 0
+  const totalPaginas = Math.max(1, Math.ceil(total / PER_PAGE))
+  const { start: verRecorrido } = usePageTour(`padron-${rol}`, tourPadronUnico)
+
+  const titulo = rol === 'proveedor' ? 'Padrón único de proveedores' : 'Padrón único de clientes'
+  const rutaEmpresa = rol === 'proveedor' ? 'proveedores' : 'clientes'
 
   return (
     <CCard>
       <CCardHeader className="d-flex justify-content-between align-items-start">
         <div>
-          <strong>Padrón único de sujetos</strong>
+          <strong>{titulo}</strong>
           <div className="text-body-secondary small mt-1">
-            Todos los proveedores y clientes del estudio, en una sola vista — sin filtrar por empresa. Un mismo
-            CUIT aparece una sola vez, con las empresas donde está activado.
+            Todos los {rutaEmpresa} del estudio, en una sola vista — sin filtrar por empresa. Un mismo CUIT
+            aparece una sola vez, con las empresas donde está activado.
           </div>
         </div>
         <CButton color="secondary" variant="outline" size="sm" onClick={verRecorrido}>
@@ -59,6 +70,7 @@ export default function PadronUnicoPage() {
           onSubmit={(e) => {
             e.preventDefault()
             setBusqueda(q.trim())
+            setPage(1)
           }}
         >
           <CFormInput
@@ -82,7 +94,7 @@ export default function PadronUnicoPage() {
               </CTableRow>
             </CTableHead>
             <CTableBody>
-              {data.map((s) => (
+              {data.results.map((s) => (
                 <CTableRow key={s.id}>
                   <CTableDataCell>{s.nombre}</CTableDataCell>
                   <CTableDataCell>{s.cuit}</CTableDataCell>
@@ -90,12 +102,12 @@ export default function PadronUnicoPage() {
                   <CTableDataCell>
                     {s.empresas.map((e) => (
                       <Link
-                        key={`${e.empresa_id}-${e.rol}`}
-                        to={`/empresas/${e.empresa_id}/${e.rol === 'proveedor' ? 'proveedores' : 'clientes'}?q=${encodeURIComponent(s.cuit)}`}
+                        key={e.empresa_id}
+                        to={`/empresas/${e.empresa_id}/${rutaEmpresa}?q=${encodeURIComponent(s.cuit)}`}
                         className="text-decoration-none me-1"
                       >
-                        <CBadge color={e.rol === 'proveedor' ? 'info' : 'success'} className="me-1">
-                          {e.empresa_nombre} ({e.rol})
+                        <CBadge color={rol === 'proveedor' ? 'info' : 'success'} className="me-1">
+                          {e.empresa_nombre}
                         </CBadge>
                       </Link>
                     ))}
@@ -103,7 +115,7 @@ export default function PadronUnicoPage() {
                   </CTableDataCell>
                 </CTableRow>
               ))}
-              {data.length === 0 && (
+              {data.results.length === 0 && (
                 <CTableRow>
                   <CTableDataCell colSpan={4} className="text-center text-body-secondary py-4">
                     Sin sujetos cargados.
@@ -112,6 +124,34 @@ export default function PadronUnicoPage() {
               )}
             </CTableBody>
           </CTable>
+        )}
+        {data && data.results.length > 0 && (
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <small className="text-body-secondary">
+              {total} sujeto{total === 1 ? '' : 's'} · página {page} de {totalPaginas}
+            </small>
+            <div>
+              <CButton
+                color="secondary"
+                variant="outline"
+                size="sm"
+                className="me-2"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </CButton>
+              <CButton
+                color="secondary"
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPaginas}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Siguiente
+              </CButton>
+            </div>
+          </div>
         )}
       </CCardBody>
     </CCard>

@@ -4,6 +4,8 @@ namespace App\Exceptions;
 
 use App\Support\Logger;
 use App\Support\Config;
+use App\Http\Middleware\CorsMiddleware;
+use App\Http\Middleware\SecurityHeadersMiddleware;
 use App\Exceptions\MethodNotAllowedException;
 use Dotenv\Exception\ValidationException as DotenvValidationException;
 
@@ -35,6 +37,11 @@ class Handler
 
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
+
+        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        foreach ([...CorsMiddleware::headersFor($origin), ...SecurityHeadersMiddleware::headers()] as $name => $value) {
+            header("{$name}: {$value}");
+        }
 
         if ($e instanceof MethodNotAllowedException) {
             header('Allow: ' . implode(', ', $e->getAllowedMethods()));

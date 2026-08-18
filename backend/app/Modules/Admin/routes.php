@@ -25,5 +25,7 @@ $router->group([AuthMiddleware::class, AdminMiddleware::class], function ($route
 // Tenant-scoped admin routes — users are isolated per tenant
 $router->group([AuthMiddleware::class, AdminMiddleware::class, TenantMiddleware::class], function ($router) {
     $router->get('/admin/users', [AdminController::class, 'users']);
+    $router->get('/admin/users/{id}/empresas', [AdminController::class, 'empresasDeUsuario']);
+    $router->put('/admin/users/{id}/empresas', [AdminController::class, 'asignarEmpresas']);
     $router->post('/admin/impersonate', [AdminController::class, 'impersonate']);
 });

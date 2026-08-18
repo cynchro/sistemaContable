@@ -24,6 +24,7 @@ function firstSegment(to: string): string {
 /** ids de anclaje para el tour "mapa del sistema" (usePageTour → tourNavegacion). */
 const TOUR_GROUP_ID: Record<string, string> = {
   IVA: 'tour-sidebar-iva',
+  Contabilidad: 'tour-sidebar-contabilidad',
   Estudio: 'tour-sidebar-estudio',
   Administración: 'tour-sidebar-admin',
 }

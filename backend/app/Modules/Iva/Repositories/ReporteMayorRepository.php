@@ -79,6 +79,47 @@ class ReporteMayorRepository
     }
 
     /**
+     * Igual que {@see self::movimientos()} pero solo cuenta filas, sin traerlas — usado como
+     * guard rail antes de decidir si el rango pedido es traíble a memoria (ver
+     * `ReporteMayorService::reporte`, evita repetir el crash de `fetchAll()` sin límite sobre
+     * cientos de miles de líneas reales).
+     *
+     * @param  array<string, mixed> $filtros claves: desde, hasta, cuenta_id, provincia_id, cuit, origen
+     */
+    public function contarMovimientos(int $empresaId, array $filtros): int
+    {
+        [$condCompra, $paramsCompra] = $this->condiciones('c', $empresaId, $filtros);
+        [$condVenta, $paramsVenta]   = $this->condiciones('v', $empresaId, $filtros);
+
+        $incluirCompras = ($filtros['origen'] ?? null) !== 'venta';
+        $incluirVentas  = ($filtros['origen'] ?? null) !== 'compra';
+
+        $sqls   = [];
+        $params = [];
+        if ($incluirCompras) {
+            $sqls[] = "SELECT 1 FROM compra_discriminaciones cd
+                         JOIN compras c   ON cd.compra_id = c.id
+                         JOIN periodos pe ON c.periodo_id = pe.id
+                        WHERE {$condCompra}";
+            $params = [...$params, ...$paramsCompra];
+        }
+        if ($incluirVentas) {
+            $sqls[] = "SELECT 1 FROM venta_discriminaciones vd
+                         JOIN ventas v    ON vd.venta_id = v.id
+                         JOIN periodos pe ON v.periodo_id = pe.id
+                        WHERE {$condVenta}";
+            $params = [...$params, ...$paramsVenta];
+        }
+
+        $stmt = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM (' . implode(' UNION ALL ', $sqls) . ') AS sub'
+        );
+        $stmt->execute($params);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
      * Arma el WHERE (empresa + filtros) para un lado. `$alias` = 'c' (compras) | 'v' (ventas);
      * las columnas de fecha/provincia/cuit viven en la cabecera, cuenta_id en la discriminación.
      *

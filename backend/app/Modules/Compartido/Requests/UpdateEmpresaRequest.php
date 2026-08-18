@@ -31,6 +31,8 @@ class UpdateEmpresaRequest extends FormRequest
             'tipo_persona'             => 'nullable|string|max:20',
             'inscripcion'              => 'nullable|string|max:50',
             'contabilidad'             => 'nullable|string|max:50',
+            'sige_persona_id'          => 'nullable|integer',
+            'sige_synced_at'           => 'nullable|date:Y-m-d H:i:s',
         ];
     }
 }

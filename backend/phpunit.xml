@@ -14,9 +14,15 @@
     <env name="JWT_SECRET" value="test-secret-key-minimum-32-characters"/>
     <env name="APP_ENCRYPTION_KEY" value="test-encryption-key-minimum-32-characters"/>
     <env name="JWT_TTL" value="3600"/>
+    <!-- DB_HOST/PORT/USER/PASS: sin force, para heredar los reales del entorno (p. ej.
+         DB_HOST=moduxdb en este docker-compose) cuando ya están seteados a nivel SO, y
+         caer a estos defaults (pensados para el service mysql de CI) cuando no lo están.
+         DB_NAME SÍ lleva force="true": sin esto, un entorno con DB_NAME=modux ya seteado
+         (como este contenedor) pisa el valor de este XML y FeatureTestCase::migrateFresh()
+         terminaba corriendo DROP TABLE + migraciones sobre la base real de desarrollo. -->
     <env name="DB_HOST" value="127.0.0.1"/>
     <env name="DB_PORT" value="3306"/>
-    <env name="DB_NAME" value="monolito_test"/>
+    <env name="DB_NAME" value="monolito_test" force="true"/>
     <env name="DB_USER" value="root"/>
     <env name="DB_PASS" value=""/>
     <env name="LOG_CHANNEL" value="stderr"/>

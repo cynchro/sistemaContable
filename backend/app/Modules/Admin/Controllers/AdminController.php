@@ -12,6 +12,8 @@ use App\Modules\Admin\Services\RolService;
 use App\Modules\Admin\Services\PermisosService;
 use App\Modules\Auth\Services\AuthService;
 use App\Modules\Admin\Services\UsuariosService;
+use App\Modules\Compartido\Repositories\UsuarioEmpresaRepository;
+use App\Modules\Compartido\Repositories\EmpresaRepository;
 
 class AdminController
 {
@@ -19,7 +21,9 @@ class AdminController
         private RolService $rolService,
         private PermisosService $permisosService,
         private AuthService $authService,
-        private UsuariosService $usuariosService
+        private UsuariosService $usuariosService,
+        private UsuarioEmpresaRepository $usuarioEmpresas,
+        private EmpresaRepository $empresas,
     ) {
     }
 
@@ -138,6 +142,37 @@ class AdminController
         $data     = $this->usuariosService->getAll($page, $perPage, $tenantId);
 
         return Response::success($data['results'] ?? []);
+    }
+
+    /**
+     * Empresas "asignadas" a un usuario (WhatsApp con el cliente, 11/08/2026: "me gustaría
+     * que de última él pueda ver sus empresas asignadas"). Filtro de visibilidad opcional —
+     * ver `EmpresaService::list`.
+     */
+    public function empresasDeUsuario(Request $request): Response
+    {
+        return Response::success($this->usuarioEmpresas->empresasDe(
+            (int) $request->route('id'),
+            (string) $request->tenantId(),
+        ));
+    }
+
+    /** Reemplaza la lista completa de empresas asignadas al usuario. */
+    public function asignarEmpresas(Request $request): Response
+    {
+        $tenantId   = (string) $request->tenantId();
+        $usuarioId  = (int) $request->route('id');
+        $empresaIds = array_map('intval', (array) $request->input('empresa_ids', []));
+
+        // Valida que cada empresa sea del tenant del admin (lanza NotFound si no) — evita
+        // asignar una empresa ajena aunque alguien mande un id a mano.
+        foreach ($empresaIds as $empresaId) {
+            $this->empresas->findById($empresaId, $tenantId);
+        }
+
+        $this->usuarioEmpresas->asignar($usuarioId, $empresaIds);
+
+        return Response::success(['ok' => true]);
     }
 
     public function impersonate(Request $request): Response

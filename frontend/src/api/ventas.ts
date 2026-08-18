@@ -1,4 +1,7 @@
 import api from './client'
+import type { Pagina } from './pagina'
+
+export type { Pagina }
 
 export interface Venta {
   id: number
@@ -175,14 +178,6 @@ export interface VentaDetalle {
   }>
   percepciones?: PercepcionDetalle[]
   comprobantes_asociados?: ComprobanteAsociadoDetalle[]
-}
-
-/** Página estándar del backend (PaginatorHelper). */
-export interface Pagina<T> {
-  total: number
-  pagina: number
-  cantidad_por_pagina: number
-  results: T[]
 }
 
 export async function listVentas(

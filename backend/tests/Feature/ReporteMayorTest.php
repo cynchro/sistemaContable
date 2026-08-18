@@ -80,4 +80,41 @@ class ReporteMayorTest extends FeatureTestCase
         $this->assertSame('0.00', $r['json']['data']['totales']['neto']);
         $this->assertSame(0, $r['json']['data']['totales']['cantidad']);
     }
+
+    public function test_sin_rango_de_fechas_devuelve_422(): void
+    {
+        $auth      = $this->bearer($this->actingAsUser()['token']);
+        $empresaId = (int) $this->postJson('/empresas', ['nombre' => 'Sin Rango SA'], $auth)['json']['data']['id'];
+
+        $r = $this->getJson("/empresas/{$empresaId}/reportes/mayor", $auth);
+        $this->assertSame(422, $r['status']);
+        $this->assertArrayHasKey('desde', $r['json']['errors']);
+    }
+
+    public function test_rango_con_demasiados_movimientos_devuelve_422(): void
+    {
+        $auth      = $this->bearer($this->actingAsUser()['token']);
+        $empresaId = (int) $this->postJson('/empresas', ['nombre' => 'Volumen SA'], $auth)['json']['data']['id'];
+        $per = (int) $this->postJson("/empresas/{$empresaId}/periodos", [
+            'nombre' => '2026-05', 'fecha_ini' => '2026-05-01', 'fecha_fin' => '2026-05-31',
+        ], $auth)['json']['data']['id'];
+
+        // Una compra con más líneas de discriminación que MAX_MOVIMIENTOS (20.000) — inserción
+        // masiva directa (no vía API) para no hacer 20.000 requests HTTP en un test.
+        $this->pdo->exec("INSERT INTO compras (periodo_id, fecha) VALUES ({$per}, '2026-05-10')");
+        $compraId = (int) $this->pdo->lastInsertId();
+
+        $filas = [];
+        for ($i = 0; $i < 20001; $i++) {
+            $filas[] = "({$compraId})";
+        }
+        // MySQL soporta multi-row INSERT; se divide en lotes para no exceder max_allowed_packet.
+        foreach (array_chunk($filas, 5000) as $lote) {
+            $this->pdo->exec('INSERT INTO compra_discriminaciones (compra_id) VALUES ' . implode(',', $lote));
+        }
+
+        $r = $this->getJson("/empresas/{$empresaId}/reportes/mayor?desde=2026-05-01&hasta=2026-05-31", $auth);
+        $this->assertSame(422, $r['status']);
+        $this->assertStringContainsString('acotá las fechas', $r['json']['errors']['desde'][0]);
+    }
 }

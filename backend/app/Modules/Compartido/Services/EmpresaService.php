@@ -3,6 +3,7 @@
 namespace App\Modules\Compartido\Services;
 
 use App\Modules\Compartido\Repositories\EmpresaRepository;
+use App\Modules\Compartido\Repositories\UsuarioEmpresaRepository;
 
 /**
  * Reglas de negocio de empresas. Orquesta el repositorio garantizando que toda
@@ -10,14 +11,32 @@ use App\Modules\Compartido\Repositories\EmpresaRepository;
  */
 class EmpresaService
 {
-    public function __construct(private EmpresaRepository $repository)
-    {
+    public function __construct(
+        private EmpresaRepository $repository,
+        private UsuarioEmpresaRepository $asignaciones,
+    ) {
     }
 
-    /** @return list<array<string, mixed>> */
-    public function list(string $tenantId): array
+    /**
+     * Sin `$usuarioId` o si es admin: todas las empresas del tenant (comportamiento de
+     * siempre). Si no es admin y tiene al menos una empresa asignada
+     * (`UsuarioEmpresaRepository`, WhatsApp con el cliente 11/08/2026), se filtra a esas — sin
+     * asignaciones, sigue viendo todas (la restricción es opcional, no forzada).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function list(string $tenantId, ?int $usuarioId = null, bool $esAdmin = true): array
     {
-        return $this->repository->findAll($tenantId);
+        if ($esAdmin || $usuarioId === null) {
+            return $this->repository->findAll($tenantId);
+        }
+
+        $asignadas = $this->asignaciones->idsDe($usuarioId);
+        if ($asignadas === []) {
+            return $this->repository->findAll($tenantId);
+        }
+
+        return $this->repository->findAllPorIds($tenantId, $asignadas);
     }
 
     /** @return array<string, mixed> */

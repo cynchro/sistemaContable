@@ -1,0 +1,409 @@
+<title>Flujo de datos: SIGE ↔ Ecosistema</title>
+<style>
+  :root {
+    --bg: #F5F6F8;
+    --surface: #FFFFFF;
+    --surface-2: #EEF1F4;
+    --ink: #1A2130;
+    --ink-soft: #5B6472;
+    --line: #C7CDD6;
+    --accent-pedido: #1F7A8C;
+    --accent-pedido-soft: #E4F1F3;
+    --accent-decision: #B85C1E;
+    --accent-decision-soft: #FBECDE;
+    --muted: #9AA3AF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #10141B;
+      --surface: #171D27;
+      --surface-2: #1E2530;
+      --ink: #E7EAEE;
+      --ink-soft: #9AA5B3;
+      --line: #333D4B;
+      --accent-pedido: #5BC2D6;
+      --accent-pedido-soft: #16323A;
+      --accent-decision: #E08A4E;
+      --accent-decision-soft: #3A2517;
+      --muted: #6B7482;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #10141B;
+    --surface: #171D27;
+    --surface-2: #1E2530;
+    --ink: #E7EAEE;
+    --ink-soft: #9AA5B3;
+    --line: #333D4B;
+    --accent-pedido: #5BC2D6;
+    --accent-pedido-soft: #16323A;
+    --accent-decision: #E08A4E;
+    --accent-decision-soft: #3A2517;
+    --muted: #6B7482;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px 72px;
+  }
+
+  main {
+    width: 100%;
+    max-width: 1180px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 20px;
+  }
+
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-pedido);
+  }
+
+  h1 {
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 650;
+    margin: 0;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  header p {
+    margin: 0;
+    max-width: 74ch;
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .legend-swatch {
+    width: 28px;
+    height: 0;
+    border-top-width: 2.5px;
+    border-top-style: solid;
+    flex: none;
+  }
+  .legend-swatch.existe { border-color: var(--ink); }
+  .legend-swatch.pedido { border-color: var(--accent-pedido); border-top-style: dashed; }
+  .legend-swatch.decision { border-color: var(--accent-decision); border-top-style: dashed; border-top-width: 3.5px; }
+
+  figure {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+
+  svg { width: 100%; height: auto; min-width: 760px; display: block; }
+
+  figcaption {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink-soft);
+    max-width: 80ch;
+  }
+
+  .svg-node-title { font-weight: 650; }
+  .svg-caption { fill: var(--ink-soft); }
+  .svg-mono { font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace; }
+
+  section.decisiones {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  section.decisiones h2 {
+    font-size: 18px;
+    font-weight: 650;
+    margin: 0 0 2px;
+  }
+
+  .decision-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent-decision);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .decision-card.pedido { border-left-color: var(--accent-pedido); }
+
+  .decision-card .tag {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent-decision);
+  }
+  .decision-card.pedido .tag { color: var(--accent-pedido); }
+
+  .decision-card strong { font-size: 15px; }
+  .decision-card p { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 78ch; }
+
+  footer {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+  footer code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, "Roboto Mono", monospace;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+</style>
+
+<main>
+  <header>
+    <span class="eyebrow">Ecosistema contable · discusión con el cliente</span>
+    <h1>Flujo de datos: SIGE ↔ nuestro sistema</h1>
+    <p>
+      Dónde termina la información hoy, qué falta definir según lo que pidió el cliente, y cuál es
+      la decisión abierta ahora mismo sobre lo que va a viajar entre los dos sistemas.
+    </p>
+  </header>
+
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch existe"></span> Ya existe y funciona hoy</div>
+    <div class="legend-item"><span class="legend-swatch pedido"></span> Pedido del cliente — falta construir</div>
+    <div class="legend-item"><span class="legend-swatch decision"></span> Decisión abierta ahora mismo</div>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 1200 780" font-family="-apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" role="img" aria-label="Diagrama de flujo entre ARCA, el operador del estudio, HaddyBot, extractor, Visual IVA, el SIGE (sistemaCuarto) y nuestro ecosistema (IVA, Sueldos, Contabilidad, que incluye el motor del satélite). Muestra qué flujos ya existen, cuáles son pedidos del cliente pendientes de construir, y cuál es la decisión abierta sobre si SIGE debe recibir el comprobante crudo o clasificado con cuenta contable.">
+      <defs>
+        <marker id="arrow-existe" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="currentColor" />
+        </marker>
+        <marker id="arrow-pedido" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="var(--accent-pedido)" />
+        </marker>
+        <marker id="arrow-decision" markerWidth="10" markerHeight="10" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="var(--accent-decision)" />
+        </marker>
+        <marker id="arrow-muted" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="var(--muted)" />
+        </marker>
+      </defs>
+
+      <!-- ===== Actors / sources row ===== -->
+      <rect x="16" y="16" width="192" height="60" rx="30" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="1.4" />
+      <text x="112" y="40" text-anchor="middle" class="svg-node-title" font-size="13" fill="currentColor">Operador</text>
+      <text x="112" y="58" text-anchor="middle" font-size="11.5" class="svg-caption">del estudio</text>
+
+      <rect x="503" y="16" width="194" height="60" rx="6" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="1.4" />
+      <text x="600" y="40" text-anchor="middle" class="svg-node-title" font-size="13" fill="currentColor">ARCA / AFIP</text>
+      <text x="600" y="58" text-anchor="middle" font-size="11.5" class="svg-caption">Portal IVA</text>
+
+      <rect x="992" y="16" width="192" height="60" rx="6" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 3" />
+      <text x="1088" y="40" text-anchor="middle" class="svg-node-title" font-size="13" fill="var(--muted)">Visual IVA</text>
+      <text x="1088" y="58" text-anchor="middle" font-size="11" fill="var(--muted)">legado — solo respaldo</text>
+
+      <!-- ARCA -> Visual IVA: camino histórico superado -->
+      <line x1="697" y1="46" x2="988" y2="46" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="3 3" marker-end="url(#arrow-muted)" />
+      <text x="842" y="38" text-anchor="middle" font-size="10.5" fill="var(--muted)">camino viejo — HaddyBot ya lo reemplaza</text>
+
+      <!-- ===== Bots row ===== -->
+      <rect x="438" y="148" width="196" height="60" rx="6" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="1.4" />
+      <text x="536" y="172" text-anchor="middle" class="svg-node-title" font-size="13" fill="currentColor">HaddyBot</text>
+      <text x="536" y="190" text-anchor="middle" font-size="11" class="svg-caption">bot propio del cliente, en producción</text>
+
+      <rect x="678" y="148" width="196" height="60" rx="6" fill="none" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="4 3" />
+      <text x="776" y="172" text-anchor="middle" class="svg-node-title" font-size="13" fill="var(--muted)">extractor/</text>
+      <text x="776" y="190" text-anchor="middle" font-size="11" fill="var(--muted)">nuestro, standalone</text>
+
+      <!-- ARCA -> HaddyBot / extractor -->
+      <line x1="565" y1="76" x2="540" y2="146" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-existe)" />
+      <text x="500" y="118" text-anchor="middle" font-size="10.5" class="svg-caption">scrapea con Clave Fiscal</text>
+
+      <line x1="655" y1="76" x2="760" y2="146" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-existe)" />
+      <text x="742" y="118" text-anchor="middle" font-size="10.5" class="svg-caption">scrapea Portal IVA</text>
+
+      <!-- extractor -> dead end -->
+      <line x1="776" y1="208" x2="776" y2="240" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="3 3" />
+      <circle cx="776" cy="244" r="4.5" fill="none" stroke="var(--muted)" stroke-width="1.4" />
+      <text x="790" y="248" font-size="10.5" fill="var(--muted)">sin destino hoy — ¿se descarta?</text>
+
+      <!-- Operador -> boxes (elbow routing at y=104) -->
+      <line x1="112" y1="76" x2="112" y2="276" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-existe)" />
+      <text x="120" y="200" font-size="10.5" class="svg-caption">tipea CUIT + datos</text>
+
+      <polyline points="112,76 112,104 800,104 800,276" fill="none" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-existe)" />
+      <text x="460" y="98" text-anchor="middle" font-size="10.5" class="svg-caption">tipea el MISMO CUIT otra vez (hoy)</text>
+
+      <!-- HaddyBot -> SIGE.compra_ventas -->
+      <line x1="536" y1="208" x2="330" y2="276" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-existe)" />
+      <text x="470" y="248" text-anchor="middle" font-size="10.5" class="svg-caption">POST /compra-venta/import</text>
+      <text x="470" y="261" text-anchor="middle" font-size="10" class="svg-caption">(crudo, sin clasificar)</text>
+
+      <!-- ===== Main boxes ===== -->
+      <rect x="16" y="280" width="560" height="460" rx="10" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.6" />
+      <text x="40" y="312" class="svg-node-title" font-size="15" fill="currentColor">SIGE (sistemaCuarto)</text>
+      <text x="40" y="330" font-size="11.5" class="svg-caption">sistema de gestión del estudio — en producción</text>
+
+      <rect x="636" y="280" width="548" height="460" rx="10" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.6" />
+      <text x="660" y="312" class="svg-node-title" font-size="15" fill="currentColor">Nuestro sistema</text>
+      <text x="660" y="330" font-size="11.5" class="svg-caption">IVA · Sueldos · Contabilidad — incluye el motor del "satélite"</text>
+
+      <!-- SIGE sub-rows -->
+      <g class="svg-mono">
+        <circle cx="42" cy="357" r="3" fill="currentColor" />
+        <text x="54" y="361" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">Persona / CRM</text>
+        <text x="54" y="376" font-size="10.5" class="svg-caption">padrón de contribuyentes</text>
+
+        <circle cx="42" cy="423" r="3" fill="currentColor" />
+        <text x="54" y="427" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">compra_ventas</text>
+        <text x="54" y="442" font-size="10.5" class="svg-caption">comprobantes, formato crudo AFIP</text>
+
+        <circle cx="42" cy="489" r="3" fill="currentColor" />
+        <text x="54" y="493" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">Sistema Registral</text>
+        <text x="54" y="508" font-size="10.5" class="svg-caption">forma jurídica, mes de cierre (ARCA)</text>
+
+        <circle cx="42" cy="555" r="3" fill="currentColor" />
+        <text x="54" y="559" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">Vencimiento / Tributo</text>
+        <text x="54" y="574" font-size="10.5" class="svg-caption">workflow de estados fiscales</text>
+
+        <circle cx="42" cy="621" r="3" fill="currentColor" />
+        <text x="54" y="625" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">Roles y permisos</text>
+        <text x="54" y="640" font-size="10.5" class="svg-caption">spatie/laravel-permission, 5 roles</text>
+      </g>
+      <text x="40" y="710" font-size="10.5" class="svg-caption">Laravel 12 · 70 modelos · en uso diario del estudio</text>
+
+      <!-- Ecosistema sub-rows -->
+      <g class="svg-mono">
+        <circle cx="662" cy="357" r="3" fill="currentColor" />
+        <text x="674" y="361" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">empresas</text>
+        <text x="674" y="376" font-size="10.5" class="svg-caption">alta manual — duplica a Persona</text>
+
+        <circle cx="662" cy="423" r="3" fill="currentColor" />
+        <text x="674" y="427" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">Padrón único + motor de imputación</text>
+        <text x="674" y="442" font-size="10.5" class="svg-caption">el "satélite": cuenta por proveedor / punto de venta</text>
+
+        <circle cx="662" cy="489" r="3" fill="currentColor" />
+        <text x="674" y="493" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">ventas / compras</text>
+        <text x="674" y="508" font-size="10.5" class="svg-caption">+ cuenta imputada (Mayorización)</text>
+
+        <circle cx="662" cy="555" r="3" fill="currentColor" />
+        <text x="674" y="559" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">Sueldos</text>
+        <text x="674" y="574" font-size="10.5" class="svg-caption">legajos, conceptos, liquidación</text>
+
+        <circle cx="662" cy="621" r="3" fill="currentColor" />
+        <text x="674" y="625" font-size="13" fill="currentColor" font-family="-apple-system, sans-serif" font-weight="600">Contabilidad</text>
+        <text x="674" y="640" font-size="10.5" class="svg-caption">futuro — pendiente de definir con el cliente</text>
+      </g>
+      <text x="660" y="710" font-size="10.5" class="svg-caption">esto es lo único que este sistema debería hacer (pedido 1)</text>
+
+      <!-- Internal loop: motor de imputación -> ventas/compras (ya existe) -->
+      <line x1="662" y1="432" x2="662" y2="482" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-existe)" />
+      <text x="672" y="462" font-size="10" class="svg-caption">ya resuelve la cuenta sola</text>
+
+      <!-- SIGE.Persona -> Ecosistema.empresas: pedido, falta extender sync -->
+      <line x1="576" y1="357" x2="636" y2="357" stroke="var(--accent-pedido)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-pedido)" />
+      <text x="606" y="342" text-anchor="middle" font-size="9.5" fill="var(--accent-pedido)" font-weight="650">GET /sync/clientes</text>
+      <text x="606" y="374" text-anchor="middle" font-size="9" fill="var(--accent-pedido)">hoy: solo CUIT+clave</text>
+
+      <!-- Decision arrow: Ecosistema.ventas/compras -> SIGE.compra_ventas -->
+      <line x1="636" y1="489" x2="576" y2="423" stroke="var(--accent-decision)" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#arrow-decision)" />
+      <circle cx="606" cy="456" r="10" fill="var(--surface)" stroke="var(--accent-decision)" stroke-width="1.6" />
+      <text x="606" y="460" text-anchor="middle" font-size="12" fill="var(--accent-decision)" font-weight="700">?</text>
+      <text x="619" y="436" font-size="9.5" fill="var(--accent-decision)" font-weight="650">¿crudo o</text>
+      <text x="619" y="480" font-size="9.5" fill="var(--accent-decision)" font-weight="650">clasificado?</text>
+    </svg>
+
+    <figcaption>
+      El operador hoy tipea el mismo CUIT dos veces (línea sólida a ambos lados). HaddyBot ya
+      scrapea ARCA y carga comprobantes crudos a SIGE — Visual IVA queda como respaldo histórico, ya
+      no recibe carga nueva. Lo que falta (líneas de guiones): extender el sync de SIGE para que
+      nuestro sistema no vuelva a pedir el alta de empresa, y confirmar la línea marcada en naranja
+      — si el comprobante que sale de nuestro motor de imputación (el corazón del "satélite") tiene
+      que llegar a SIGE crudo o ya clasificado con la cuenta contable.
+    </figcaption>
+  </figure>
+
+  <section class="decisiones">
+    <h2>Puntos concretos para discutir con el cliente</h2>
+
+    <div class="decision-card">
+      <span class="tag">Decisión abierta ahora</span>
+      <strong>¿SIGE recibe el comprobante crudo o clasificado?</strong>
+      <p>
+        Si alcanza con el comprobante crudo (neto, IVA, CAE, sin cuenta), eso <strong>ya pasa hoy</strong>
+        de punta a punta vía HaddyBot — no hay nada nuevo que construir de ese lado. Si en cambio
+        tiene que llegar clasificado (con la cuenta contable que resuelve nuestro motor de
+        imputación), falta agregar un campo a <code>compra_ventas</code> del lado de SIGE y decidir
+        si se extiende el mismo endpoint de import o se arma uno nuevo.
+      </p>
+    </div>
+
+    <div class="decision-card pedido">
+      <span class="tag">Pedido del cliente — falta construir</span>
+      <strong>Sincronizar el alta de empresa en vez de tipearla dos veces</strong>
+      <p>
+        SIGE ya expone <code>GET /api/sync/clientes</code>, pero hoy solo devuelve CUIT y
+        credenciales AFIP (para HaddyBot). Extenderlo para traer razón social, domicilio, forma
+        jurídica y actividad resolvería el pedido de "el CUIT se carga una sola vez" sin tener que
+        construir una integración nueva desde cero.
+      </p>
+    </div>
+
+    <div class="decision-card pedido">
+      <span class="tag">Pedido del cliente — falta construir</span>
+      <strong>HaddyBot vs. <code>extractor/</code>: elegir una sola fuente</strong>
+      <p>
+        Las dos automatizaciones resuelven lo mismo (scrapear ARCA) sin saberlo una de la otra.
+        HaddyBot ya está en producción y alimenta a SIGE; <code>extractor/</code> es nuestro y no
+        está conectado a nada. Si HaddyBot queda como la única fuente, <code>extractor/</code> se
+        puede descartar o reorientar a otra cosa.
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    Base técnica verificada en <code>documentacion/refinamiento/analisis.md</code> §0 y §9, y
+    <code>documentacion/refinamiento/planificacion.md</code> Fase 0 (preguntas 1, 5, 6 y 12).
+  </footer>
+</main>

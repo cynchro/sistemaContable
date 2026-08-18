@@ -49,26 +49,34 @@ class SujetoEmpresaRepository
 
     /**
      * Empresas donde cada sujeto está activo (y con qué rol), para la vista global del padrón
-     * (documento "Satélite Visual IVA" §10, Etapa 4).
+     * (documento "Satélite Visual IVA" §10, Etapa 4). `$rol` acota a un solo rol (padrón de
+     * proveedores / padrón de clientes separados, informe del cliente 10/08/2026 pedido 5a) —
+     * sin esto, un sujeto activado como cliente en una empresa aparecería igual en la vista de
+     * proveedores si tiene alguna otra activación de proveedor.
      *
      * @param  list<int> $sujetoIds
      * @return array<int, list<array{empresa_id:int, empresa_nombre:string, rol:string}>> indexado por sujeto_id
      */
-    public function empresasActivasDe(array $sujetoIds, string $tenantId): array
+    public function empresasActivasDe(array $sujetoIds, string $tenantId, ?string $rol = null): array
     {
         if ($sujetoIds === []) {
             return [];
         }
 
         $placeholders = implode(',', array_fill(0, count($sujetoIds), '?'));
+        $condRol      = $rol !== null ? ' AND se.rol = ?' : '';
         $stmt         = $this->pdo->prepare(
             "SELECT se.sujeto_id, se.empresa_id, e.nombre AS empresa_nombre, se.rol
                FROM iva_sujeto_empresas se
                JOIN empresas e ON e.id = se.empresa_id
-              WHERE se.sujeto_id IN ({$placeholders}) AND se.activo = 'S' AND e.tenant_id = ?
+              WHERE se.sujeto_id IN ({$placeholders}) AND se.activo = 'S' AND e.tenant_id = ?{$condRol}
               ORDER BY e.nombre"
         );
-        $stmt->execute([...$sujetoIds, $tenantId]);
+        $params = [...$sujetoIds, $tenantId];
+        if ($rol !== null) {
+            $params[] = $rol;
+        }
+        $stmt->execute($params);
 
         $porSujeto = [];
         foreach ((array) $stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {

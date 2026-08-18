@@ -27,9 +27,11 @@ use App\Modules\Iva\Controllers\ExportFormatoController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
+use App\Http\Middleware\EmpresaLockMiddleware;
 
 /** @var \App\Support\Router $router (inyectado por bootstrap/app.php al cargar las rutas) */
-$router->group([AuthMiddleware::class, TenantMiddleware::class, AuditMiddleware::class], function ($router) {
+$mw = [AuthMiddleware::class, TenantMiddleware::class, EmpresaLockMiddleware::class, AuditMiddleware::class];
+$router->group($mw, function ($router) {
     // RBAC por recurso: cada ruta exige un permiso (read = GET, write = POST/PUT/DELETE).
     // Un rol con el super-permiso 'Acceso Total' los cubre todos (ver PermissionChecker).
     $perm = static fn (string $p): string => PermissionMiddleware::class . ':' . $p;
