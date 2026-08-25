@@ -49,6 +49,14 @@ import {
   getPercepciones,
   type Subdiario,
 } from '../../../api/reportes'
+import { listCredenciales, crearCredencial, actualizarCredencial } from '../../../api/credenciales'
+import { type LibroLiquidacion } from '../../../api/liquidaciones'
+import {
+  useLiquidacionProceso,
+  LiquidacionEstado,
+  EstadoBadge,
+  VerComprobantesLinks,
+} from '../liquidaciones/LiquidacionProceso'
 
 const money = (v?: string) => {
   const n = Number(v)
@@ -56,7 +64,7 @@ const money = (v?: string) => {
 }
 const pct = (v: string | null) => (v == null ? '—' : `${Number(v)}%`)
 
-type Tab = 'resumen' | 'ddjj' | 'simple' | 'reportes' | 'mayor' | 'descargas'
+type Tab = 'resumen' | 'ddjj' | 'simple' | 'reportes' | 'mayor' | 'descargas' | 'liquidar'
 
 export default function LibroIvaPage() {
   const { empresaId, periodoId } = useParams()
@@ -93,16 +101,23 @@ export default function LibroIvaPage() {
         </div>
         <CNav id="tour-libro-tabs" variant="tabs" className="mt-3 border-bottom-0 no-print">
           {([
-            ['resumen', 'Resumen'],
+            ['liquidar', 'Liquidar IVA'],
             ['ddjj', 'DDJJ (F2002)'],
             ['simple', 'IVA Simple (F2051)'],
             ['reportes', 'Reportes'],
             ['mayor', 'Mayor'],
             ['descargas', 'Descargas'],
+            ['resumen', 'Resumen'],
           ] as [Tab, string][]).map(([k, label]) => (
             <CNavItem key={k}>
               <CNavLink
-                id={k === 'descargas' ? 'tour-libro-tab-descargas' : undefined}
+                id={
+                  k === 'descargas'
+                    ? 'tour-libro-tab-descargas'
+                    : k === 'liquidar'
+                      ? 'tour-libro-tab-liquidar'
+                      : undefined
+                }
                 active={tab === k}
                 style={{ cursor: 'pointer' }}
                 onClick={() => setTab(k)}
@@ -120,6 +135,7 @@ export default function LibroIvaPage() {
         {tab === 'reportes' && <Reportes eId={eId} pId={pId} />}
         {tab === 'mayor' && <Mayor eId={eId} pId={pId} />}
         {tab === 'descargas' && <Descargas eId={eId} pId={pId} />}
+        {tab === 'liquidar' && <LiquidarIva eId={eId} pId={pId} />}
       </CCardBody>
     </CCard>
   )
@@ -731,6 +747,184 @@ function Descargas({ eId, pId }: { eId: number; pId: number }) {
           Descargar percepciones
         </CButton>
       </div>
+    </>
+  )
+}
+
+/**
+ * Botón "Liquidar IVA" (plan 25/08/2026): pide al worker del bot externo (`cositasVarias/
+ * extractor`, fuera de este repo) que traiga el Libro IVA Digital desde el Portal IVA de ARCA.
+ * El "subir" (ecosistema → ARCA) vive en las pantallas de Compras/Ventas (botón "Procesar" debajo
+ * de la grilla) — ahí es donde se edita/agrega comprobantes, tiene sentido subir desde ahí y no
+ * desde acá. Requiere que la empresa tenga CUIT y una Clave Fiscal cargada (se guarda cifrada del
+ * lado del backend, `App\Support\Crypto`) — el formulario de acá cubre esa carga inline, no hay
+ * todavía una pantalla propia de "Credenciales" en Contribuyentes (decisión: mantener esto
+ * acotado a lo que la feature necesita, no construir un CRUD genérico sin que lo pidan).
+ */
+function LiquidarIva({ eId, pId }: { eId: number; pId: number }) {
+  const qc = useQueryClient()
+  const [libro, setLibro] = useState<LibroLiquidacion | ''>('')
+  const [usuarioFiscal, setUsuarioFiscal] = useState('')
+  const [claveFiscal, setClaveFiscal] = useState('')
+
+  const { data: empresas } = useQuery({ queryKey: ['empresas'], queryFn: listEmpresas })
+  const empresa = empresas?.find((e) => e.id === eId)
+
+  const { data: credenciales } = useQuery({
+    queryKey: ['credenciales', eId],
+    queryFn: () => listCredenciales(eId),
+  })
+  const credencialFiscal = credenciales?.find((c) => c.tipo === 'fiscal' && c.sistema === 'AFIP')
+
+  const { historial, enCursoId, setEnCursoId, actual, crear, enCurso, error, modalVisible, setModalVisible } =
+    useLiquidacionProceso(eId, pId)
+
+  const guardarCredencial = useMutation({
+    mutationFn: () =>
+      credencialFiscal
+        ? actualizarCredencial(eId, credencialFiscal.id, {
+            usuario: usuarioFiscal || undefined,
+            clave: claveFiscal,
+          })
+        : crearCredencial(eId, {
+            tipo: 'fiscal',
+            sistema: 'AFIP',
+            usuario: usuarioFiscal || undefined,
+            clave: claveFiscal,
+          }),
+    onSuccess: () => {
+      setClaveFiscal('')
+      qc.invalidateQueries({ queryKey: ['credenciales', eId] })
+    },
+  })
+
+  const sinCuit = Boolean(empresa) && !empresa?.cuit
+  const sinCredencial = !credencialFiscal
+  const puedeLiquidar = !sinCuit && !sinCredencial && !enCurso && libro !== ''
+
+  return (
+    <>
+      {error && <CAlert color="danger">{error}</CAlert>}
+
+      {sinCuit && (
+        <CAlert color="warning">
+          Esta empresa no tiene CUIT cargado — hace falta para automatizar contra ARCA. Cargalo desde
+          el alta/edición de la empresa.
+        </CAlert>
+      )}
+
+      <h6>Clave Fiscal de ARCA</h6>
+      <div className="text-body-secondary small mb-2">
+        Se guarda cifrada del lado del servidor y solo se usa para automatizar el login en el
+        Portal IVA cuando hace falta — la sesión se reutiliza mientras siga vigente, no se pide en
+        cada corrida.
+      </div>
+      <div className="d-flex flex-wrap gap-2 align-items-end mb-4" style={{ maxWidth: 560 }}>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <CFormLabel className="small mb-1">CUIT / usuario</CFormLabel>
+          <CFormInput
+            size="sm"
+            autoComplete="off"
+            value={usuarioFiscal}
+            onChange={(e) => setUsuarioFiscal(e.target.value)}
+            placeholder={credencialFiscal?.usuario ?? empresa?.cuit ?? 'CUIT'}
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <CFormLabel className="small mb-1">Clave Fiscal</CFormLabel>
+          <CFormInput
+            size="sm"
+            type="password"
+            autoComplete="new-password"
+            value={claveFiscal}
+            onChange={(e) => setClaveFiscal(e.target.value)}
+            placeholder={credencialFiscal ? '•••••••• (ya cargada)' : 'Sin cargar'}
+          />
+        </div>
+        <CButton
+          color="secondary"
+          size="sm"
+          disabled={!claveFiscal || guardarCredencial.isPending}
+          onClick={() => guardarCredencial.mutate()}
+        >
+          {credencialFiscal ? 'Actualizar' : 'Guardar'}
+        </CButton>
+      </div>
+
+      <h6>Comprobantes</h6>
+      {sinCredencial && <CAlert color="info">Cargá la Clave Fiscal de ARCA arriba antes de liquidar.</CAlert>}
+
+      <div className="d-flex flex-wrap gap-2 align-items-end mb-3" style={{ maxWidth: 580 }}>
+        <div style={{ minWidth: 180 }}>
+          <CFormLabel className="small mb-1">Libro</CFormLabel>
+          <CFormSelect
+            size="sm"
+            value={libro}
+            onChange={(e) => setLibro(e.target.value as LibroLiquidacion)}
+            disabled={enCurso}
+          >
+            <option value="">Seleccione una opción</option>
+            <option value="ventas">Ventas</option>
+            <option value="compras">Compras</option>
+          </CFormSelect>
+        </div>
+        <CButton
+          color="primary"
+          size="sm"
+          disabled={!puedeLiquidar || crear.isPending}
+          onClick={() => crear.mutate({ direccion: 'traer', libro: libro as LibroLiquidacion })}
+        >
+          Procesar
+        </CButton>
+      </div>
+
+      <LiquidacionEstado
+        enCursoId={enCursoId}
+        actual={actual}
+        enCurso={enCurso}
+        modalVisible={modalVisible}
+        setModalVisible={setModalVisible}
+        setEnCursoId={setEnCursoId}
+      />
+
+      <h6 className="mt-4">Historial</h6>
+      <CTable small hover responsive>
+        <CTableHead>
+          <CTableRow>
+            <CTableHeaderCell>Fecha</CTableHeaderCell>
+            <CTableHeaderCell>Dirección</CTableHeaderCell>
+            <CTableHeaderCell>Libro</CTableHeaderCell>
+            <CTableHeaderCell>Período ARCA</CTableHeaderCell>
+            <CTableHeaderCell>Estado</CTableHeaderCell>
+            <CTableHeaderCell></CTableHeaderCell>
+          </CTableRow>
+        </CTableHead>
+        <CTableBody>
+          {historial?.results.length === 0 && (
+            <CTableRow>
+              <CTableDataCell colSpan={6} className="text-center text-body-secondary">
+                Sin liquidaciones todavía.
+              </CTableDataCell>
+            </CTableRow>
+          )}
+          {historial?.results.map((l) => (
+            <CTableRow key={l.id}>
+              <CTableDataCell>{new Date(l.created_at).toLocaleString('es-AR')}</CTableDataCell>
+              <CTableDataCell>{l.direccion}</CTableDataCell>
+              <CTableDataCell>{l.libro}</CTableDataCell>
+              <CTableDataCell>{l.periodo_arca}</CTableDataCell>
+              <CTableDataCell>
+                <EstadoBadge estado={l.estado} />
+              </CTableDataCell>
+              <CTableDataCell>
+                {l.estado === 'terminada' && (
+                  <VerComprobantesLinks empresaId={l.empresa_id} periodoId={l.periodo_id} libro={l.libro} />
+                )}
+              </CTableDataCell>
+            </CTableRow>
+          ))}
+        </CTableBody>
+      </CTable>
     </>
   )
 }

@@ -50,7 +50,20 @@ final class CbteTipoResolver
         'CN' => 114, // Nota de Crédito Tique C
     ];
 
-    public static function resolve(string $tipoLegacy, string $letra): int
+    /**
+     * @param string|null $codCiti Fallback para tipos administrativos raros (RG1415:
+     *   OC/30/CL/LP/LN/TD/PA/DA/CC/EX — bienes usados, avícola, pecuario, etc.) que no
+     *   están en `TABLA`/`TABLA_FIJA`: a diferencia de FA/ND/NC/etc. (mismo código legacy
+     *   con distinto CbteTipo según la letra), el código legacy de estos tipos administra-
+     *   tivos es AMBIGÜO por sí solo — dos ids de `tipos_comprobante` pueden compartir el
+     *   mismo `codigo` (ej. 'OC' en los ids 62/64/72) con `cod_citi` distinto — así que no
+     *   se puede resolver con una tabla estática por código de texto. `cod_citi` (columna
+     *   ya verificada byte a byte contra producción, ver `CatalogosIvaSeeder.php`) SÍ es,
+     *   para estos casos, directamente el CbteTipo de AFIP: se usa tal cual si el tipo no
+     *   matchea ninguna de las dos tablas y el valor es numérico. Encontrado en vivo
+     *   (25/08/2026): el Libro IVA Digital de compras lanzaba para estos tipos.
+     */
+    public static function resolve(string $tipoLegacy, string $letra, ?string $codCiti = null): int
     {
         $tipo  = strtoupper(trim($tipoLegacy));
         $letra = strtoupper(trim($letra));
@@ -59,12 +72,16 @@ final class CbteTipoResolver
             return self::TABLA_FIJA[$tipo];
         }
 
-        if (!isset(self::TABLA[$tipo][$letra])) {
-            throw new RuntimeException(
-                "No hay CbteTipo de AFIP para tipo '{$tipo}' letra '{$letra}'."
-            );
+        if (isset(self::TABLA[$tipo][$letra])) {
+            return self::TABLA[$tipo][$letra];
         }
 
-        return self::TABLA[$tipo][$letra];
+        if ($codCiti !== null && ctype_digit($codCiti)) {
+            return (int) $codCiti;
+        }
+
+        throw new RuntimeException(
+            "No hay CbteTipo de AFIP para tipo '{$tipo}' letra '{$letra}'."
+        );
     }
 }

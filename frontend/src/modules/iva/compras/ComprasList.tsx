@@ -25,6 +25,7 @@ import {
   CDropdownItem,
   CDropdownDivider,
 } from '@coreui/react'
+import { SubirLibroBoton } from '../liquidaciones/SubirLibroBoton'
 import {
   listCompras,
   listComprasPendientes,
@@ -467,6 +468,8 @@ export default function ComprasList() {
           )}
         </CCardBody>
       </CCard>
+
+      <SubirLibroBoton eId={eId} pId={pId} libro="compras" />
 
       <CompraFormModal
         visible={modalOpen}

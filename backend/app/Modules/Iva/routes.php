@@ -24,6 +24,7 @@ use App\Modules\Iva\Controllers\FacturaElectronicaController;
 use App\Modules\Iva\Controllers\PuntoVentaController;
 use App\Modules\Iva\Controllers\AuditoriaAfipController;
 use App\Modules\Iva\Controllers\ExportFormatoController;
+use App\Modules\Iva\Controllers\LiquidacionController;
 use App\Http\Middleware\AuthMiddleware;
 use App\Http\Middleware\TenantMiddleware;
 use App\Http\Middleware\PermissionMiddleware;
@@ -375,4 +376,43 @@ $router->group($mw, function ($router) {
     $router->get("{$base}/puntos-venta/{id}", [PuntoVentaController::class, 'show'], [$perm('iva.puntos-venta')]);
     $router->put("{$base}/puntos-venta/{id}", [PuntoVentaController::class, 'update'], [$pw('iva.puntos-venta')]);
     $router->delete("{$base}/puntos-venta/{id}", [PuntoVentaController::class, 'delete'], [$pw('iva.puntos-venta')]);
+
+    // Botón "Liquidar IVA" (plan 25/08/2026): pedido del usuario (crear/ver) bajo período.
+    $router->post(
+        "{$bajoPeriodo}/liquidaciones",
+        [LiquidacionController::class, 'create'],
+        [$pw('iva.liquidar')],
+    );
+    $router->get(
+        "{$bajoPeriodo}/liquidaciones",
+        [LiquidacionController::class, 'index'],
+        [$perm('iva.liquidar')],
+    );
+    $router->get(
+        "{$bajoPeriodo}/liquidaciones/{id}",
+        [LiquidacionController::class, 'show'],
+        [$perm('iva.liquidar')],
+    );
+
+    // Endpoints del worker externo del bot (cositasVarias/extractor): no anidados bajo empresa
+    // — la API key ya trae su propio tenant, la cola se acota por ahí (ver LiquidacionRepository).
+    // Scopes propios, separados de 'iva.liquidar' (el de usuario): un rol de usuario normal no
+    // tiene sentido que los tenga, pero conviven en el mismo catálogo de `permisos`.
+    $router->get(
+        '/iva/liquidaciones/pendientes',
+        [LiquidacionController::class, 'pendiente'],
+        [$perm('iva.liquidaciones.worker')],
+    );
+    $router->post(
+        '/iva/liquidaciones/{id}/estado',
+        [LiquidacionController::class, 'estado'],
+        [$pw('iva.liquidaciones.worker')],
+    );
+    // Scope más estrecho a propósito (defensa en profundidad/auditoría): revela la Clave Fiscal
+    // en claro, se llama solo cuando el worker detecta que la sesión de ese CUIT expiró.
+    $router->post(
+        '/iva/liquidaciones/{id}/credencial',
+        [LiquidacionController::class, 'credencial'],
+        [$pw('iva.liquidaciones.credencial')],
+    );
 });

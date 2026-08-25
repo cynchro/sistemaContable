@@ -96,6 +96,10 @@ use App\Modules\Iva\Controllers\VentaController;
 use App\Modules\Iva\Controllers\CompraController;
 use App\Modules\Iva\Controllers\LibroIvaController;
 use App\Modules\Iva\Controllers\ReporteIvaController;
+use App\Modules\Iva\Repositories\LiquidacionRepository;
+use App\Modules\Iva\Services\LiquidacionService;
+use App\Modules\Iva\Controllers\LiquidacionController;
+use App\Modules\Contribuyentes\Services\CredencialService;
 
 /**
  * Wiring del módulo Iva. Reusa EmpresaRepository del módulo Compartido para
@@ -454,6 +458,21 @@ class ServiceProvider extends BaseServiceProvider
         $c->singleton(
             AuditoriaAfipController::class,
             fn () => new AuditoriaAfipController($c->get(AuditoriaAfipService::class)),
+        );
+
+        // Botón "Liquidar IVA" (plan 25/08/2026): cola de pedidos + endpoints de usuario y del
+        // worker externo del bot. Reusa CredencialService (módulo Contribuyentes) para descifrar
+        // la Clave Fiscal internamente, sin pasar por su Controller/Response pública.
+        $c->singleton(LiquidacionRepository::class, fn () => new LiquidacionRepository($c->get(PDO::class)));
+        $c->singleton(LiquidacionService::class, fn () => new LiquidacionService(
+            $c->get(LiquidacionRepository::class),
+            $c->get(EmpresaRepository::class),
+            $c->get(PeriodoRepository::class),
+            $c->get(CredencialService::class),
+        ));
+        $c->singleton(
+            LiquidacionController::class,
+            fn () => new LiquidacionController($c->get(LiquidacionService::class)),
         );
     }
 }

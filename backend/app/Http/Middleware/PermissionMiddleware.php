@@ -39,6 +39,20 @@ class PermissionMiddleware implements MiddlewareInterface
             throw new AuthException('Unauthenticated.');
         }
 
+        $principal = $request->principal();
+
+        // Un api_key no tiene rol de usuario (Principal::rol es null) — resolver por
+        // scope en vez de por RBAC de rol. Mismo string de permiso reusado como
+        // nombre de scope (ej. 'iva.libro'), sin sufijo de nivel: un scope habilita
+        // lectura y escritura por igual (no hay 'iva.libro:write' separado).
+        if ($principal !== null && $principal->isApiKey()) {
+            if (!$principal->hasScope($this->permission)) {
+                throw new ForbiddenException("Scope [{$this->permission}] required.");
+            }
+
+            return $next($request);
+        }
+
         $rolId    = (int) ($user['rol'] ?? 0);
         $required = self::LEVELS[$this->level] ?? PermissionChecker::LEVEL_READ;
 

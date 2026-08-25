@@ -42,6 +42,13 @@ $keys = [
     'iva.puntos-venta',
     'iva.auditoria',
     'iva.auditoria-afip',
+    // Botón "Liquidar IVA" (25/08/2026): pedido de automatización desde la UI (usuario) +
+    // 2 scopes propios para la API key del bot worker (nunca se le asigna a un rol de usuario
+    // en la práctica, pero conviven en el mismo catálogo de 'permisos' porque el mismo
+    // PermissionMiddleware valida scopes de api_key y permisos de rol con la misma key).
+    'iva.liquidar',
+    'iva.liquidaciones.worker',
+    'iva.liquidaciones.credencial',
 ];
 
 $select = $pdo->prepare('SELECT id FROM permisos WHERE `key` = ?');

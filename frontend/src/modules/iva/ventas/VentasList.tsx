@@ -21,6 +21,7 @@ import {
   CSpinner,
   CAlert,
 } from '@coreui/react'
+import { SubirLibroBoton } from '../liquidaciones/SubirLibroBoton'
 import {
   listVentas,
   listVentasPendientes,
@@ -574,6 +575,8 @@ export default function VentasList() {
         )}
       </CCardBody>
     </CCard>
+
+    <SubirLibroBoton eId={eId} pId={pId} libro="ventas" />
 
     <VentaFormModal
       visible={modalOpen}

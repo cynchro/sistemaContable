@@ -115,4 +115,27 @@ class EmpresaLockTest extends FeatureTestCase
         $get = $this->getJson("/empresas/{$empresaId}", $auth);
         $this->assertSame(200, $get['status']);
     }
+
+    /**
+     * Bug real encontrado en vivo (25/08/2026, botón "Liquidar IVA"): el worker (API key) pega
+     * contra rutas del módulo Iva de la MISMA empresa que el usuario tiene abierta en su propio
+     * navegador (típicamente así — es cómo llega a tocar el botón) — el candado humano no debe
+     * bloquearlo, la API key ya está acotada por sus propios scopes.
+     */
+    public function test_api_key_no_queda_bloqueada_por_el_candado_humano(): void
+    {
+        $ctx       = $this->actingAsUser();
+        $auth      = $this->bearer($ctx['token']);
+        $empresaId = (int) $this->postJson('/empresas', ['nombre' => 'Empresa Lock H'], $auth)['json']['data']['id'];
+        $periodoId = (int) $this->postJson("/empresas/{$empresaId}/periodos", [
+            'nombre' => 'AGOSTO 2026', 'fecha_ini' => '2026-08-01', 'fecha_fin' => '2026-08-31',
+        ], $auth)['json']['data']['id'];
+        $this->postJson("/empresas/{$empresaId}/ocupar", [], $auth);
+
+        $key = $this->postJson('/api-keys', ['name' => 'worker-test', 'scopes' => ['iva.compras']], $auth);
+        $workerAuth = $this->bearer((string) $key['json']['data']['token']);
+
+        $r = $this->getJson("/empresas/{$empresaId}/periodos/{$periodoId}/compras", $workerAuth);
+        $this->assertSame(200, $r['status']);
+    }
 }

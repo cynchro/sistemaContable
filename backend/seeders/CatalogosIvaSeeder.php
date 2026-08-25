@@ -88,15 +88,46 @@ try {
         [14, 'CE', 'Nota de Crédito Electrónica MIPYMES', '203', 'S', -1],
         [50, 'CR', 'Comprobante de Retención', '99', 'N', 1],
         [52, 'NC', 'Nota de Crédito T', '197', 'S', -1],
-        [53, 'LA', 'Liquidación de Servicios Públicos A', '017', 'N', 1],
-        [54, 'LB', 'Liquidación de Servicios Públicos B', '018', 'N', 1],
-        [55, 'CZ', 'Nota de Crédito Tique', '110', 'S', -1],
-        [56, 'CA', 'Nota de Crédito Tique A', '112', 'S', -1],
-        [57, 'CB', 'Nota de Crédito Tique B', '113', 'S', -1],
+        // 53-80: verificado byte a byte contra TIPO_COMPROBANTE de la base de producción
+        // real (~/Descargas/VISUALIVA - copia (7).fdb, isql) — la tabla demo de
+        // softContable/mysql/iva_data.sql tenía los ids 53-61 corridos/mal mapeados
+        // respecto a producción (ids 53/54 no existen en producción; LA/LB/LI/CZ/CA/CB
+        // estaban en otras posiciones), lo que causaba compras/ventas mal clasificadas
+        // en silencio. 24/08/2026.
+        [55, 'LA', 'Liquidación de Servicios Públicos A', '017', 'N', 1],
+        [56, 'LB', 'Liquidación de Servicios Públicos B', '018', 'N', 1],
+        [57, 'LI', 'Liquidación (No exportable)', '00', 'N', 1],
         [58, 'OT', 'Otros comprob que no cumplen o exceptuados RG1415', '99', 'N', 1],
-        [59, 'CT', 'Tique C', '109', 'N', 1],
-        [60, 'CN', 'Tique Nota de Crédito C', '114', 'S', -1],
-        [61, 'DI', 'Despacho de Importación', '066', 'N', 1],
+        [59, 'CZ', 'Nota de Crédito Tique', '110', 'S', -1],
+        [60, 'CA', 'Nota de Crédito Tique A', '112', 'S', -1],
+        [61, 'CB', 'Nota de Crédito Tique B', '113', 'S', -1],
+        [62, 'OC', '039 OTROS COMPROBANTES A QUE CUMPLEN CON LA R G  1', '39', 'N', 1],
+        [64, 'OC', '039 OTROS COMPROBANTES A QUE CUMPLEN CON LA R G  1', '39', 'N', 1],
+        [65, '30', '30 COMPROBANTES DE COMPRA DE BIENES USADOS', '030', 'N', 1],
+        [66, 'CT', 'Tique C', '109', 'N', 1],
+        [67, 'CN', 'Tique Nota de Crédito C', '114', 'S', -1],
+        [68, 'CL', 'Cuenta de Venta y Líquido Producto A', '060', 'N', 1],
+        [69, '40', '40 otros comprobantes B', '040', 'N', 1],
+        [70, 'LP', 'Liquidacion de compra directa Avicola', '161', 'N', 1],
+        [71, 'LN', 'Liquidacion de Venta Directa Avicola-Nota de Credi', '164', 'N', 1],
+        [72, 'OC', 'Agregado por importación', '40', 'N', 1],
+        [73, 'TD', 'Tique Nota de Debito A', '115', 'N', 1],
+        [74, 'PA', 'Liquidación de Compra A - Sector Pecuario', '183', 'N', 1],
+        [75, 'DA', 'Liquidación de Compra Directa A - Sector Pecuario', '186', 'N', 1],
+        [77, 'ND', 'Nota de Débito A, B, C, E, M', '02', 'N', 1],
+        [78, 'DI', 'Despacho de Importación', '066', 'N', 1],
+        [79, 'CC', '034 COMPROBANTES A DEL APARTADO A  INCISO F)  R.G.', '34', 'N', 1],
+        [80, 'EX', 'Agregado por importación', '090', 'N', 1],
+        // 81: encontrado en vivo (25/08/2026, botón "Liquidar IVA", comprobante real de compra
+        // de BANCO DE LA NACION ARGENTINA) — sin esto, `mapeo.ts` del bot lo descarta en
+        // silencio al "traer" (código AFIP 63 no estaba en su tabla soportada). Misma familia
+        // que 'CL' (id 68, cod_citi 060, "Cuenta de Venta y Líquido Producto A") — discrimina
+        // IVA igual que una Factura A, letra fija (no depende de A/B/C como FA/ND/NC).
+        // Código interno 'LM' (Liquidación por Mandato) a propósito, NO 'LA': ese código ya
+        // existe en `CbteTipoResolver::TABLA_FIJA['LA'] => 17` para "Liquidación de Servicios
+        // Públicos A" — un tipo de comprobante totalmente distinto (AFIP 17, no 63). Reusar 'LA'
+        // acá habría hecho que el Writer resolviera mal el CbteTipo al subir este comprobante.
+        [81, 'LM', 'Liquidación A (por mandato)', '063', 'N', 1],
     ]);
 
     $seed($pdo, 'tipos_documento', ['id', 'nombre', 'cod_afip'], [

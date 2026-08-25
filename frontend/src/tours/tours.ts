@@ -147,6 +147,19 @@ export const tourVentas: DriveStep[] = [
       align: 'center',
     },
   },
+  {
+    element: '#tour-subir-libro',
+    popover: {
+      title: 'Procesar (subir a ARCA)',
+      description:
+        'Sube a ARCA (borrador del Libro IVA Digital) las ventas de este período tal como están cargadas acá — ' +
+        'después de agregar o corregir un comprobante, tocá "Procesar" para reflejarlo en ARCA. No presenta la ' +
+        'declaración jurada: solo actualiza el borrador. Requiere la Clave Fiscal cargada (pestaña "Liquidar ' +
+        'IVA" del Libro IVA).',
+      side: 'top',
+      align: 'start',
+    },
+  },
 ]
 
 export const tourEmpresas: DriveStep[] = [
@@ -318,6 +331,19 @@ export const tourCompras: DriveStep[] = [
         'contable configurada, el sistema precarga esa cuenta en las líneas nuevas.',
       side: 'top',
       align: 'center',
+    },
+  },
+  {
+    element: '#tour-subir-libro',
+    popover: {
+      title: 'Procesar (subir a ARCA)',
+      description:
+        'Sube a ARCA (borrador del Libro IVA Digital) las compras de este período tal como están cargadas acá — ' +
+        'después de agregar o corregir un comprobante, tocá "Procesar" para reflejarlo en ARCA. No presenta la ' +
+        'declaración jurada: solo actualiza el borrador. Requiere la Clave Fiscal cargada (pestaña "Liquidar ' +
+        'IVA" del Libro IVA).',
+      side: 'top',
+      align: 'start',
     },
   },
 ]
@@ -769,8 +795,22 @@ export const tourLibroIva: DriveStep[] = [
     popover: {
       title: 'Pestañas',
       description:
-        'Resumen (totales y saldo de IVA), DDJJ F2002 (débito vs. crédito computable), IVA Simple/F2051 (con ' +
-        'presentación), Reportes (subdiario y percepciones, con impresión a PDF) y Mayor (movimientos por cuenta).',
+        'Liquidar IVA (traer comprobantes desde ARCA), DDJJ F2002 (débito vs. crédito computable), IVA ' +
+        'Simple/F2051 (con presentación), Reportes (subdiario y percepciones, con impresión a PDF), Mayor ' +
+        '(movimientos por cuenta), Descargas y Resumen (totales y saldo de IVA).',
+      side: 'bottom',
+      align: 'start',
+    },
+  },
+  {
+    element: '#tour-libro-tab-liquidar',
+    popover: {
+      title: 'Liquidar IVA',
+      description:
+        'Automatiza el "traer" contra el Portal IVA de ARCA con un bot: carga la Clave Fiscal una vez (se ' +
+        'guarda cifrada), elegí Ventas o Compras en "Libro" y tocá "Procesar" — el pedido queda Pendiente hasta ' +
+        'que el bot lo toma, y avisa con un modal cuando termina. El "subir" (mandar a ARCA lo cargado acá) se ' +
+        'hace desde el propio listado de Ventas o Compras, no desde acá.',
       side: 'bottom',
       align: 'start',
     },

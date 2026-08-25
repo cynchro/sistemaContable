@@ -444,6 +444,11 @@ class VentaService
      * INSERT/UPDATE no intente escribir NULL en una columna que no lo admite. `concepto`
      * (smallint NOT NULL) se descarta si viene null (toma su DEFAULT al crear).
      *
+     * `numero_fin` (rango de comprobantes, p. ej. resúmenes) por default es igual a `numero`
+     * — el caso normal es un único comprobante, no un rango. Sin esto, el Libro IVA Digital
+     * exporta el campo vacío y ARCA rechaza la fila con "Número de comprobante hasta inválido"
+     * (encontrado subiendo un TXT real al Portal IVA, 24/08/2026).
+     *
      * @param  array<string, mixed> $data
      * @return array<string, mixed>
      */
@@ -456,6 +461,12 @@ class VentaService
         }
         if (array_key_exists('concepto', $data) && $data['concepto'] === null) {
             unset($data['concepto']);
+        }
+        if (
+            (!array_key_exists('numero_fin', $data) || $data['numero_fin'] === null || $data['numero_fin'] === '')
+            && !empty($data['numero'])
+        ) {
+            $data['numero_fin'] = $data['numero'];
         }
 
         return $data;

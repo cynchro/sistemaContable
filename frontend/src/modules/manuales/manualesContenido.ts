@@ -131,6 +131,31 @@ export const MANUALES: ManualSeccion[] = [
         ],
       },
       {
+        titulo: 'Liquidar IVA con ARCA (traer y subir automático)',
+        cuerpo: [
+          'Automatiza el ida y vuelta con el Portal IVA de ARCA mediante un bot que corre por fuera del ' +
+            'navegador: "Traer" (ARCA → ecosistema) importa los comprobantes que ya están registrados en el ' +
+            'borrador de ARCA; "Subir" (ecosistema → ARCA) sube el Libro IVA Digital armado con los datos ' +
+            'cargados acá. En ningún caso presenta la declaración jurada — solo lee y escribe el borrador.',
+          'Antes de la primera vez, cargá la Clave Fiscal de esa empresa en la pestaña "Liquidar IVA" del Libro ' +
+            'IVA (sección "Clave Fiscal de ARCA"): se guarda cifrada y solo se usa para el login automático — la ' +
+            'sesión se reutiliza mientras siga vigente, no hace falta cargarla en cada corrida.',
+          'Traer: pestaña "Liquidar IVA" del Libro IVA → elegí Ventas o Compras en "Libro" → "Procesar". El ' +
+            'pedido queda Pendiente hasta que el bot lo toma (Tomada → En curso → Terminada) sin recargar la ' +
+            'página; al terminar, un cuadro resume el resultado (agregados/ignorados/con error) con un link ' +
+            'directo a los comprobantes traídos, y el historial de abajo guarda todas las corridas.',
+          'Subir: se dispara desde el propio listado de Ventas o de Compras (botón "Procesar" debajo de la ' +
+            'grilla), no desde "Liquidar IVA" — porque ahí es donde se editan/agregan comprobantes. Cada corrida ' +
+            'sube el libro completo del período (todo lo cargado hasta ese momento, no solo lo último agregado); ' +
+            'ARCA reconoce solo los comprobantes que ya tenía y no los duplica, así que el resultado suele ' +
+            'mostrar pocos "agregados nuevos" y el resto como "ya estaban (sin cambios)".',
+          'Solo puede haber una liquidación en curso por empresa y período a la vez (sea traer o subir, ventas o ' +
+            'compras): si se dispara otra mientras hay una corriendo, el sistema avisa y hay que esperar a que ' +
+            'termine. Y si el bot no está prendido del lado del estudio, el pedido queda en Pendiente hasta que ' +
+            'alguien lo levante.',
+        ],
+      },
+      {
         titulo: 'Clientes y Proveedores (padrón único)',
         cuerpo: [
           'El padrón de sujetos es único por estudio (no por empresa): un mismo CUIT es siempre el mismo sujeto. ' +

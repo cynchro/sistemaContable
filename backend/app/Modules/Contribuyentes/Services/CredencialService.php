@@ -67,6 +67,32 @@ class CredencialService
         $this->credenciales->delete($id, $empresaId);
     }
 
+    /**
+     * Descifra la credencial de un `tipo`+`sistema` puntual para uso INTERNO del backend (nunca
+     * pasa por un Controller/Response) — hoy la usa solo `LiquidacionService` para obtener la
+     * Clave Fiscal de ARCA que el worker del bot necesita para loguearse. A diferencia de
+     * `reveal()` (usado por `list()`/`get()`/`create()`/`update()`, que sí expone la clave en
+     * claro vía la API pública), este método está pensado para que el LLAMADOR decida qué hacer
+     * con el resultado sin que necesariamente vuelva a salir por HTTP.
+     *
+     * @return array{usuario: ?string, clave: ?string}|null null si la empresa no tiene una
+     *   credencial de ese tipo+sistema cargada.
+     */
+    public function revealParaUsoInterno(int $empresaId, string $tipo, string $sistema, string $tenantId): ?array
+    {
+        $this->assertEmpresa($empresaId, $tenantId);
+
+        foreach ($this->credenciales->findAllByEmpresa($empresaId) as $row) {
+            if ($row['tipo'] === $tipo && $row['sistema'] === $sistema) {
+                $revelada = $this->reveal($row);
+
+                return ['usuario' => $revelada['usuario'] ?? null, 'clave' => $revelada['clave'] ?? null];
+            }
+        }
+
+        return null;
+    }
+
     private function assertEmpresa(int $empresaId, string $tenantId): void
     {
         $this->empresas->findById($empresaId, $tenantId);

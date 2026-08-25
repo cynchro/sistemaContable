@@ -22,6 +22,14 @@ use App\Exceptions\ForbiddenException;
  * grupo aparte en `Compartido/routes.php`): son las que MANEJAN el lock, no las que lo respetan
  * — si estuvieran acá, un admin nunca podría llamar a `/ocupar` para entrar en modo observador
  * (quedaría bloqueado como cualquier otra escritura).
+ *
+ * Tampoco se aplica a un principal de tipo API key (25/08/2026, encontrado en vivo probando el
+ * botón "Liquidar IVA"): el candado de "empresa ocupada" existe para que dos CONTADORES humanos
+ * no pisen la misma empresa a la vez — no tiene sentido aplicárselo a una integración/bot que
+ * actúa async en nombre de un usuario que ya autorizó la acción de antemano (y que, en el caso
+ * concreto del worker, típicamente sí tiene la empresa abierta en su propio navegador — bloquear
+ * al bot ahí haría que el botón nunca funcionara). La API key ya está acotada por sus propios
+ * scopes (`PermissionMiddleware`), que es el control de acceso que sí le corresponde.
  */
 class EmpresaLockMiddleware implements MiddlewareInterface
 {
@@ -35,8 +43,9 @@ class EmpresaLockMiddleware implements MiddlewareInterface
     {
         $empresaId = $this->resolverEmpresaId($request);
         $user      = $request->user();
+        $principal = $request->principal();
 
-        if ($empresaId === null || !$user) {
+        if ($empresaId === null || !$user || ($principal !== null && $principal->isApiKey())) {
             return $next($request);
         }
 
