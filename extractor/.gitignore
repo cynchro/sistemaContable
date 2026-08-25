@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.sessions/
+*.session.json
+debug/
+salida/
+# Datos fiscales reales de un cliente del estudio (ejemplos aportados a
+# mano) — nunca deben llegar al repo remoto.
+flujo/

@@ -1,0 +1,333 @@
+/* Estilos para PDF del Manual del Ecosistema Contable — A4 */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 11pt;
+  line-height: 1.65;
+  color: #1a1a1a;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  orphans: 2;
+  widows: 2;
+}
+
+/* ===== PORTADA ===== */
+
+.portada {
+  page-break-after: always;
+  text-align: center;
+  padding-top: 5cm;
+}
+
+.portada h1 {
+  font-size: 28pt;
+  font-weight: 700;
+  color: #1a3a5c;
+  margin-bottom: 0.5cm;
+  letter-spacing: -0.5px;
+  page-break-before: avoid;
+  border-bottom: none;
+}
+
+.portada .subtitulo {
+  font-size: 14pt;
+  color: #555;
+  margin-bottom: 2cm;
+}
+
+.portada .meta {
+  font-size: 10pt;
+  color: #888;
+  margin-top: 3cm;
+  line-height: 2;
+}
+
+.portada .logo-linea {
+  width: 40%;
+  height: 3px;
+  background: #1a3a5c;
+  margin: 1.5cm auto;
+}
+
+/* ===== ÍNDICE (TOC) ===== */
+
+.toc {
+  page-break-after: always;
+}
+
+.toc h2 {
+  font-size: 20pt;
+  color: #1a3a5c;
+  border-bottom: 2px solid #1a3a5c;
+  padding-bottom: 0.3cm;
+  margin-bottom: 0.8cm;
+  page-break-after: avoid;
+}
+
+.toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc li {
+  margin: 0.12cm 0;
+  font-size: 10.5pt;
+}
+
+.toc li a {
+  color: #1a1a1a;
+  text-decoration: none;
+  display: block;
+  border-bottom: 1px dotted #ccc;
+  padding: 0.1cm 0;
+}
+
+.toc .toc-l1 {
+  font-weight: 700;
+  margin-top: 0.35cm;
+  font-size: 11pt;
+}
+
+.toc .toc-l2 {
+  padding-left: 0.8cm;
+  font-weight: 400;
+  font-size: 10pt;
+}
+
+.toc .toc-l3 {
+  padding-left: 1.6cm;
+  font-weight: 400;
+  font-size: 9.5pt;
+  color: #555;
+}
+
+/* ===== HEADINGS ===== */
+
+h1 {
+  font-size: 22pt;
+  color: #1a3a5c;
+  margin-top: 0;
+  margin-bottom: 0.5cm;
+  page-break-before: always;
+  page-break-after: avoid;
+  border-bottom: 2px solid #1a3a5c;
+  padding-bottom: 0.2cm;
+}
+
+h1:first-of-type {
+  page-break-before: avoid;
+}
+
+h2 {
+  font-size: 15pt;
+  color: #2a5a8c;
+  margin-top: 0.8cm;
+  margin-bottom: 0.3cm;
+  page-break-before: avoid;
+  page-break-after: avoid;
+}
+
+h3 {
+  font-size: 12pt;
+  color: #3a6a9c;
+  margin-top: 0.5cm;
+  margin-bottom: 0.2cm;
+  page-break-before: avoid;
+  page-break-after: avoid;
+}
+
+h4 {
+  font-size: 11pt;
+  color: #444;
+  margin-top: 0.35cm;
+  margin-bottom: 0.15cm;
+  page-break-before: avoid;
+  page-break-after: avoid;
+}
+
+/* ===== PÁRRAFOS Y LISTAS ===== */
+
+p {
+  margin: 0.15cm 0 0.25cm 0;
+}
+
+ul, ol {
+  margin: 0.15cm 0 0.25cm 0;
+  padding-left: 1.2cm;
+}
+
+ol {
+  page-break-inside: auto;
+}
+
+li {
+  margin-bottom: 0.08cm;
+}
+
+ul > li, ol > li {
+  page-break-inside: avoid;
+}
+
+strong {
+  color: #1a1a1a;
+}
+
+/* ===== TABLAS ===== */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.4cm 0 0.5cm 0;
+  font-size: 10pt;
+  page-break-inside: avoid;
+}
+
+thead {
+  display: table-header-group;
+}
+
+thead th {
+  background: #1a3a5c;
+  color: white;
+  font-weight: 600;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 9.5pt;
+}
+
+tbody td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #e0e0e0;
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) {
+  background: #f7f9fb;
+}
+
+/* ===== CÓDIGO ===== */
+
+code {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 9.5pt;
+  background: #f0f0f0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #c7254e;
+}
+
+pre {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-left: 3px solid #1a3a5c;
+  padding: 0.35cm 0.5cm;
+  font-size: 9pt;
+  line-height: 1.5;
+  overflow-x: auto;
+  page-break-inside: avoid;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: #333;
+}
+
+/* ===== NOTAS Y ADVERTENCIAS ===== */
+
+blockquote {
+  border-left: 3px solid #f0ad4e;
+  background: #fffcf0;
+  margin: 0.25cm 0;
+  padding: 0.2cm 0.4cm;
+  font-size: 10pt;
+  color: #6b5900;
+  page-break-inside: avoid;
+}
+
+/* ===== PASO A PASO ===== */
+
+.pasos {
+  counter-reset: paso;
+  list-style: none;
+  padding-left: 0;
+  page-break-inside: auto;
+}
+
+.pasos li {
+  counter-increment: paso;
+  margin-bottom: 0.3cm;
+  padding-left: 0;
+  position: relative;
+  min-height: 1.2cm;
+  page-break-inside: avoid;
+}
+
+.pasos li::before {
+  content: counter(paso);
+  position: absolute;
+  left: 0;
+  top: 0.05cm;
+  width: 0.8cm;
+  height: 0.8cm;
+  background: #1a3a5c;
+  color: white;
+  border-radius: 50%;
+  font-size: 8pt;
+  font-weight: 700;
+  text-align: center;
+  line-height: 0.8cm;
+}
+
+.pasos li > *:first-child {
+  margin-left: 1.1cm;
+}
+
+/* Si el li empieza con texto directamente (sin tag), usamos padding */
+.pasos li {
+  padding-left: 1.1cm;
+}
+
+/* ===== UTILIDADES ===== */
+
+.page-break {
+  page-break-before: always;
+}
+
+.separador {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 0.8cm 0;
+}
+
+/* ===== GLOSARIO ===== */
+
+.glosario dt {
+  font-weight: 700;
+  color: #1a3a5c;
+  margin-top: 0.3cm;
+  page-break-after: avoid;
+}
+
+.glosario dd {
+  margin-left: 0;
+  margin-bottom: 0.25cm;
+  color: #444;
+}
+
+/* ===== PRINT ===== */
+
+@media print {
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

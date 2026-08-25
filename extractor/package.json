@@ -1,0 +1,29 @@
+{
+  "name": "extractor-iva",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Extractor de comprobantes IVA vía Portal IVA de ARCA (DDJJ > Libro Ventas/Compras) — trae los comprobantes ya importados por ARCA y los deja en xlsx local, y/o los sube/baja directo contra la API de ecosistema (`npm run liquidar`, ver src/cli/liquidar.ts).",
+  "type": "module",
+  "scripts": {
+    "login": "tsx src/cli/login.ts",
+    "traer": "tsx src/cli/traer.ts",
+    "liquidar": "tsx src/cli/liquidar.ts",
+    "worker": "tsx src/cli/worker.ts",
+    "convertir": "tsx src/cli/convertir.ts",
+    "manual": "tsx src/generar-manual-pdf.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "marked": "^15.0.0",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
