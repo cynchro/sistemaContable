@@ -46,14 +46,21 @@ async function procesar(pendiente: LiquidacionPendiente): Promise<void> {
 
   await reportarEstado(id, "en_curso");
 
-  const { browser, context } = await openSession(cuit);
-  let page = await context.newPage();
   const resultado: Record<string, unknown> = {};
-
+  // openSession/newPage entran al try: si el browser no levanta (imagen Docker con la versión de
+  // Playwright desalineada, por ejemplo — bug real encontrado el 25/08/2026, la liquidación 18
+  // quedó en_curso para siempre porque esto vivía FUERA del try) hay que reportarlo igual, no
+  // dejar la liquidación colgada sin estado terminal.
+  let browser: Awaited<ReturnType<typeof openSession>>["browser"] | undefined;
+  let page: Awaited<ReturnType<Awaited<ReturnType<typeof openSession>>["context"]["newPage"]>> | undefined;
   try {
+    const sesion = await openSession(cuit);
+    browser = sesion.browser;
+    page = await sesion.context.newPage();
+
     // Perezoso a propósito: solo pega contra el backend a pedir la clave si la sesión de ESTE
     // CUIT realmente expiró — la mayoría de las corridas reusan la sesión sin necesitarla.
-    await asegurarSesionVigente(page, context, cuit, () => pedirCredencial(id).then((c) => c.clave));
+    await asegurarSesionVigente(page, sesion.context, cuit, () => pedirCredencial(id).then((c) => c.clave));
 
     console.log(`[worker] Abriendo Portal IVA (${cuit}, período ${periodoArca})...`);
     page = await irAPortalIva(page);
@@ -73,12 +80,12 @@ async function procesar(pendiente: LiquidacionPendiente): Promise<void> {
     await reportarEstado(id, "terminada", resultado);
     console.log(`[worker] Liquidación ${id} terminada.`);
   } catch (err) {
-    await guardarCapturaDeError(page);
+    if (page) await guardarCapturaDeError(page);
     const mensaje = err instanceof Error ? err.message : String(err);
     await reportarEstado(id, "error", { mensaje, parcial: resultado });
     console.error(`[worker] Liquidación ${id} falló:`, err);
   } finally {
-    await browser.close();
+    await browser?.close();
   }
 }
 

@@ -2,7 +2,7 @@
 # necesarias para correrlo (evita el infierno de dependencias de un browser
 # headless en una imagen Node pelada). Fijar el tag a la misma versión de
 # "playwright" en package.json — si se bumpea una, bumpear la otra.
-FROM mcr.microsoft.com/playwright:v1.48.0-jammy
+FROM mcr.microsoft.com/playwright:v1.61.1-jammy
 
 WORKDIR /app
 
