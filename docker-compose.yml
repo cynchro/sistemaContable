@@ -49,6 +49,46 @@ services:
     depends_on:
       - modux-backend
 
+  # Bot Playwright que automatiza el Portal IVA de ARCA — es lo que atiende el botón
+  # "Liquidar IVA" de la UI. Servicio manual, para login inicial de un CUIT o una corrida
+  # puntual (`docker compose run --rm extractor npm run traer -- --periodo 07/2026`); no
+  # tiene restart policy porque no es un proceso de larga duración (eso es
+  # `extractor-worker`, abajo). Requiere `extractor/.env` configurado (ver extractor/README.md).
+  extractor:
+    build: ./extractor
+    env_file:
+      - ./extractor/.env
+    environment:
+      # Corriendo en esta red Docker, "localhost" es el contenedor mismo, no el backend.
+      ECOSISTEMA_BASE_URL: http://modux-backend:80
+    volumes:
+      - ./extractor/.sessions:/app/.sessions
+      - ./extractor/salida:/app/salida
+      - ./extractor/debug:/app/debug
+    networks:
+      - app-network
+
+  # Parte del ecosistema, siempre prendido: hace polling a
+  # GET /iva/liquidaciones/pendientes y ejecuta cada pedido solo, sin intervención manual —
+  # es lo que hace que el botón "Liquidar IVA" de la UI funcione en cualquier momento.
+  # Reusa la imagen y la sesión de ARCA de `extractor`. Requiere que el CUIT que se va a
+  # liquidar ya tenga una sesión bootstrapeada al menos una vez (ver extractor/README.md).
+  extractor-worker:
+    build: ./extractor
+    env_file:
+      - ./extractor/.env
+    environment:
+      ECOSISTEMA_BASE_URL: http://modux-backend:80
+    volumes:
+      - ./extractor/.sessions:/app/.sessions
+      - ./extractor/debug:/app/debug
+    command: npm run worker
+    restart: unless-stopped
+    networks:
+      - app-network
+    depends_on:
+      - modux-backend
+
   moduxdb:
     image: mysql:8.0
     container_name: moduxdb

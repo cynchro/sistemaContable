@@ -2,8 +2,8 @@
 
 /**
  * Botón "Liquidar IVA" (plan del 25/08/2026): cola de pedidos de automatización contra el
- * Portal IVA de ARCA, consumida por el worker del bot externo (`cositasVarias/extractor/`, fuera
- * de este repo) vía los endpoints `/iva/liquidaciones/*`. El usuario crea el pedido desde la UI
+ * Portal IVA de ARCA, consumida por el worker del bot (`extractor/`, en este mismo repo) vía
+ * los endpoints `/iva/liquidaciones/*`. El usuario crea el pedido desde la UI
  * de `ecosistema`; el worker lo toma, corre el flujo ya probado en vivo (traer/subir) y reporta
  * el resultado acá — nunca al revés (el worker sigue siendo cliente HTTP de `ecosistema`, nunca
  * lo contrario).

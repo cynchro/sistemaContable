@@ -752,8 +752,8 @@ function Descargas({ eId, pId }: { eId: number; pId: number }) {
 }
 
 /**
- * Botón "Liquidar IVA" (plan 25/08/2026): pide al worker del bot externo (`cositasVarias/
- * extractor`, fuera de este repo) que traiga el Libro IVA Digital desde el Portal IVA de ARCA.
+ * Botón "Liquidar IVA" (plan 25/08/2026): pide al worker del bot (`extractor/`, en este mismo
+ * repo) que traiga el Libro IVA Digital desde el Portal IVA de ARCA.
  * El "subir" (ecosistema → ARCA) vive en las pantallas de Compras/Ventas (botón "Procesar" debajo
  * de la grilla) — ahí es donde se edita/agrega comprobantes, tiene sentido subir desde ahí y no
  * desde acá. Requiere que la empresa tenga CUIT y una Clave Fiscal cargada (se guarda cifrada del

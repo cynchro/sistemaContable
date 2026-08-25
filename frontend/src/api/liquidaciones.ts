@@ -4,7 +4,7 @@ import type { Pagina } from './pagina'
 export type { Pagina }
 
 /** Botón "Liquidar IVA" (plan 25/08/2026): cola de pedidos consumida por el worker del bot
- * (`cositasVarias/extractor`), fuera de este repo. */
+ * (`extractor/`, en este mismo repo). */
 export type Direccion = 'traer' | 'subir' | 'ambos'
 export type LibroLiquidacion = 'ventas' | 'compras' | 'ambos'
 export type EstadoLiquidacion = 'pendiente' | 'tomada' | 'en_curso' | 'terminada' | 'error'

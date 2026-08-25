@@ -10,14 +10,9 @@ React, pensado para reemplazar Visual IVA (legacy) y unificar la carga de datos 
 ecosistema/
 ├── backend/     API PHP (Modux) — IVA, Sueldos, Fiscal, Tareas, Honorarios, AFIP/ARCA, Admin
 ├── frontend/    SPA React + Vite + TypeScript + CoreUI
-├── extractor/   Bot Playwright que automatiza el Portal IVA de ARCA — repo propio, separado
-├── cositasVarias/  Documentación, análisis y notas de trabajo (no es código de la app)
+├── extractor/   Bot Playwright que automatiza el Portal IVA de ARCA (traer/subir comprobantes)
 └── docker-compose.yml
 ```
-
-`extractor/` es opcional para levantar el sistema: solo hace falta si vas a usar el botón
-"Liquidar IVA" (traer/subir comprobantes contra ARCA). Tiene su propio README, su propio
-`.env` y su propio repo git (`sistema_contable_iva_extractor`).
 
 ## Cómo ponerlo en marcha
 
@@ -39,7 +34,27 @@ docker compose exec modux-backend php seeders/AdminSeeder.php admin@admin.com ad
 
 Entrá a http://localhost:5173 con esas credenciales.
 
+## El bot (`extractor/`)
+
+Automatiza el Portal IVA de ARCA (traer comprobantes ya registrados / subir el Libro IVA Digital
+calculado) — es lo que atiende el botón "Liquidar IVA" de la UI. Es parte del ecosistema: el
+servicio `extractor-worker` **arranca solo** con el mismo `docker compose up -d` de arriba
+(`restart: unless-stopped`) y queda escuchando la cola en segundo plano, siempre disponible para
+cuando alguien use el botón.
+
+Lo único manual es el **login inicial de cada CUIT** (una vez, con su Clave Fiscal — la sesión de
+ARCA queda guardada y se reutiliza sola después):
+
+```bash
+cp extractor/.env.example extractor/.env   # completar ARCA_CUIT, ARCA_CLAVE_FISCAL, ECOSISTEMA_API_KEY
+
+docker compose run --rm extractor npm run login
+```
+
+Detalle completo (modo manual sin Docker, verificación adicional de ARCA, formato de `.env`,
+qué hace cada comando): `extractor/README.md`.
+
 ## Más documentación
 
 - `backend/README.md` — framework Modux (CLI, módulos, arquitectura).
-- `extractor/README.md` — cómo correr el bot de ARCA (login, traer, worker).
+- `extractor/README.md` — cómo correr el bot de ARCA en detalle.

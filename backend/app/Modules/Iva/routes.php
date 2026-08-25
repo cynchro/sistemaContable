@@ -394,7 +394,7 @@ $router->group($mw, function ($router) {
         [$perm('iva.liquidar')],
     );
 
-    // Endpoints del worker externo del bot (cositasVarias/extractor): no anidados bajo empresa
+    // Endpoints del worker del bot (extractor/, en este mismo repo): no anidados bajo empresa
     // — la API key ya trae su propio tenant, la cola se acota por ahí (ver LiquidacionRepository).
     // Scopes propios, separados de 'iva.liquidar' (el de usuario): un rol de usuario normal no
     // tiene sentido que los tenga, pero conviven en el mismo catálogo de `permisos`.

@@ -1,7 +1,9 @@
 # extractor — extractor de comprobantes IVA vía Portal IVA (ARCA)
 
-Proyecto standalone (Node + TypeScript + Playwright, dockerizado) que
-resuelve el hueco documentado en `AUTOMATIZACIONES.md` §1: ARCA no expone un
+Bot (Node + TypeScript + Playwright, dockerizado) que se levanta con el mismo
+`docker-compose.yml` de la raíz de `ecosistema` (servicios `extractor` y
+`extractor-worker`, detrás del profile `bot` — ver el README de la raíz).
+Resuelve el hueco documentado en `AUTOMATIZACIONES.md` §1: ARCA no expone un
 web service público para traer en lote las facturas de **compra** (recibidas
 de terceros). Este proyecto lo hace automatizando el **Portal IVA**
 (`liva.afip.gob.ar`): abre la DDJJ del período, entra a Libro Ventas/Libro
@@ -88,12 +90,23 @@ usuario, no del código.
 
 ## Uso
 
+`extractor-worker` es parte del ecosistema y **arranca solo** con
+`docker compose up -d` desde la raíz (`restart: unless-stopped`) — no hace
+falta prenderlo a mano. Lo único manual es el login inicial de cada CUIT.
+
+⚠️ **`ECOSISTEMA_BASE_URL`**: corriendo por Docker, el `docker-compose.yml`
+de la raíz ya lo fija a `http://modux-backend:80` (el nombre del servicio en
+`app-network`) — no hace falta tocarlo en `.env`. Solo importa si corrés
+`npm run worker`/`npm run traer` a mano **fuera** de Docker (host): ahí sí
+tiene que ser `http://localhost:8077` en tu `.env` local.
+
 ### 1. Login (Docker, headless, automatizado)
 
 ```bash
-cp .env.example .env   # completar ARCA_CUIT y ARCA_CLAVE_FISCAL
+cp .env.example .env   # completar ARCA_CUIT, ARCA_CLAVE_FISCAL y ECOSISTEMA_API_KEY
 
-docker compose build
+cd ..   # el docker-compose.yml vive en la raíz de ecosistema, no acá
+docker compose build extractor
 docker compose run --rm extractor npm run login
 ```
 
@@ -167,8 +180,9 @@ intermedia, el proyecto habla directo con la API de `ecosistema`
   `--subir` (ecosistema → ARCA, sube el Libro IVA Digital ya calculado). Ver el
   `--help` implícito del propio script para los flags.
 - **`npm run worker`** (`src/cli/worker.ts`, servicio `extractor-worker` del
-  `docker-compose.yml`, `docker compose up -d extractor-worker`): proceso de
-  larga duración que hace polling a la cola de `ecosistema`
+  `docker-compose.yml` de la raíz — arranca solo con `docker compose up -d`,
+  `restart: unless-stopped`): proceso de larga duración que hace polling a
+  la cola de `ecosistema`
   (`GET /iva/liquidaciones/pendientes`) — el usuario pide la liquidación desde
   la UI de `ecosistema` (botón "Liquidar IVA"), este proceso la toma y la
   ejecuta sola, sin que nadie toque una terminal. Reusa el mismo flujo que
