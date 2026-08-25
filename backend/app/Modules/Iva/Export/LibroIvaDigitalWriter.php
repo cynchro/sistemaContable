@@ -51,7 +51,7 @@ final class LibroIvaDigitalWriter
             ->texto($this->str($r, 'moneda_codigo', 'PES'), 3)
             ->cambio($this->str($r, 'tipo_cambio'))
             ->entero($this->str($r, 'cant_alic'), 1)
-            ->texto('', 1) // Código de operación (blanco por defecto)
+            ->texto($this->str($r, 'codigo_operacion'), 1)
             ->importe($r['otros_trib'] ?? 0)
             ->fecha($this->str($r, 'fch_vto_pago'))
             ->build(self::LEN_VENTAS_CBTE), $rows));
@@ -93,7 +93,7 @@ final class LibroIvaDigitalWriter
             ->texto($this->str($r, 'moneda_codigo', 'PES'), 3)
             ->cambio($this->str($r, 'tipo_cambio'))
             ->entero($this->str($r, 'cant_alic'), 1)
-            ->texto('', 1) // Código de operación (blanco por defecto)
+            ->texto($this->str($r, 'codigo_operacion'), 1)
             ->importe($r['cf_computable'] ?? 0)
             ->importe($r['otros_trib'] ?? 0)
             ->entero('', 11) // CUIT emisor/corredor (sin corredor)
@@ -137,7 +137,11 @@ final class LibroIvaDigitalWriter
     /** @param array<string, mixed> $r */
     private function cbteTipo(array $r): int
     {
-        return CbteTipoResolver::resolve($this->str($r, 'cbte_codigo'), $this->str($r, 'letra'));
+        return CbteTipoResolver::resolve(
+            $this->str($r, 'cbte_codigo'),
+            $this->str($r, 'letra'),
+            $r['cod_citi'] ?? null,
+        );
     }
 
     /** @param array<string, mixed> $r */

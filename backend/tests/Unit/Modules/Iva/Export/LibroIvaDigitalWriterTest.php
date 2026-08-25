@@ -118,4 +118,63 @@ class LibroIvaDigitalWriterTest extends UnitTestCase
     {
         $this->assertSame('', $this->writer->ventasCbte([]));
     }
+
+    /**
+     * Caso real RED COLON S.A. (25/08/2026): Factura A 100% Exento, sin ninguna
+     * discriminación gravada. El spec oficial de ARCA exige `cant_alic='1'` +
+     * `Código de operación='E'` juntos (ver docblock de
+     * `LibroIvaDigitalRepository::CANT_ALIC_SQL`/`CODIGO_OPERACION_SQL`).
+     */
+    public function test_compras_cbte_comprobante_exento_lleva_cant_alic_1_y_codigo_e(): void
+    {
+        $row = [
+            'fecha' => '2026-08-18', 'cbte_codigo' => 'FA', 'letra' => 'A',
+            'punto_venta' => '210', 'numero' => '602', 'cuit' => '30668069904',
+            'proveedor_nombre' => 'Red Colon SA', 'total' => '53196.95',
+            'neto_no_grav' => '0', 'exento' => '53196.95', 'imp_interno' => '0',
+            'perc_iva' => '0', 'perc_nac' => '0', 'perc_iibb' => '0', 'perc_muni' => '0',
+            'moneda_codigo' => 'PES', 'tipo_cambio' => null,
+            'cant_alic' => '1', 'codigo_operacion' => 'E', 'cf_computable' => '0',
+        ];
+
+        $line = substr($this->writer->comprasCbte([$row]), 0, 325);
+
+        $this->assertSame('1', substr($line, 237, 1));  // cantidad de alícuotas
+        $this->assertSame('E', substr($line, 238, 1));  // código de operación
+    }
+
+    /** Comprobante letra B/C: `cant_alic` fijo en '0' (no discrimina IVA por diseño). */
+    public function test_compras_cbte_letra_b_lleva_cant_alic_0_y_codigo_operacion_blanco(): void
+    {
+        $row = [
+            'fecha' => '2026-08-18', 'cbte_codigo' => 'FA', 'letra' => 'B',
+            'punto_venta' => '1', 'numero' => '1', 'cuit' => '30668069904',
+            'proveedor_nombre' => 'Proveedor SA', 'total' => '1000',
+            'cant_alic' => '0', 'codigo_operacion' => '',
+        ];
+
+        $line = substr($this->writer->comprasCbte([$row]), 0, 325);
+
+        $this->assertSame('0', substr($line, 237, 1));
+        $this->assertSame(' ', substr($line, 238, 1));
+    }
+
+    /**
+     * Tipos administrativos raros de RG1415 (OC/30/CL/LP/LN/TD/PA/DA/CC/EX) — el código
+     * legacy de texto es ambiguo (varios ids comparten 'OC' con distinto CbteTipo real),
+     * así que `CbteTipoResolver` cae al `cod_citi` de la fila (25/08/2026). Caso real:
+     * id 72 'OC' → cod_citi '40' ("Agregado por importación").
+     */
+    public function test_compras_cbte_tipo_administrativo_raro_resuelve_por_cod_citi(): void
+    {
+        $row = [
+            'fecha' => '2026-08-18', 'cbte_codigo' => 'OC', 'cod_citi' => '40', 'letra' => 'A',
+            'punto_venta' => '1', 'numero' => '1', 'cuit' => '30668069904',
+            'proveedor_nombre' => 'Proveedor SA', 'total' => '1000', 'cant_alic' => '0',
+        ];
+
+        $line = substr($this->writer->comprasCbte([$row]), 0, 325);
+
+        $this->assertSame('040', substr($line, 8, 3)); // CbteTipo resuelto por cod_citi
+    }
 }
